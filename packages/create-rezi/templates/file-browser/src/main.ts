@@ -151,8 +151,10 @@ app.view((state) => {
               const marker = entry.type === "dir" ? "[D]" : "[F]";
               return ui.text(`${prefix} ${marker} ${entry.name}`, {
                 key: entry.name,
-                fg: active ? colors.accent : colors.muted,
-                bold: active,
+                style: {
+                  fg: active ? colors.accent : colors.muted,
+                  bold: active,
+                },
               });
             }),
           ),
