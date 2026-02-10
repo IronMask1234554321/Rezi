@@ -45,8 +45,10 @@ function getScriptSkipReason(): string | null {
 
   const probeDir = mkdtempSync(join(tmpdir(), "rezi-e2e-probe-"));
   const probePath = join(probeDir, "typescript");
-  const probe = spawnSync("script", ["-q", "-c", "printf 'REZI_E2E_OK'", probePath], {
+  const command = `stty cols ${COLS} rows ${ROWS}; printf 'REZI_E2E_OK'`;
+  const probe = spawnSync("script", ["-q", "-f", "-c", command, probePath], {
     stdio: "ignore",
+    env: { ...process.env, TERM: "xterm-256color" },
   });
   if (probe.error) {
     return `terminal e2e requires 'script' (util-linux): ${probe.error.message}`;
