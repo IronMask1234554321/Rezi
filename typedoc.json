@@ -1,0 +1,18 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "Rezi",
+  "entryPoints": [
+    "packages/core/src/index.ts",
+    "packages/node/src/index.ts",
+    "packages/testkit/src/index.ts"
+  ],
+  "entryPointStrategy": "resolve",
+  "out": "out/typedoc",
+  "tsconfig": "tsconfig.json",
+  "exclude": ["**/__tests__/**", "**/*.test.ts", "**/*.spec.ts"],
+  "excludePrivate": true,
+  "excludeExternals": true,
+  "excludeInternal": true,
+  "hideGenerator": true,
+  "readme": "none"
+}

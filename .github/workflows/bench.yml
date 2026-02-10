@@ -1,0 +1,58 @@
+name: Bench
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  bench:
+    name: Bench (ubuntu-latest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Build native addon
+        run: npm run build:native
+
+      - name: Run Rezi benchmarks (with perf instrumentation)
+        env:
+          REZI_PERF: "1"
+        run: |
+          # Run each scenario separately for detailed analysis
+          npm run bench -- --impl rezi --scenario max_60fps --warmup 2 --duration 10 --runs 3
+          npm run bench -- --impl rezi --scenario max_uncapped --warmup 2 --duration 10 --runs 3
+          npm run bench -- --impl rezi --scenario latency --warmup 2 --duration 10 --runs 3 --latency-interval 50
+          npm run bench -- --impl rezi --scenario latency_under_load --warmup 2 --duration 10 --runs 3 --latency-interval 50
+
+      - name: Display results summary
+        run: |
+          echo "=== Benchmark Results ==="
+          for f in packages/bench/results/*/summary.json; do
+            echo "--- $f ---"
+            cat "$f" | head -200
+          done
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-results
+          path: packages/bench/results/
+

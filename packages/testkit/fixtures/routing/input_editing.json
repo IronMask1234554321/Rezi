@@ -1,0 +1,316 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "name": "basic insert/move/delete (docs/18)",
+      "enabledById": { "inputId": true },
+      "initialFocusedId": "inputId",
+      "initialValue": "",
+      "initialCursor": 0,
+      "steps": [
+        {
+          "event": { "kind": "text", "timeMs": 0, "codepoint": 97 },
+          "expected": {
+            "value": "a",
+            "cursor": 1,
+            "emittedKinds": ["engine", "action"],
+            "action": {
+              "kind": "action",
+              "id": "inputId",
+              "action": "input",
+              "value": "a",
+              "cursor": 1
+            }
+          }
+        },
+        {
+          "event": { "kind": "text", "timeMs": 1, "codepoint": 98 },
+          "expected": {
+            "value": "ab",
+            "cursor": 2,
+            "emittedKinds": ["engine", "action"],
+            "action": {
+              "kind": "action",
+              "id": "inputId",
+              "action": "input",
+              "value": "ab",
+              "cursor": 2
+            }
+          }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 2, "key": 22, "mods": 0, "action": "down" },
+          "expected": { "value": "ab", "cursor": 1, "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 3, "key": 4, "mods": 0, "action": "down" },
+          "expected": {
+            "value": "b",
+            "cursor": 0,
+            "emittedKinds": ["engine", "action"],
+            "action": {
+              "kind": "action",
+              "id": "inputId",
+              "action": "input",
+              "value": "b",
+              "cursor": 0
+            }
+          }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 4, "key": 11, "mods": 0, "action": "down" },
+          "expected": {
+            "value": "",
+            "cursor": 0,
+            "emittedKinds": ["engine", "action"],
+            "action": {
+              "kind": "action",
+              "id": "inputId",
+              "action": "input",
+              "value": "",
+              "cursor": 0
+            }
+          }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 5, "key": 12, "mods": 0, "action": "repeat" },
+          "expected": { "value": "", "cursor": 0, "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 6, "key": 13, "mods": 0, "action": "down" },
+          "expected": { "value": "", "cursor": 0, "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 7, "key": 23, "mods": 0, "action": "up" },
+          "expected": { "value": "", "cursor": 0, "emittedKinds": ["engine"] }
+        }
+      ]
+    },
+    {
+      "name": "tab/enter + newline ignored (docs/18 single-line)",
+      "enabledById": { "inputId": true },
+      "initialFocusedId": "inputId",
+      "initialValue": "hi",
+      "initialCursor": 2,
+      "steps": [
+        {
+          "event": { "kind": "key", "timeMs": 0, "key": 3, "mods": 0, "action": "down" },
+          "expected": { "value": "hi", "cursor": 2, "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 1, "key": 2, "mods": 0, "action": "down" },
+          "expected": { "value": "hi", "cursor": 2, "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "text", "timeMs": 2, "codepoint": 10 },
+          "expected": { "value": "hi", "cursor": 2, "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "text", "timeMs": 3, "codepoint": 33 },
+          "expected": {
+            "value": "hi!",
+            "cursor": 3,
+            "emittedKinds": ["engine", "action"],
+            "action": {
+              "kind": "action",
+              "id": "inputId",
+              "action": "input",
+              "value": "hi!",
+              "cursor": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "combining mark grapheme editing (docs/18 boundaries)",
+      "enabledById": { "inputId": true },
+      "initialFocusedId": "inputId",
+      "initialValue": "a\u0301b",
+      "initialCursor": 3,
+      "steps": [
+        {
+          "event": { "kind": "key", "timeMs": 0, "key": 22, "mods": 0, "action": "down" },
+          "expected": { "value": "a\u0301b", "cursor": 2, "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 1, "key": 22, "mods": 0, "action": "down" },
+          "expected": { "value": "a\u0301b", "cursor": 0, "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 2, "key": 23, "mods": 0, "action": "repeat" },
+          "expected": { "value": "a\u0301b", "cursor": 2, "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 3, "key": 4, "mods": 0, "action": "down" },
+          "expected": {
+            "value": "b",
+            "cursor": 0,
+            "emittedKinds": ["engine", "action"],
+            "action": {
+              "kind": "action",
+              "id": "inputId",
+              "action": "input",
+              "value": "b",
+              "cursor": 0
+            }
+          }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 4, "key": 11, "mods": 0, "action": "down" },
+          "expected": {
+            "value": "",
+            "cursor": 0,
+            "emittedKinds": ["engine", "action"],
+            "action": {
+              "kind": "action",
+              "id": "inputId",
+              "action": "input",
+              "value": "",
+              "cursor": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ZWJ emoji cluster movement + deletion (docs/18 GB11)",
+      "enabledById": { "inputId": true },
+      "initialFocusedId": "inputId",
+      "initialValue": "\ud83d\udc69\u200d\ud83d\udcbbx",
+      "initialCursor": 6,
+      "steps": [
+        {
+          "event": { "kind": "key", "timeMs": 0, "key": 4, "mods": 0, "action": "down" },
+          "expected": {
+            "value": "\ud83d\udc69\u200d\ud83d\udcbb",
+            "cursor": 5,
+            "emittedKinds": ["engine", "action"],
+            "action": {
+              "kind": "action",
+              "id": "inputId",
+              "action": "input",
+              "value": "\ud83d\udc69\u200d\ud83d\udcbb",
+              "cursor": 5
+            }
+          }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 1, "key": 22, "mods": 0, "action": "repeat" },
+          "expected": {
+            "value": "\ud83d\udc69\u200d\ud83d\udcbb",
+            "cursor": 0,
+            "emittedKinds": ["engine"]
+          }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 2, "key": 11, "mods": 0, "action": "down" },
+          "expected": {
+            "value": "",
+            "cursor": 0,
+            "emittedKinds": ["engine", "action"],
+            "action": {
+              "kind": "action",
+              "id": "inputId",
+              "action": "input",
+              "value": "",
+              "cursor": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "paste strips CR/LF and replaces invalid UTF-8 (docs/18)",
+      "enabledById": { "inputId": true },
+      "initialFocusedId": "inputId",
+      "initialValue": "hi",
+      "initialCursor": 2,
+      "steps": [
+        {
+          "event": { "kind": "paste", "timeMs": 0, "bytes": [65, 10, 66, 13, 195, 40] },
+          "expected": {
+            "value": "hiAB\ufffd(",
+            "cursor": 6,
+            "emittedKinds": ["engine", "action"],
+            "action": {
+              "kind": "action",
+              "id": "inputId",
+              "action": "input",
+              "value": "hiAB\ufffd(",
+              "cursor": 6
+            }
+          }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 1, "key": 12, "mods": 0, "action": "down" },
+          "expected": { "value": "hiAB\ufffd(", "cursor": 0, "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "paste", "timeMs": 2, "bytes": [10, 13] },
+          "expected": { "value": "hiAB\ufffd(", "cursor": 0, "emittedKinds": ["engine"] }
+        }
+      ]
+    },
+    {
+      "name": "invalid text codepoints map to U+FFFD (docs/18)",
+      "enabledById": { "inputId": true },
+      "initialFocusedId": "inputId",
+      "initialValue": "",
+      "initialCursor": 0,
+      "steps": [
+        {
+          "event": { "kind": "text", "timeMs": 0, "codepoint": 1114112 },
+          "expected": {
+            "value": "\ufffd",
+            "cursor": 1,
+            "emittedKinds": ["engine", "action"],
+            "action": {
+              "kind": "action",
+              "id": "inputId",
+              "action": "input",
+              "value": "\ufffd",
+              "cursor": 1
+            }
+          }
+        },
+        {
+          "event": { "kind": "text", "timeMs": 1, "codepoint": 55296 },
+          "expected": {
+            "value": "\ufffd\ufffd",
+            "cursor": 2,
+            "emittedKinds": ["engine", "action"],
+            "action": {
+              "kind": "action",
+              "id": "inputId",
+              "action": "input",
+              "value": "\ufffd\ufffd",
+              "cursor": 2
+            }
+          }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 2, "key": 22, "mods": 0, "action": "down" },
+          "expected": { "value": "\ufffd\ufffd", "cursor": 1, "emittedKinds": ["engine"] }
+        }
+      ]
+    },
+    {
+      "name": "unfocused/disabled input yields no edits (docs/18)",
+      "enabledById": { "inputId": false },
+      "initialFocusedId": "inputId",
+      "initialValue": "x",
+      "initialCursor": 1,
+      "steps": [
+        {
+          "event": { "kind": "text", "timeMs": 0, "codepoint": 97 },
+          "expected": { "value": "x", "cursor": 1, "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 1, "key": 4, "mods": 0, "action": "down" },
+          "expected": { "value": "x", "cursor": 1, "emittedKinds": ["engine"] }
+        }
+      ]
+    }
+  ]
+}

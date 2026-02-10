@@ -1,0 +1,220 @@
+site_name: Rezi
+site_description: A high-performance, code-first terminal UI framework for Node.js built on the Zireael engine.
+site_url: https://rtlzeromemory.github.io/Rezi/
+repo_url: https://github.com/RtlZeroMemory/Rezi
+repo_name: RtlZeroMemory/Rezi
+edit_uri: edit/main/docs/
+docs_dir: docs
+site_dir: out/site
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - announce.dismiss
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+    - content.action.view
+    - content.tabs.link
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search:
+      lang: en
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - def_list
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+  - toc:
+      permalink: true
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - https://unpkg.com/mermaid@10.9.1/dist/mermaid.min.js
+  - javascripts/mermaid-init.js
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/RtlZeroMemory/Rezi
+  generator: false
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Install: getting-started/install.md
+      - Create Rezi: getting-started/create-rezi.md
+      - Quickstart: getting-started/quickstart.md
+      - JSX: getting-started/jsx.md
+      - Examples: getting-started/examples.md
+      - FAQ: getting-started/faq.md
+  - Guides:
+      - Concepts: guide/concepts.md
+      - Composition: guide/composition.md
+      - Runtime & Layout: guide/runtime-and-layout.md
+      - Lifecycle & Updates: guide/lifecycle-and-updates.md
+      - Layout: guide/layout.md
+      - Input & Focus: guide/input-and-focus.md
+      - Styling: guide/styling.md
+      - Performance: guide/performance.md
+      - Debugging: guide/debugging.md
+  - Widgets:
+      - Overview: widgets/index.md
+      - Primitives:
+          - Text: widgets/text.md
+          - Box: widgets/box.md
+          - Row / Column: widgets/stack.md
+          - Spacer: widgets/spacer.md
+          - Divider: widgets/divider.md
+      - Indicators:
+          - Icon: widgets/icon.md
+          - Spinner: widgets/spinner.md
+          - Progress: widgets/progress.md
+          - Skeleton: widgets/skeleton.md
+          - RichText: widgets/rich-text.md
+          - Kbd: widgets/kbd.md
+          - Badge: widgets/badge.md
+          - Status: widgets/status.md
+          - Tag: widgets/tag.md
+      - Inputs:
+          - Button: widgets/button.md
+          - Input: widgets/input.md
+          - Checkbox: widgets/checkbox.md
+          - Radio Group: widgets/radio-group.md
+          - Select: widgets/select.md
+          - Field: widgets/field.md
+      - Data:
+          - Table: widgets/table.md
+          - Virtual List: widgets/virtual-list.md
+          - Tree: widgets/tree.md
+      - Overlays:
+          - Layers: widgets/layers.md
+          - Modal: widgets/modal.md
+          - Dropdown: widgets/dropdown.md
+          - Layer: widgets/layer.md
+          - Toast: widgets/toast.md
+          - Focus Zone: widgets/focus-zone.md
+          - Focus Trap: widgets/focus-trap.md
+      - Layout:
+          - Split Pane: widgets/split-pane.md
+          - Panel Group: widgets/panel-group.md
+          - Resizable Panel: widgets/resizable-panel.md
+      - Advanced:
+          - Command Palette: widgets/command-palette.md
+          - File Picker: widgets/file-picker.md
+          - File Tree Explorer: widgets/file-tree-explorer.md
+          - Code Editor: widgets/code-editor.md
+          - Diff Viewer: widgets/diff-viewer.md
+          - Logs Console: widgets/logs-console.md
+          - Tool Approval Dialog: widgets/tool-approval-dialog.md
+      - Charts:
+          - Gauge: widgets/gauge.md
+          - Sparkline: widgets/sparkline.md
+          - Bar Chart: widgets/bar-chart.md
+          - Mini Chart: widgets/mini-chart.md
+      - Feedback:
+          - Callout: widgets/callout.md
+          - Error Display: widgets/error-display.md
+          - Empty: widgets/empty.md
+  - Styling:
+      - Overview: styling/index.md
+      - Style Props: styling/style-props.md
+      - Theme: styling/theme.md
+      - Icons: styling/icons.md
+      - Focus Styles: styling/focus-styles.md
+  - Recipes:
+      - Overview: recipes/index.md
+      - Form Validation: recipes/form-validation.md
+      - Modal Confirmation: recipes/modal-confirmation.md
+      - Keyboard Shortcuts: recipes/keyboard-shortcuts.md
+      - Loading States: recipes/loading-states.md
+      - Data Table: recipes/data-table.md
+  - Architecture:
+      - Overview: architecture/index.md
+      - Backend:
+          - Node Backend: backend/node.md
+          - Worker Model: backend/worker-model.md
+          - Native Addon: backend/native.md
+          - Engine Config: backend/engine-config.md
+          - Terminal Caps: backend/terminal-caps.md
+      - Protocol:
+          - Overview: protocol/index.md
+          - Event Batches (ZREV): protocol/zrev.md
+          - Drawlists (ZRDL): protocol/zrdl.md
+          - Cursor (v2): protocol/cursor-v2.md
+          - Versioning: protocol/versioning.md
+          - ABI: protocol/abi.md
+          - Safety Rules: protocol/safety.md
+  - API:
+      - Overview: api.md
+      - Packages:
+          - Overview: packages/index.md
+          - "@rezi-ui/core": packages/core.md
+          - "@rezi-ui/node": packages/node.md
+          - "@rezi-ui/native": packages/native.md
+          - "@rezi-ui/ink-compat": packages/ink-compat.md
+          - "@rezi-ui/jsx": packages/jsx.md
+          - "@rezi-ui/testkit": packages/testkit.md
+          - create-rezi: packages/create-rezi.md
+  - Migration:
+      - From Ink: migration/ink.md
+  - Developer:
+      - Contributing: dev/contributing.md
+      - Repo Layout: dev/repo-layout.md
+      - Build: dev/build.md
+      - Testing: dev/testing.md
+      - Releasing: dev/releasing.md
+      - Docs: dev/docs.md
+      - Style Guide: dev/style-guide.md
+      - Maintaining Docs: maintainers.md
+  - Reference:
+      - Benchmarks: benchmarks.md
+      - Glossary: reference/glossary.md

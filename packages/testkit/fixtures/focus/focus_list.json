@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "name": "Example A — basic order (docs/10)",
+      "tree": {
+        "kind": "column",
+        "props": {},
+        "children": [
+          { "kind": "button", "props": { "id": "a", "label": "A" } },
+          {
+            "kind": "box",
+            "props": {},
+            "children": [
+              { "kind": "button", "props": { "id": "b", "label": "B" } },
+              { "kind": "button", "props": { "id": "c", "label": "C" } }
+            ]
+          },
+          { "kind": "text", "text": "hello", "props": {} },
+          { "kind": "button", "props": { "id": "d", "label": "D" } }
+        ]
+      },
+      "expectedFocusList": ["a", "b", "c", "d"]
+    },
+    {
+      "name": "Example D — disabled buttons skipped (docs/10)",
+      "tree": {
+        "kind": "row",
+        "props": {},
+        "children": [
+          { "kind": "button", "props": { "id": "a", "label": "A" } },
+          { "kind": "button", "props": { "id": "b", "label": "B", "disabled": true } },
+          { "kind": "button", "props": { "id": "c", "label": "C" } }
+        ]
+      },
+      "expectedFocusList": ["a", "c"]
+    }
+  ],
+  "reconcileCases": [
+    {
+      "name": "Example B — focused widget disappears (docs/10)",
+      "initialFocusedId": "b",
+      "nextTree": {
+        "kind": "column",
+        "props": {},
+        "children": [
+          { "kind": "button", "props": { "id": "a", "label": "A" } },
+          { "kind": "button", "props": { "id": "c", "label": "C" } }
+        ]
+      },
+      "expectedFocusedIdAfterCommit": "a"
+    },
+    {
+      "name": "Example C — insertion before focused keeps focus (docs/10)",
+      "initialFocusedId": "c",
+      "nextTree": {
+        "kind": "column",
+        "props": {},
+        "children": [
+          { "kind": "button", "props": { "id": "a", "label": "A" } },
+          { "kind": "button", "props": { "id": "b", "label": "B" } },
+          { "kind": "button", "props": { "id": "c", "label": "C" } }
+        ]
+      },
+      "expectedFocusedIdAfterCommit": "c"
+    }
+  ]
+}

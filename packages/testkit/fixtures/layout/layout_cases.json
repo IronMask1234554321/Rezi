@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "name": "row_pad_gap_start",
+      "axis": "row",
+      "viewport": { "x": 0, "y": 0, "w": 10, "h": 3 },
+      "tree": {
+        "ref": "root",
+        "kind": "row",
+        "props": { "pad": 1, "gap": 1, "align": "start" },
+        "children": [
+          { "ref": "t1", "kind": "text", "text": "hi", "props": {} },
+          { "ref": "b1", "kind": "button", "props": { "id": "b1", "label": "ok" } },
+          { "ref": "s1", "kind": "spacer", "props": { "size": 2 } }
+        ]
+      },
+      "expect": {
+        "rects": {
+          "root": { "x": 0, "y": 0, "w": 9, "h": 3 },
+          "t1": { "x": 1, "y": 1, "w": 2, "h": 1 },
+          "b1": { "x": 4, "y": 1, "w": 4, "h": 1 },
+          "s1": { "x": 9, "y": 1, "w": 0, "h": 0 }
+        }
+      }
+    },
+    {
+      "name": "column_center_cross_axis",
+      "axis": "column",
+      "viewport": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "tree": {
+        "ref": "root",
+        "kind": "column",
+        "props": { "align": "center" },
+        "children": [
+          { "ref": "t1", "kind": "text", "text": "aa", "props": {} },
+          { "ref": "t2", "kind": "text", "text": "\u754c", "props": {} },
+          { "ref": "s1", "kind": "spacer", "props": { "size": 2 } }
+        ]
+      },
+      "expect": {
+        "rects": {
+          "root": { "x": 0, "y": 0, "w": 2, "h": 4 },
+          "t1": { "x": 0, "y": 0, "w": 2, "h": 1 },
+          "t2": { "x": 0, "y": 1, "w": 2, "h": 1 },
+          "s1": { "x": 1, "y": 2, "w": 0, "h": 2 }
+        }
+      }
+    },
+    {
+      "name": "box_border_pad_children_column",
+      "axis": "column",
+      "viewport": { "x": 0, "y": 0, "w": 10, "h": 5 },
+      "tree": {
+        "ref": "root",
+        "kind": "box",
+        "props": { "border": "single", "pad": 1, "title": "ignored" },
+        "children": [
+          { "ref": "b1", "kind": "button", "props": { "id": "b1", "label": "X" } },
+          { "ref": "t1", "kind": "text", "text": "hi", "props": {} }
+        ]
+      },
+      "expect": {
+        "rects": {
+          "root": { "x": 0, "y": 0, "w": 7, "h": 5 },
+          "b1": { "x": 2, "y": 2, "w": 3, "h": 1 },
+          "t1": { "x": 2, "y": 3, "w": 0, "h": 0 }
+        }
+      }
+    },
+    {
+      "name": "row_exhaustion_zero_sized_children",
+      "axis": "row",
+      "viewport": { "x": 0, "y": 0, "w": 3, "h": 1 },
+      "tree": {
+        "ref": "root",
+        "kind": "row",
+        "props": { "gap": 1 },
+        "children": [
+          { "ref": "t1", "kind": "text", "text": "ab", "props": {} },
+          { "ref": "b1", "kind": "button", "props": { "id": "b1", "label": "Z" } },
+          { "ref": "t2", "kind": "text", "text": "x", "props": {} }
+        ]
+      },
+      "expect": {
+        "rects": {
+          "root": { "x": 0, "y": 0, "w": 2, "h": 1 },
+          "t1": { "x": 0, "y": 0, "w": 2, "h": 1 },
+          "b1": { "x": 3, "y": 0, "w": 0, "h": 0 },
+          "t2": { "x": 3, "y": 0, "w": 0, "h": 0 }
+        }
+      }
+    },
+    {
+      "name": "row_pad_gap_with_input_capped",
+      "axis": "row",
+      "viewport": { "x": 0, "y": 0, "w": 10, "h": 3 },
+      "tree": {
+        "ref": "root",
+        "kind": "row",
+        "props": { "pad": 1, "gap": 1, "align": "start" },
+        "children": [
+          { "ref": "t1", "kind": "text", "text": "hi", "props": {} },
+          { "ref": "i1", "kind": "input", "props": { "id": "i1", "value": "abcdefghij" } }
+        ]
+      },
+      "expect": {
+        "rects": {
+          "root": { "x": 0, "y": 0, "w": 10, "h": 3 },
+          "t1": { "x": 1, "y": 1, "w": 2, "h": 1 },
+          "i1": { "x": 4, "y": 1, "w": 5, "h": 1 }
+        }
+      }
+    },
+    {
+      "name": "input_empty_intrinsic_min_2",
+      "axis": "column",
+      "viewport": { "x": 0, "y": 0, "w": 4, "h": 1 },
+      "tree": { "ref": "root", "kind": "input", "props": { "id": "i1", "value": "" } },
+      "expect": { "rects": { "root": { "x": 0, "y": 0, "w": 2, "h": 1 } } }
+    },
+    {
+      "name": "invalid_props_row_align",
+      "axis": "row",
+      "viewport": { "x": 0, "y": 0, "w": 5, "h": 1 },
+      "tree": {
+        "ref": "root",
+        "kind": "row",
+        "props": { "align": "nope" },
+        "children": [{ "ref": "t1", "kind": "text", "text": "x", "props": {} }]
+      },
+      "expectFatal": {
+        "code": "ZRUI_INVALID_PROPS",
+        "detail": "row.align must be one of \"start\" | \"center\" | \"end\" | \"stretch\""
+      }
+    }
+  ]
+}

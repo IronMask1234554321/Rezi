@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "name": "simple_hit_test_enabled_buttons",
+      "tree": {
+        "ref": "root",
+        "kind": "column",
+        "props": {},
+        "children": [
+          { "ref": "b1", "kind": "button", "props": { "id": "a", "label": "A" } },
+          { "ref": "b2", "kind": "button", "props": { "id": "b", "label": "B" } }
+        ]
+      },
+      "layoutRects": {
+        "root": { "x": 0, "y": 0, "w": 3, "h": 2 },
+        "b1": { "x": 0, "y": 0, "w": 3, "h": 1 },
+        "b2": { "x": 0, "y": 1, "w": 3, "h": 1 }
+      },
+      "points": [
+        { "x": 0, "y": 0, "expectedId": "a" },
+        { "x": 2, "y": 1, "expectedId": "b" },
+        { "x": 3, "y": 0, "expectedId": null }
+      ]
+    },
+    {
+      "name": "overlap_last_wins_sibling_order",
+      "tree": {
+        "ref": "root",
+        "kind": "column",
+        "props": {},
+        "children": [
+          { "ref": "b1", "kind": "button", "props": { "id": "first", "label": "X" } },
+          { "ref": "b2", "kind": "button", "props": { "id": "last", "label": "Y" } }
+        ]
+      },
+      "layoutRects": {
+        "root": { "x": 0, "y": 0, "w": 4, "h": 1 },
+        "b1": { "x": 0, "y": 0, "w": 4, "h": 1 },
+        "b2": { "x": 0, "y": 0, "w": 4, "h": 1 }
+      },
+      "points": [{ "x": 1, "y": 0, "expectedId": "last" }]
+    },
+    {
+      "name": "overlap_disabled_last_is_skipped",
+      "tree": {
+        "ref": "root",
+        "kind": "column",
+        "props": {},
+        "children": [
+          { "ref": "b1", "kind": "button", "props": { "id": "enabled", "label": "E" } },
+          {
+            "ref": "b2",
+            "kind": "button",
+            "props": { "id": "disabled", "label": "D", "disabled": true }
+          }
+        ]
+      },
+      "layoutRects": {
+        "root": { "x": 0, "y": 0, "w": 4, "h": 1 },
+        "b1": { "x": 0, "y": 0, "w": 4, "h": 1 },
+        "b2": { "x": 0, "y": 0, "w": 4, "h": 1 }
+      },
+      "points": [{ "x": 2, "y": 0, "expectedId": "enabled" }]
+    },
+    {
+      "name": "overlap_nested_preorder_last_wins",
+      "tree": {
+        "ref": "root",
+        "kind": "column",
+        "props": {},
+        "children": [
+          {
+            "ref": "box1",
+            "kind": "box",
+            "props": { "border": "none" },
+            "children": [
+              { "ref": "b1", "kind": "button", "props": { "id": "inner", "label": "I" } }
+            ]
+          },
+          { "ref": "b2", "kind": "button", "props": { "id": "outer", "label": "O" } }
+        ]
+      },
+      "layoutRects": {
+        "root": { "x": 0, "y": 0, "w": 4, "h": 1 },
+        "box1": { "x": 0, "y": 0, "w": 4, "h": 1 },
+        "b1": { "x": 0, "y": 0, "w": 4, "h": 1 },
+        "b2": { "x": 0, "y": 0, "w": 4, "h": 1 }
+      },
+      "points": [{ "x": 0, "y": 0, "expectedId": "outer" }]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "lib": ["ES2022"],
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@rezi-ui/jsx": ["./src/index.ts"],
+      "@rezi-ui/jsx/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "references": [{ "path": "../core" }, { "path": "../testkit" }]
+}

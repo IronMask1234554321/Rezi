@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    { "name": "unpaired_high_surrogate", "text": "\ud800", "width": 1 },
+    { "name": "unpaired_low_surrogate", "text": "\udc00", "width": 1 },
+    { "name": "unpaired_high_then_ascii", "text": "\ud800A", "width": 2 },
+    { "name": "ascii_then_unpaired_low_then_ascii", "text": "A\udc00B", "width": 3 },
+    { "name": "valid_surrogate_pair_emoji", "text": "\ud83d\ude00", "width": 2 },
+    { "name": "broken_pair_high_then_ascii_then_low", "text": "\ud83dA\ude00", "width": 3 },
+    { "name": "two_unpaired_high_surrogates", "text": "\ud800\ud800", "width": 2 }
+  ]
+}

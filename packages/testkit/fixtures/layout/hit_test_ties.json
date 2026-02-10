@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "name": "Overlapping siblings: later sibling wins (preorder last-wins)",
+      "tree": {
+        "ref": "root",
+        "kind": "column",
+        "props": {},
+        "children": [
+          { "ref": "a", "kind": "button", "props": { "id": "a", "label": "A" } },
+          { "ref": "b", "kind": "button", "props": { "id": "b", "label": "B" } }
+        ]
+      },
+      "layoutRects": {
+        "root": { "x": 0, "y": 0, "w": 4, "h": 1 },
+        "a": { "x": 0, "y": 0, "w": 4, "h": 1 },
+        "b": { "x": 0, "y": 0, "w": 4, "h": 1 }
+      },
+      "points": [{ "x": 1, "y": 0, "expectedId": "b" }]
+    },
+    {
+      "name": "Multiple overlaps: last in preorder wins (a < b < c)",
+      "tree": {
+        "ref": "root",
+        "kind": "column",
+        "props": {},
+        "children": [
+          { "ref": "a", "kind": "button", "props": { "id": "a", "label": "A" } },
+          { "ref": "b", "kind": "button", "props": { "id": "b", "label": "B" } },
+          { "ref": "c", "kind": "button", "props": { "id": "c", "label": "C" } }
+        ]
+      },
+      "layoutRects": {
+        "root": { "x": 0, "y": 0, "w": 4, "h": 1 },
+        "a": { "x": 0, "y": 0, "w": 4, "h": 1 },
+        "b": { "x": 0, "y": 0, "w": 4, "h": 1 },
+        "c": { "x": 0, "y": 0, "w": 4, "h": 1 }
+      },
+      "points": [{ "x": 1, "y": 0, "expectedId": "c" }]
+    }
+  ]
+}

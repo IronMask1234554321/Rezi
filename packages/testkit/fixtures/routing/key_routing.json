@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "name": "Tab / Shift+Tab traversal + wrap-around (docs/10 Example A)",
+      "focusList": ["a", "b", "c", "d"],
+      "enabledById": { "a": true, "b": true, "c": true, "d": true },
+      "initialFocusedId": null,
+      "steps": [
+        {
+          "event": { "kind": "key", "timeMs": 0, "key": 3, "mods": 0, "action": "down" },
+          "expected": { "focusedId": "a", "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 1, "key": 3, "mods": 0, "action": "down" },
+          "expected": { "focusedId": "b", "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 2, "key": 3, "mods": 0, "action": "down" },
+          "expected": { "focusedId": "c", "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 3, "key": 3, "mods": 0, "action": "down" },
+          "expected": { "focusedId": "d", "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 4, "key": 3, "mods": 0, "action": "down" },
+          "expected": { "focusedId": "a", "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 5, "key": 3, "mods": 1, "action": "down" },
+          "expected": { "focusedId": "d", "emittedKinds": ["engine"] }
+        }
+      ]
+    },
+    {
+      "name": "Disabled focus + press suppression (docs/10 + docs/11)",
+      "focusList": ["a"],
+      "enabledById": { "a": true, "b": false },
+      "initialFocusedId": "b",
+      "steps": [
+        {
+          "event": { "kind": "key", "timeMs": 0, "key": 2, "mods": 0, "action": "down" },
+          "expected": { "focusedId": "b", "emittedKinds": ["engine"] }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 1, "key": 32, "mods": 0, "action": "down" },
+          "expected": { "focusedId": "b", "emittedKinds": ["engine"] }
+        }
+      ]
+    },
+    {
+      "name": "Enter/Space press emits action immediately after engine (docs/10 + docs/14)",
+      "focusList": ["a"],
+      "enabledById": { "a": true },
+      "initialFocusedId": "a",
+      "steps": [
+        {
+          "event": { "kind": "key", "timeMs": 0, "key": 2, "mods": 0, "action": "down" },
+          "expected": {
+            "focusedId": "a",
+            "emittedKinds": ["engine", "action"],
+            "action": { "id": "a", "action": "press" }
+          }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 1, "key": 32, "mods": 0, "action": "down" },
+          "expected": {
+            "focusedId": "a",
+            "emittedKinds": ["engine", "action"],
+            "action": { "id": "a", "action": "press" }
+          }
+        },
+        {
+          "event": { "kind": "key", "timeMs": 2, "key": 2, "mods": 0, "action": "up" },
+          "expected": { "focusedId": "a", "emittedKinds": ["engine"] }
+        }
+      ]
+    }
+  ]
+}

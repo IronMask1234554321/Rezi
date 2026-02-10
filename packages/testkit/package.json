@@ -1,0 +1,27 @@
+{
+  "name": "@rezi-ui/testkit",
+  "version": "0.1.0-alpha.0",
+  "description": "Test utilities and fixtures for Rezi.",
+  "license": "Apache-2.0",
+  "homepage": "https://rtlzeromemory.github.io/Rezi/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RtlZeroMemory/Rezi.git",
+    "directory": "packages/testkit"
+  },
+  "bugs": {
+    "url": "https://github.com/RtlZeroMemory/Rezi/issues"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist/", "fixtures/", "README.md"],
+  "engines": {
+    "node": ">=22"
+  }
+}

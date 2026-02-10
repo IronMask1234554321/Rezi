@@ -1,0 +1,26 @@
+{
+  "name": "@rezi-ui/bench",
+  "version": "0.1.0-alpha.0",
+  "description": "Comprehensive benchmark suite: Rezi vs Ink vs ink-compat",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": { "node": ">=22" },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@rezi-ui/core": "0.1.0-alpha.0",
+    "@rezi-ui/ink-compat": "0.1.0-alpha.0",
+    "ink": "^4.0.0",
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "typescript": "^5.7.0"
+  }
+}

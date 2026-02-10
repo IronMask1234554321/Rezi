@@ -1,0 +1,94 @@
+{
+  "name": "@rezi-ui/core",
+  "version": "0.1.0-alpha.0",
+  "description": "Runtime-agnostic TypeScript core for Rezi (widgets, layout, routing, drawlists, event parsing).",
+  "license": "Apache-2.0",
+  "homepage": "https://rtlzeromemory.github.io/Rezi/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RtlZeroMemory/Rezi.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/RtlZeroMemory/Rezi/issues"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./all": {
+      "types": "./dist/all.d.ts",
+      "default": "./dist/all.js"
+    },
+    "./abi": {
+      "types": "./dist/abi.d.ts",
+      "default": "./dist/abi.js"
+    },
+    "./backend": {
+      "types": "./dist/backend.d.ts",
+      "default": "./dist/backend.js"
+    },
+    "./composition": {
+      "types": "./dist/composition.d.ts",
+      "default": "./dist/composition.js"
+    },
+    "./cursor": {
+      "types": "./dist/cursor/index.d.ts",
+      "default": "./dist/cursor/index.js"
+    },
+    "./debug": {
+      "types": "./dist/debug/index.d.ts",
+      "default": "./dist/debug/index.js"
+    },
+    "./drawlist": {
+      "types": "./dist/drawlist/index.d.ts",
+      "default": "./dist/drawlist/index.js"
+    },
+    "./drawApi": {
+      "types": "./dist/drawApi.d.ts",
+      "default": "./dist/drawApi.js"
+    },
+    "./events": {
+      "types": "./dist/events.d.ts",
+      "default": "./dist/events.js"
+    },
+    "./forms": {
+      "types": "./dist/forms/index.d.ts",
+      "default": "./dist/forms/index.js"
+    },
+    "./keybindings": {
+      "types": "./dist/keybindings/index.d.ts",
+      "default": "./dist/keybindings/index.js"
+    },
+    "./layout": {
+      "types": "./dist/layout/index.d.ts",
+      "default": "./dist/layout/index.js"
+    },
+    "./protocol": {
+      "types": "./dist/protocol/index.d.ts",
+      "default": "./dist/protocol/index.js"
+    },
+    "./theme": {
+      "types": "./dist/theme/index.d.ts",
+      "default": "./dist/theme/index.js"
+    },
+    "./terminalCaps": {
+      "types": "./dist/terminalCaps.d.ts",
+      "default": "./dist/terminalCaps.js"
+    },
+    "./widgets": {
+      "types": "./dist/widgets/index.d.ts",
+      "default": "./dist/widgets/index.js"
+    }
+  },
+  "files": ["dist/", "README.md"],
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@rezi-ui/testkit": "0.1.0-alpha.0"
+  }
+}

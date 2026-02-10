@@ -1,0 +1,43 @@
+# Composition
+
+Rezi supports reusable, stateful widgets via `defineWidget`. Composite widgets integrate with the runtime's reconciliation and update pipeline while keeping your `view` pure.
+
+## Defining a widget
+
+```typescript
+import { defineWidget, ui } from "@rezi-ui/core";
+
+type CounterProps = { label: string };
+
+export const Counter = defineWidget<CounterProps>((props, ctx) => {
+  const [count, setCount] = ctx.useState(0);
+
+  return ui.row({ gap: 1 }, [
+    ui.text(`${props.label}: ${count}`),
+    ui.button({
+      id: ctx.id("inc"),
+      label: "+1",
+      onPress: () => setCount((c) => c + 1),
+    }),
+  ]);
+});
+```
+
+## WidgetContext hooks
+
+Composite widgets receive a `WidgetContext` with:
+
+- `useState` and `useRef` for local state
+- `useEffect` for post-commit effects with cleanup
+- `useAppState` to select a slice of app state
+- `id()` to create scoped IDs for focusable widgets
+- `invalidate()` to request a re-render
+
+Hook rules follow the same constraints as React: call hooks in a consistent order on every render.
+
+## Related
+
+- [Concepts](concepts.md)
+- [Lifecycle & updates](lifecycle-and-updates.md)
+- [Widget catalog](../widgets/index.md)
+- [API reference](../api/reference/index.html)

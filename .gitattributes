@@ -1,0 +1,19 @@
+# Normalize line endings across platforms.
+* text=auto eol=lf
+
+# Common binary artifacts.
+*.bin binary
+*.dll binary
+*.dylib binary
+*.exe binary
+*.gif binary
+*.ico binary
+*.jar binary
+*.jpeg binary
+*.jpg binary
+*.node binary
+*.pdf binary
+*.png binary
+*.so binary
+*.wasm binary
+*.zip binary

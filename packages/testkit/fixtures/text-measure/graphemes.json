@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    { "name": "ascii", "text": "A", "width": 1 },
+    { "name": "combining_sequence", "text": "a\u0301", "width": 1 },
+    { "name": "combining_mark_alone", "text": "\u0301", "width": 0 },
+    { "name": "zwj_alone", "text": "\u200d", "width": 0 },
+    { "name": "crlf_cluster", "text": "\r\n", "width": 0 },
+    { "name": "emoji_single", "text": "\ud83d\ude00", "width": 2 },
+    {
+      "name": "emoji_zwj_sequence_family",
+      "text": "\ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67\u200d\ud83d\udc66",
+      "width": 2
+    },
+    { "name": "regional_indicator_pair_flag", "text": "\ud83c\uddfa\ud83c\uddf8", "width": 2 },
+    { "name": "cjk_wide", "text": "\u754c", "width": 2 }
+  ]
+}

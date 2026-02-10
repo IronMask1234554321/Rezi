@@ -1,0 +1,65 @@
+/** @jsxImportSource @rezi-ui/jsx */
+
+import { type VNode, ui } from "@rezi-ui/core";
+import { assert, describe, test } from "@rezi-ui/testkit";
+import { Button, Column, Text } from "../index.js";
+import { jsxDEV } from "../jsx-dev-runtime.js";
+import { jsx, jsxs } from "../jsx-runtime.js";
+
+describe("jsx runtime", () => {
+  test("jsx() supports function components", () => {
+    function Greeting(props: { name: string }): VNode {
+      return <Text>Hello {props.name}</Text>;
+    }
+
+    const vnode = jsx(Greeting, { name: "Rezi" });
+    assert.deepEqual(vnode, ui.text("Hello Rezi"));
+  });
+
+  test("jsx() supports intrinsic string elements", () => {
+    const vnode = jsx("button", { id: "ok", label: "OK" });
+    assert.deepEqual(vnode, ui.button("ok", "OK"));
+  });
+
+  test("jsxs() handles multiple children", () => {
+    const vnode = jsxs(Column, {
+      gap: 1,
+      children: [jsx(Text, { children: "A" }), jsx(Button, { id: "x", label: "X" })],
+    });
+
+    assert.deepEqual(vnode, ui.column({ gap: 1 }, [ui.text("A"), ui.button("x", "X")]));
+  });
+
+  test("key argument is injected into component props", () => {
+    const vnode = jsx(Button, { id: "ok", label: "OK" }, "btn-key");
+    assert.deepEqual(vnode, { kind: "button", props: { id: "ok", label: "OK", key: "btn-key" } });
+
+    const keyedFn = jsx((props: { key?: string }) => ui.text(props.key ?? ""), {}, "fn-key");
+    assert.deepEqual(keyedFn, ui.text("fn-key"));
+  });
+
+  test("key argument takes precedence over props.key", () => {
+    const intrinsicFromProps = jsx("button", { id: "ok", label: "OK", key: "props-key" });
+    assert.deepEqual(intrinsicFromProps, ui.button("ok", "OK", { key: "props-key" }));
+
+    const intrinsicFromArg = jsx("button", { id: "ok", label: "OK", key: "props-key" }, "arg-key");
+    assert.deepEqual(intrinsicFromArg, ui.button("ok", "OK", { key: "arg-key" }));
+
+    const functionFromArg = jsx(
+      (props: { key?: string }) => ui.text(props.key ?? ""),
+      { key: "props-key" },
+      "arg-key",
+    );
+    assert.deepEqual(functionFromArg, ui.text("arg-key"));
+  });
+
+  test("unknown intrinsic element type throws", () => {
+    assert.throws(() => jsx("does-not-exist", {}));
+  });
+
+  test("jsxDEV() matches jsx() behavior", () => {
+    const fromJsx = jsx(Text, { children: "dev" }, "k1");
+    const fromDev = jsxDEV(Text, { children: "dev" }, "k1", false, undefined, undefined);
+    assert.deepEqual(fromDev, fromJsx);
+  });
+});

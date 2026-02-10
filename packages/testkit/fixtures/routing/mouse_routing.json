@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "name": "Down captures pressedId + focuses target; up on same target presses (docs/10)",
+      "enabledById": { "a": true },
+      "initialFocusedId": null,
+      "initialPressedId": null,
+      "steps": [
+        {
+          "event": {
+            "kind": "mouse",
+            "timeMs": 0,
+            "x": 1,
+            "y": 1,
+            "mouseKind": 3,
+            "mods": 0,
+            "buttons": 1,
+            "wheelX": 0,
+            "wheelY": 0
+          },
+          "hitTestTargetId": "a",
+          "expected": { "focusedId": "a", "pressedId": "a", "emittedKinds": ["engine"] }
+        },
+        {
+          "event": {
+            "kind": "mouse",
+            "timeMs": 1,
+            "x": 1,
+            "y": 1,
+            "mouseKind": 4,
+            "mods": 0,
+            "buttons": 0,
+            "wheelX": 0,
+            "wheelY": 0
+          },
+          "hitTestTargetId": "a",
+          "expected": {
+            "focusedId": "a",
+            "pressedId": null,
+            "emittedKinds": ["engine", "action"],
+            "action": { "id": "a", "action": "press" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Up on different target does not press; pressedId always clears on up (docs/10)",
+      "enabledById": { "a": true, "b": true },
+      "initialFocusedId": null,
+      "initialPressedId": null,
+      "steps": [
+        {
+          "event": {
+            "kind": "mouse",
+            "timeMs": 0,
+            "x": 1,
+            "y": 1,
+            "mouseKind": 3,
+            "mods": 0,
+            "buttons": 1,
+            "wheelX": 0,
+            "wheelY": 0
+          },
+          "hitTestTargetId": "a",
+          "expected": { "focusedId": "a", "pressedId": "a", "emittedKinds": ["engine"] }
+        },
+        {
+          "event": {
+            "kind": "mouse",
+            "timeMs": 1,
+            "x": 2,
+            "y": 1,
+            "mouseKind": 4,
+            "mods": 0,
+            "buttons": 0,
+            "wheelX": 0,
+            "wheelY": 0
+          },
+          "hitTestTargetId": "b",
+          "expected": { "focusedId": "a", "pressedId": null, "emittedKinds": ["engine"] }
+        }
+      ]
+    },
+    {
+      "name": "Disabled target does not focus and does not capture (docs/10)",
+      "enabledById": { "a": true, "b": false },
+      "initialFocusedId": "a",
+      "initialPressedId": null,
+      "steps": [
+        {
+          "event": {
+            "kind": "mouse",
+            "timeMs": 0,
+            "x": 1,
+            "y": 1,
+            "mouseKind": 3,
+            "mods": 0,
+            "buttons": 1,
+            "wheelX": 0,
+            "wheelY": 0
+          },
+          "hitTestTargetId": "b",
+          "expected": { "focusedId": "a", "pressedId": null, "emittedKinds": ["engine"] }
+        }
+      ]
+    },
+    {
+      "name": "Move/drag/wheel ignored and do not change pressedId (docs/10)",
+      "enabledById": { "a": true },
+      "initialFocusedId": null,
+      "initialPressedId": null,
+      "steps": [
+        {
+          "event": {
+            "kind": "mouse",
+            "timeMs": 0,
+            "x": 1,
+            "y": 1,
+            "mouseKind": 3,
+            "mods": 0,
+            "buttons": 1,
+            "wheelX": 0,
+            "wheelY": 0
+          },
+          "hitTestTargetId": "a",
+          "expected": { "focusedId": "a", "pressedId": "a", "emittedKinds": ["engine"] }
+        },
+        {
+          "event": {
+            "kind": "mouse",
+            "timeMs": 1,
+            "x": 2,
+            "y": 2,
+            "mouseKind": 1,
+            "mods": 0,
+            "buttons": 1,
+            "wheelX": 0,
+            "wheelY": 0
+          },
+          "hitTestTargetId": null,
+          "expected": { "focusedId": "a", "pressedId": "a", "emittedKinds": ["engine"] }
+        },
+        {
+          "event": {
+            "kind": "mouse",
+            "timeMs": 2,
+            "x": 2,
+            "y": 2,
+            "mouseKind": 4,
+            "mods": 0,
+            "buttons": 0,
+            "wheelX": 0,
+            "wheelY": 0
+          },
+          "hitTestTargetId": "a",
+          "expected": {
+            "focusedId": "a",
+            "pressedId": null,
+            "emittedKinds": ["engine", "action"],
+            "action": { "id": "a", "action": "press" }
+          }
+        }
+      ]
+    }
+  ]
+}

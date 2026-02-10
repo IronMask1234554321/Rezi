@@ -1,0 +1,91 @@
+# Styling
+
+Rezi styling is designed to be:
+
+- **explicit**: styles are passed as props
+- **deterministic**: the same inputs produce the same frames
+- **composable**: styles inherit through containers
+
+## Inline styles
+
+Most visual widgets accept a `style` prop:
+
+```typescript
+import { ui, rgb } from "@rezi-ui/core";
+
+ui.text("Warning", { style: { fg: rgb(255, 180, 0), bold: true } });
+ui.box({ border: "rounded", p: 1, style: { bg: rgb(20, 20, 24) } }, [
+  ui.text("Panel content"),
+]);
+```
+
+When a container (`row`, `column`, `box`) has a `style`, that style is inherited by its children and can be overridden per-widget.
+
+## Theme-based styling
+
+Themes provide consistent defaults (background/foreground, widget chrome, etc.) and are applied at the app level:
+
+```typescript
+import { createApp, ui, darkTheme } from "@rezi-ui/core";
+import { createNodeBackend } from "@rezi-ui/node";
+
+const app = createApp({ backend: createNodeBackend(), initialState: {}, theme: darkTheme });
+app.view(() => ui.text("Hello"));
+await app.start();
+```
+
+See: [Theme](../styling/theme.md).
+
+## Decision guide
+
+Use **inline styles** when:
+
+- you need one-off emphasis (errors, highlights)
+- a widget needs a custom color not tied to semantics
+
+Use **themes** when:
+
+- you want consistent styling across many widgets
+- you support light/dark/high-contrast variants
+- you want to centralize visual decisions
+
+In practice, most apps use both: a theme for defaults + inline styles for local emphasis.
+
+## Style inheritance
+
+Style is merged from parent → child:
+
+- containers pass their resolved style to children
+- leaf widgets merge their own `style` on top
+
+Example:
+
+```typescript
+import { ui, rgb } from "@rezi-ui/core";
+
+ui.box({ p: 1, style: { fg: rgb(200, 200, 255) } }, [
+  ui.text("Inherits fg"),
+  ui.text("Overrides", { style: { fg: rgb(255, 200, 120), bold: true } }),
+]);
+```
+
+## Dynamic styles
+
+Compute styles from state, but keep `view(state)` pure (no timers, no I/O):
+
+```typescript
+import { ui, rgb } from "@rezi-ui/core";
+
+ui.text(state.connected ? "Online" : "Offline", {
+  style: { fg: state.connected ? rgb(80, 220, 120) : rgb(255, 100, 100) },
+});
+```
+
+## Related
+
+- [Style props](../styling/style-props.md) - `TextStyle`, spacing props, helpers
+- [Theme](../styling/theme.md) - Theme structure and built-ins
+- [Icons](../styling/icons.md) - Icon registry and fallback rules
+- [Focus styles](../styling/focus-styles.md) - Focus and disabled visuals
+
+Next: [Performance](performance.md).

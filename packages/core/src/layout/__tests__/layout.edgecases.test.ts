@@ -1,0 +1,179 @@
+import { assert, describe, test } from "@rezi-ui/testkit";
+import type { VNode } from "../../index.js";
+import { hitTestFocusable } from "../hitTest.js";
+import type { LayoutTree } from "../layout.js";
+import { layout, measure } from "../layout.js";
+
+function mustLayout(vnode: VNode, maxW: number, maxH: number) {
+  const res = layout(vnode, 0, 0, maxW, maxH, "column");
+  if (!res.ok) {
+    assert.fail(`layout failed: ${res.fatal.code}: ${res.fatal.detail}`);
+  }
+  return res.value;
+}
+
+describe("layout edge cases", () => {
+  test("leaf widgets clamp to available height=0", () => {
+    const nodes: readonly VNode[] = Object.freeze([
+      {
+        kind: "select",
+        props: { id: "select-0", value: "", options: Object.freeze([]) },
+      },
+      {
+        kind: "checkbox",
+        props: { id: "checkbox-0", checked: false, label: "Check" },
+      },
+      {
+        kind: "radioGroup",
+        props: {
+          id: "radio-0",
+          value: "a",
+          options: Object.freeze([
+            { value: "a", label: "A" },
+            { value: "b", label: "B" },
+          ]),
+          direction: "vertical",
+        },
+      },
+      {
+        kind: "sparkline",
+        props: { data: Object.freeze([1, 2, 3, 4]) },
+      },
+      {
+        kind: "miniChart",
+        props: { values: Object.freeze([{ label: "CPU", value: 0.5 }]) },
+      },
+    ]);
+
+    for (const vnode of nodes) {
+      const tree = mustLayout(vnode, 12, 0);
+      assert.equal(tree.rect.h, 0, `${vnode.kind} should clamp to 0 height`);
+
+      if (vnode.kind === "select" || vnode.kind === "checkbox" || vnode.kind === "radioGroup") {
+        const hit = hitTestFocusable(vnode, tree, 0, 0);
+        assert.equal(hit, null, `${vnode.kind} with zero height should not be hit-testable`);
+      }
+    }
+  });
+
+  test("overflowed column child does not remain hit-testable outside viewport", () => {
+    const tree: VNode = {
+      kind: "column",
+      props: { gap: 0 },
+      children: Object.freeze([
+        { kind: "text", text: "Header", props: {} },
+        {
+          kind: "select",
+          props: {
+            id: "hidden-select",
+            value: "",
+            options: Object.freeze([{ value: "a", label: "A" }]),
+          },
+        },
+      ]),
+    };
+
+    const laidOut = mustLayout(tree, 20, 1);
+    const hiddenSelect = laidOut.children[1];
+    assert.ok(hiddenSelect !== undefined, "expected second child");
+    if (!hiddenSelect) return;
+
+    assert.equal(hiddenSelect.rect.h, 0, "second child should receive zero height");
+    assert.equal(
+      hitTestFocusable(tree, laidOut, hiddenSelect.rect.x, hiddenSelect.rect.y),
+      null,
+      "overflowed child should not capture hits",
+    );
+  });
+
+  test("button fractional px is handled deterministically", () => {
+    const button: VNode = {
+      kind: "button",
+      props: { id: "btn", label: "OK", px: 1.7 },
+    };
+
+    const laidOut = mustLayout(button, 20, 1);
+    assert.equal(laidOut.rect.w, 4, "fractional px should be truncated before measurement");
+    assert.equal(laidOut.rect.h, 1);
+  });
+
+  test("field without child does not throw during measure/layout", () => {
+    const malformedField = {
+      kind: "field",
+      props: { label: "Name" },
+      children: Object.freeze([]),
+    } as unknown as VNode;
+
+    const measured = measure(malformedField, 20, 5, "column");
+    assert.equal(measured.ok, true, "measure should not throw or fatal");
+    if (!measured.ok) return;
+    assert.deepEqual(measured.value, { w: 0, h: 2 });
+
+    const laidOut = layout(malformedField, 0, 0, 20, 5, "column");
+    assert.equal(laidOut.ok, true, "layout should not throw or fatal");
+    if (!laidOut.ok) return;
+    assert.equal(laidOut.value.children.length, 0);
+    assert.deepEqual(laidOut.value.rect, { x: 0, y: 0, w: 0, h: 2 });
+  });
+
+  test("hit testing respects ancestor clip bounds", () => {
+    const child: VNode = { kind: "button", props: { id: "clipped-btn", label: "Click" } };
+    const root: VNode = {
+      kind: "column",
+      props: {},
+      children: Object.freeze([child]),
+    };
+
+    const clippedLayout: LayoutTree = {
+      vnode: root,
+      rect: { x: 0, y: 0, w: 3, h: 1 },
+      children: Object.freeze([
+        {
+          vnode: child,
+          rect: { x: 2, y: 0, w: 6, h: 1 },
+          children: Object.freeze([]),
+        },
+      ]),
+    };
+
+    assert.equal(hitTestFocusable(root, clippedLayout, 2, 0), "clipped-btn");
+    assert.equal(
+      hitTestFocusable(root, clippedLayout, 4, 0),
+      null,
+      "point outside ancestor clip must not hit child overflow",
+    );
+    assert.equal(
+      hitTestFocusable(root, clippedLayout, -1, 0),
+      null,
+      "off-viewport negative coordinates must not hit",
+    );
+  });
+
+  test("commandPalette clamps malformed maxVisible deterministically", () => {
+    const malformed = {
+      kind: "commandPalette",
+      props: { id: "cp", open: true, query: "", selectedIndex: 0, maxVisible: -9 },
+    } as unknown as VNode;
+
+    const laidOut = layout(malformed, 0, 0, 12, 2, "column");
+    assert.equal(laidOut.ok, true);
+    if (!laidOut.ok) return;
+    assert.deepEqual(laidOut.value.rect, { x: 0, y: 0, w: 12, h: 2 });
+  });
+
+  test("toastContainer tolerates malformed position without throwing", () => {
+    const malformed = {
+      kind: "toastContainer",
+      props: {
+        toasts: "not-an-array",
+        position: 42,
+        maxVisible: 3,
+      },
+    } as unknown as VNode;
+
+    const laidOut = layout(malformed, 0, 0, 20, 6, "column");
+    assert.equal(laidOut.ok, true);
+    if (!laidOut.ok) return;
+    assert.deepEqual(laidOut.value.rect, { x: 0, y: 0, w: 20, h: 6 });
+  });
+});

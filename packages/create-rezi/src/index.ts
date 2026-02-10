@@ -1,0 +1,236 @@
+#!/usr/bin/env node
+import { spawnSync } from "node:child_process";
+import { createInterface } from "node:readline/promises";
+import { cwd, exit, stdin, stdout } from "node:process";
+import { relative, resolve } from "node:path";
+import {
+  TEMPLATE_DEFINITIONS,
+  createProject,
+  isValidPackageName,
+  normalizeTemplateName,
+  resolveTargetName,
+  toDisplayName,
+  toValidPackageName,
+} from "./scaffold.js";
+import { fileURLToPath } from "node:url";
+
+type PackageManager = "npm" | "pnpm" | "yarn" | "bun";
+
+type CliOptions = {
+  targetDir?: string;
+  template?: string;
+  install: boolean;
+  packageManager?: PackageManager;
+  listTemplates: boolean;
+  help: boolean;
+};
+
+function parseArgs(argv: string[]): CliOptions {
+  const options: CliOptions = {
+    install: true,
+    listTemplates: false,
+    help: false,
+  };
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i] ?? "";
+    if (arg === "--help" || arg === "-h") {
+      options.help = true;
+      continue;
+    }
+    if (arg === "--list-templates" || arg === "--templates") {
+      options.listTemplates = true;
+      continue;
+    }
+    if (arg === "--no-install" || arg === "--skip-install") {
+      options.install = false;
+      continue;
+    }
+    if (arg === "--template" || arg === "-t") {
+      const value = argv[i + 1];
+      if (!value) throw new Error("Missing value for --template");
+      options.template = value;
+      i++;
+      continue;
+    }
+    if (arg.startsWith("--template=")) {
+      options.template = arg.slice("--template=".length);
+      continue;
+    }
+    if (arg === "--pm" || arg === "--package-manager") {
+      const value = argv[i + 1];
+      if (!value) throw new Error("Missing value for --pm");
+      options.packageManager = value as PackageManager;
+      i++;
+      continue;
+    }
+    if (arg.startsWith("--pm=")) {
+      options.packageManager = arg.slice("--pm=".length) as PackageManager;
+      continue;
+    }
+    if (arg.startsWith("-")) {
+      throw new Error(`Unknown option: ${arg}`);
+    }
+    if (!options.targetDir) {
+      options.targetDir = arg;
+      continue;
+    }
+    throw new Error(`Unexpected argument: ${arg}`);
+  }
+
+  return options;
+}
+
+function printHelp(): void {
+  stdout.write(`create-rezi\n\n`);
+  stdout.write(`Usage:\n`);
+  stdout.write(`  npm create rezi my-app\n\n`);
+  stdout.write(`Options:\n`);
+  stdout.write(`  --template, -t <name>      Choose a template\n`);
+  stdout.write(`  --no-install               Skip dependency install\n`);
+  stdout.write(`  --pm <npm|pnpm|yarn|bun>    Choose a package manager\n`);
+  stdout.write(`  --list-templates           Show available templates\n`);
+  stdout.write(`  --help, -h                 Show this help\n`);
+}
+
+function printTemplates(): void {
+  stdout.write("Available templates:\n");
+  TEMPLATE_DEFINITIONS.forEach((template, index) => {
+    stdout.write(
+      `  ${index + 1}. ${template.key.padEnd(16)} ${template.label} - ${template.description}\n`,
+    );
+  });
+}
+
+function detectPackageManager(): PackageManager {
+  const ua = process.env["npm_config_user_agent"] ?? "";
+  if (ua.startsWith("pnpm/")) return "pnpm";
+  if (ua.startsWith("yarn/")) return "yarn";
+  if (ua.startsWith("bun/")) return "bun";
+  return "npm";
+}
+
+function resolvePackageManager(value?: string): PackageManager {
+  if (!value) return detectPackageManager();
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "npm" || normalized === "pnpm" || normalized === "yarn" || normalized === "bun") {
+    return normalized as PackageManager;
+  }
+  throw new Error(`Unsupported package manager: ${value}`);
+}
+
+async function promptText(
+  rl: ReturnType<typeof createInterface>,
+  prompt: string,
+  fallback: string,
+): Promise<string> {
+  const answer = await rl.question(`${prompt} (${fallback}): `);
+  return answer.trim() || fallback;
+}
+
+async function promptTemplate(rl: ReturnType<typeof createInterface>): Promise<string> {
+  stdout.write("\nSelect a template:\n");
+  TEMPLATE_DEFINITIONS.forEach((template, index) => {
+    stdout.write(`  ${index + 1}. ${template.label} - ${template.description}\n`);
+  });
+
+  const answer = await rl.question("Template (1-4, default 1): ");
+  const trimmed = answer.trim();
+  if (!trimmed) return "dashboard";
+
+  const asNumber = Number(trimmed);
+  if (!Number.isNaN(asNumber) && asNumber >= 1 && asNumber <= TEMPLATE_DEFINITIONS.length) {
+    return TEMPLATE_DEFINITIONS[asNumber - 1]?.key ?? "dashboard";
+  }
+
+  return trimmed;
+}
+
+function runInstall(pm: PackageManager, targetDir: string): void {
+  const res = spawnSync(pm, ["install"], {
+    cwd: targetDir,
+    stdio: "inherit",
+  });
+  if (res.status !== 0) {
+    throw new Error(`${pm} install failed`);
+  }
+}
+
+function printNextSteps(
+  targetDir: string,
+  packageManager: PackageManager,
+  installRan: boolean,
+): void {
+  const rel = relative(cwd(), resolve(targetDir)) || ".";
+  stdout.write("\nNext steps:\n");
+  if (rel !== ".") {
+    stdout.write(`  cd ${rel}\n`);
+  }
+  if (!installRan) {
+    stdout.write(`  ${packageManager} install\n`);
+  }
+  stdout.write(`  ${packageManager} start\n`);
+}
+
+async function main(): Promise<void> {
+  const options = parseArgs(process.argv.slice(2));
+
+  if (options.help) {
+    printHelp();
+    return;
+  }
+
+  if (options.listTemplates) {
+    printTemplates();
+    return;
+  }
+
+  const rl = createInterface({ input: stdin, output: stdout });
+
+  try {
+    const targetDir = options.targetDir || (await promptText(rl, "Project name", "rezi-app"));
+    const templateInput =
+      options.template || (await promptTemplate(rl));
+    const templateKey = normalizeTemplateName(templateInput);
+    if (!templateKey) {
+      stdout.write(`\nUnknown template: ${templateInput}\n`);
+      printTemplates();
+      throw new Error("Invalid template");
+    }
+
+    const rawName = resolveTargetName(targetDir);
+    const displayName = toDisplayName(rawName);
+    const packageName = toValidPackageName(rawName);
+    if (!isValidPackageName(rawName)) {
+      stdout.write(`\nUsing package name: ${packageName}\n`);
+    }
+
+    const packageManager = resolvePackageManager(options.packageManager);
+
+    stdout.write(`\nCreating Rezi app in ${targetDir}...\n`);
+
+    await createProject({
+      targetDir,
+      templateKey,
+      packageName,
+      displayName,
+    });
+
+    if (options.install) {
+      stdout.write(`\nInstalling dependencies with ${packageManager}...\n`);
+      runInstall(packageManager, targetDir);
+    }
+
+    printNextSteps(targetDir, packageManager, options.install);
+  } finally {
+    rl.close();
+  }
+}
+
+const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+if (isMain) {
+  main().catch((err) => {
+    stdout.write(`\ncreate-rezi error: ${err instanceof Error ? err.message : String(err)}\n`);
+    exit(1);
+  });
+}

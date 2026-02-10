@@ -1,0 +1,132 @@
+import type { ReactNode } from "react";
+
+// NOTE: These types are intentionally Ink-shaped to make `@rezi-ui/ink-compat`
+// a near drop-in replacement for `ink` in userland TypeScript.
+
+/**
+ * Handy information about a key that was pressed.
+ * Mirrors Ink's `Key` type (ink/build/hooks/use-input.d.ts).
+ */
+export type Key = Readonly<{
+  upArrow: boolean;
+  downArrow: boolean;
+  leftArrow: boolean;
+  rightArrow: boolean;
+  pageDown: boolean;
+  pageUp: boolean;
+  return: boolean;
+  escape: boolean;
+  ctrl: boolean;
+  shift: boolean;
+  tab: boolean;
+  backspace: boolean;
+  delete: boolean;
+  meta: boolean;
+}>;
+
+export type TextWrap =
+  | "wrap"
+  | "end"
+  | "middle"
+  | "truncate-end"
+  | "truncate"
+  | "truncate-middle"
+  | "truncate-start";
+
+// Ink's BoxProps is `Except<Styles, "textWrap">` which includes all layout/border
+// props. We intentionally keep the surface broad (string-based) to avoid pulling
+// `ink`'s dependency types into this package.
+export type BoxProps = Readonly<{
+  position?: "absolute" | "relative";
+  columnGap?: number;
+  rowGap?: number;
+  gap?: number;
+  margin?: number;
+  marginX?: number;
+  marginY?: number;
+  marginTop?: number;
+  marginBottom?: number;
+  marginLeft?: number;
+  marginRight?: number;
+  padding?: number;
+  paddingX?: number;
+  paddingY?: number;
+  paddingTop?: number;
+  paddingBottom?: number;
+  paddingLeft?: number;
+  paddingRight?: number;
+  flexGrow?: number;
+  flexShrink?: number;
+  flexDirection?: "row" | "column" | "row-reverse" | "column-reverse";
+  flexBasis?: number | string;
+  flexWrap?: "nowrap" | "wrap" | "wrap-reverse";
+  alignItems?: "flex-start" | "center" | "flex-end" | "stretch";
+  alignSelf?: "flex-start" | "center" | "flex-end" | "auto";
+  justifyContent?:
+    | "flex-start"
+    | "flex-end"
+    | "space-between"
+    | "space-around"
+    | "space-evenly"
+    | "center";
+  width?: number | string;
+  height?: number | string;
+  minWidth?: number | string;
+  minHeight?: number | string;
+  display?: "flex" | "none";
+  borderStyle?: string;
+  borderTop?: boolean;
+  borderBottom?: boolean;
+  borderLeft?: boolean;
+  borderRight?: boolean;
+  borderColor?: string;
+  borderTopColor?: string;
+  borderBottomColor?: string;
+  borderLeftColor?: string;
+  borderRightColor?: string;
+  borderDimColor?: boolean;
+  borderTopDimColor?: boolean;
+  borderBottomDimColor?: boolean;
+  borderLeftDimColor?: boolean;
+  borderRightDimColor?: boolean;
+  overflow?: "visible" | "hidden";
+  overflowX?: "visible" | "hidden";
+  overflowY?: "visible" | "hidden";
+  children?: ReactNode;
+}>;
+
+export type TextProps = Readonly<{
+  color?: string;
+  backgroundColor?: string;
+  dimColor?: boolean;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+  inverse?: boolean;
+  wrap?: TextWrap;
+  children?: ReactNode;
+}>;
+
+export type RenderOptions = Readonly<{
+  stdout?: NodeJS.WriteStream;
+  stdin?: NodeJS.ReadStream;
+  stderr?: NodeJS.WriteStream;
+  debug?: boolean;
+  exitOnCtrlC?: boolean;
+  patchConsole?: boolean;
+  maxFps?: number;
+  /**
+   * @internal Test-only hook. When provided, `render()` uses this backend instead of
+   * `createNodeBackend()`.
+   */
+  internal_backend?: unknown;
+}>;
+
+export type Instance = Readonly<{
+  rerender: (tree: ReactNode) => void;
+  unmount: () => void;
+  waitUntilExit: () => Promise<void>;
+  cleanup: () => void;
+  clear: () => void;
+}>;

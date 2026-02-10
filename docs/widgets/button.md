@@ -1,0 +1,82 @@
+# Button
+
+An interactive widget that can receive focus and be activated by pressing Enter, Space, or clicking.
+
+## Usage
+
+```typescript
+ui.button({ id: "save", label: "Save" })
+ui.button({ id: "delete", label: "Delete", disabled: true })
+ui.button({
+  id: "submit",
+  label: "Submit",
+  onPress: () => handleSubmit(),
+})
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `id` | `string` | **required** | Unique identifier for focus and event routing |
+| `label` | `string` | **required** | Button text |
+| `disabled` | `boolean` | `false` | Disable interaction and dim appearance |
+| `px` | `number` | `1` | Horizontal padding in cells |
+| `style` | `TextStyle` | - | Custom styling (merged with focus/disabled state) |
+| `onPress` | `() => void` | - | Callback when button is activated |
+| `key` | `string` | - | Reconciliation key for dynamic lists |
+
+## Behavior
+
+Buttons are focusable when enabled. When focused:
+
+- **Enter** or **Space** activates the button
+- **Tab** moves focus to the next focusable widget
+- **Shift+Tab** moves focus to the previous focusable widget
+
+Buttons can be handled either via callback props or in a global `app.onEvent` handler.
+
+## Examples
+
+### Callback props (recommended)
+
+```typescript
+ui.button({
+  id: "inc",
+  label: "+1",
+  onPress: () => app.update((s) => ({ count: s.count + 1 })),
+})
+```
+
+### Global event handler
+
+```typescript
+app.onEvent((ev) => {
+  if (ev.kind === "action" && ev.id === "save" && ev.action === "press") {
+    handleSave();
+  }
+});
+```
+
+### Styling
+
+```typescript
+import { rgb } from "@rezi-ui/core";
+
+ui.button({
+  id: "danger",
+  label: "Delete",
+  style: {
+    fg: rgb(255, 100, 100),
+    bold: true,
+  },
+})
+```
+
+The button's focus and disabled states are automatically applied and merged with custom styles.
+
+## Related
+
+- [Input](input.md) - Text input widget
+- [Checkbox](checkbox.md) - Toggle checkbox
+- [Focus Zones](focus-zone.md) - Group focusable widgets

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    { "name": "empty", "text": "", "width": 0 },
+    { "name": "ascii_word", "text": "hello", "width": 5 },
+    { "name": "tab_not_special", "text": "a\tb", "width": 2 },
+    { "name": "newline_not_special", "text": "a\nb", "width": 2 },
+    { "name": "crlf_not_special", "text": "a\r\nb", "width": 2 },
+    { "name": "cjk_and_ascii", "text": "\u754ca", "width": 3 },
+    { "name": "emoji_in_string", "text": "A\ud83d\ude00B", "width": 4 },
+    { "name": "combining_clusters", "text": "a\u0301b", "width": 2 },
+    { "name": "leading_combining_mark", "text": "\u0301a", "width": 1 },
+    { "name": "two_flags", "text": "\ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6", "width": 4 }
+  ]
+}
