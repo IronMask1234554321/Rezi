@@ -1,7 +1,4 @@
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtemp, readFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { assert, test } from "@rezi-ui/testkit";
@@ -14,6 +11,11 @@ const ROWS = 16;
 const TIMEOUT_MS = 5000;
 
 const isLinux = process.platform === "linux";
+const hasPythonPty = (() => {
+  if (!isLinux) return false;
+  const probe = spawnSync("python3", ["-c", "import pty,sys"], { stdio: "ignore" });
+  return !probe.error && probe.status === 0;
+})();
 
 async function loadTerminalCtor(): Promise<TerminalCtor> {
   const mod = await import("@xterm/headless");
@@ -38,66 +40,96 @@ function snapshotScreen(term: HeadlessTerminal, rows: number): string[] {
   return out;
 }
 
-function ensureScriptAvailable(): void {
-  const probe = spawnSync("script", ["-q", "-c", "true", "/dev/null"], {
-    stdio: "ignore",
-  });
-  if (probe.error) {
-    throw new Error(`terminal e2e requires 'script' (util-linux): ${probe.error.message}`);
-  }
-}
+test(
+  "terminal e2e renders real output",
+  { skip: isLinux ? (hasPythonPty ? false : "python3 required for pty") : "linux-only" },
+  async () => {
+    const Terminal = await loadTerminalCtor();
+    const term = new Terminal({ cols: COLS, rows: ROWS, allowProposedApi: true });
+    const appPath = fileURLToPath(new URL("./fixtures/terminal-app.js", import.meta.url));
+    const root = fileURLToPath(new URL("../../../../", import.meta.url));
 
-test("terminal e2e renders real output", { skip: isLinux ? false : "linux-only" }, async () => {
-  ensureScriptAvailable();
+    const pythonScript = `
+import os, pty, sys, fcntl, termios, struct
 
-  const Terminal = await loadTerminalCtor();
-  const term = new Terminal({ cols: COLS, rows: ROWS, allowProposedApi: true });
-  const appPath = fileURLToPath(new URL("./fixtures/terminal-app.js", import.meta.url));
-  const root = fileURLToPath(new URL("../../../../", import.meta.url));
-  const transcriptDir = await mkdtemp(join(tmpdir(), "rezi-e2e-"));
-  const transcriptPath = join(transcriptDir, "typescript");
+cols = int(os.environ.get("REZI_E2E_COLS", "60"))
+rows = int(os.environ.get("REZI_E2E_ROWS", "16"))
+node = os.environ["REZI_E2E_NODE"]
+app = os.environ["REZI_E2E_APP"]
 
-  const quotedNode = JSON.stringify(process.execPath);
-  const quotedApp = JSON.stringify(appPath);
-  const command = `stty cols ${COLS} rows ${ROWS}; ${quotedNode} ${quotedApp}`;
+pid, fd = pty.fork()
+if pid == 0:
+    os.execv(node, [node, app])
+else:
+    fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
+    while True:
+        try:
+            data = os.read(fd, 1024)
+        except OSError:
+            break
+        if not data:
+            break
+        os.write(sys.stdout.fileno(), data)
+    _, status = os.waitpid(pid, 0)
+    if os.WIFEXITED(status):
+        sys.exit(os.WEXITSTATUS(status))
+    if os.WIFSIGNALED(status):
+        sys.exit(128 + os.WTERMSIG(status))
+    sys.exit(1)
+`;
 
-  const child = spawn("script", ["-q", "-f", "-c", command, transcriptPath], {
-    cwd: root,
-    env: { ...process.env, TERM: "xterm-256color" },
-    stdio: ["ignore", "ignore", "pipe"],
-  });
+    const child = spawn("python3", ["-c", pythonScript], {
+      cwd: root,
+      env: {
+        ...process.env,
+        TERM: "xterm-256color",
+        REZI_E2E_NODE: process.execPath,
+        REZI_E2E_APP: appPath,
+        REZI_E2E_COLS: String(COLS),
+        REZI_E2E_ROWS: String(ROWS),
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
 
-  let stderr = "";
-  child.stderr?.on("data", (chunk) => {
-    stderr += chunk.toString("utf8");
-  });
+    assert.ok(child.stdout, "expected python pty stdout pipe");
 
-  const exit = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
-    (resolve, reject) => {
-      child.on("error", reject);
-      child.on("exit", (code, signal) => resolve({ code, signal }));
-    },
-  );
+    let stderr = "";
+    child.stderr?.on("data", (chunk) => {
+      stderr += chunk.toString("utf8");
+    });
 
-  const timeout = delay(TIMEOUT_MS).then(() => {
-    child.kill("SIGKILL");
-    throw new Error("terminal e2e timed out");
-  });
+    const chunks: Buffer[] = [];
+    child.stdout.on("data", (chunk) => {
+      chunks.push(Buffer.from(chunk));
+    });
 
-  const { code, signal } = await Promise.race([exit, timeout]);
-  const transcript = await readFile(transcriptPath, "utf8");
-  await new Promise<void>((resolve) => term.write(transcript, resolve));
-
-  if (code !== 0) {
-    throw new Error(
-      `terminal app exited with code=${String(code)} signal=${String(signal)}\n${stderr}`,
+    const exit = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
+      (resolve, reject) => {
+        child.on("error", reject);
+        child.on("exit", (code, signal) => resolve({ code, signal }));
+      },
     );
-  }
 
-  const lines = snapshotScreen(term, ROWS);
-  const screen = lines.join("\n");
+    const timeout = delay(TIMEOUT_MS).then(() => {
+      child.kill("SIGKILL");
+      throw new Error("terminal e2e timed out");
+    });
 
-  assert.ok(screen.includes("E2E Terminal Render"), `missing title in screen:\n${screen}`);
-  assert.ok(screen.includes("Step: 1"), `missing updated state in screen:\n${screen}`);
-  assert.ok(screen.includes("Rezi UI"), `missing footer in screen:\n${screen}`);
-});
+    const { code, signal } = await Promise.race([exit, timeout]);
+    const output = Buffer.concat(chunks).toString("utf8");
+    await new Promise<void>((resolve) => term.write(output, resolve));
+
+    if (code !== 0) {
+      throw new Error(
+        `terminal app exited with code=${String(code)} signal=${String(signal)}\n${stderr}`,
+      );
+    }
+
+    const lines = snapshotScreen(term, ROWS);
+    const screen = lines.join("\n");
+
+    assert.ok(screen.includes("E2E Terminal Render"), `missing title in screen:\n${screen}`);
+    assert.ok(screen.includes("Step: 1"), `missing updated state in screen:\n${screen}`);
+    assert.ok(screen.includes("Rezi UI"), `missing footer in screen:\n${screen}`);
+  },
+);
