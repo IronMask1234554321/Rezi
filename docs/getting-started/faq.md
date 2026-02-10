@@ -29,7 +29,7 @@ Prebuilt native binaries are included for all supported platforms.
 
 ### What Node.js versions are supported?
 
-Rezi requires Node.js 22 or later.
+Rezi requires Node.js 18 or later (18.18+ recommended).
 
 ## Architecture
 
@@ -217,7 +217,7 @@ See the [Performance guide](../guide/performance.md) for detailed optimization s
 This usually means the native addon failed to load. Check:
 
 1. You have a supported platform (Linux/macOS/Windows x64 or arm64)
-2. Node.js version is 22 or later
+2. Node.js version is 18 or later (18.18+ recommended)
 3. Try reinstalling: `npm install @rezi-ui/node`
 
 ### Colors don't display correctly

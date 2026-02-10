@@ -22,7 +22,7 @@
   },
   "files": ["dist/", "README.md"],
   "engines": {
-    "node": ">=22"
+    "node": ">=18"
   },
   "dependencies": {
     "@rezi-ui/core": "0.1.0-alpha.0",
