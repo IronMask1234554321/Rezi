@@ -120,10 +120,9 @@ app.view((state) => {
                 {
                   key: svc.name,
                   gap: 1,
-                  style: {
-                    bg: active ? colors.inkSoft : undefined,
-                    fg: active ? colors.accent : colors.muted,
-                  },
+                  style: active
+                    ? { bg: colors.inkSoft, fg: colors.accent }
+                    : { fg: colors.muted },
                 },
                 [
                   ui.text(active ? ">" : " "),

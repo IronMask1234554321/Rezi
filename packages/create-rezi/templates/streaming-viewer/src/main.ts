@@ -87,8 +87,10 @@ app.view((state) => {
               const prefix = active ? ">" : " ";
               return ui.text(`${prefix} ${stream.name}`, {
                 key: stream.name,
-                fg: active ? colors.accent : colors.muted,
-                bold: active,
+                style: {
+                  fg: active ? colors.accent : colors.muted,
+                  bold: active,
+                },
               });
             }),
           ),

@@ -78,8 +78,10 @@ app.view((state) => {
               const active = index === state.section;
               return ui.text(`${active ? ">" : " "} ${label}`, {
                 key: label,
-                fg: active ? colors.accent : colors.muted,
-                bold: active,
+                style: {
+                  fg: active ? colors.accent : colors.muted,
+                  bold: active,
+                },
               });
             }),
           ),
@@ -97,7 +99,6 @@ app.view((state) => {
               children: ui.input({
                 id: "name",
                 value: state.name,
-                placeholder: "Ada Lovelace",
                 onInput: (value) => app.update((s) => ({ ...s, name: value })),
               }),
             }),
@@ -107,7 +108,6 @@ app.view((state) => {
               children: ui.input({
                 id: "email",
                 value: state.email,
-                placeholder: "ada@lovelace.io",
                 onInput: (value) => app.update((s) => ({ ...s, email: value })),
               }),
             }),
@@ -116,7 +116,6 @@ app.view((state) => {
               children: ui.input({
                 id: "company",
                 value: state.company,
-                placeholder: "Analytical Engines Ltd",
                 onInput: (value) => app.update((s) => ({ ...s, company: value })),
               }),
             }),

@@ -315,19 +315,20 @@ const app = createApp({
 // Use draw() instead of view() for raw rendering
 app.draw((g) => {
   // Clear the screen
-  g.clear(rgb(0, 0, 30));
+  g.clear();
+  g.fillRect(0, 0, 40, 12, { bg: rgb(0, 0, 30) });
 
   // Draw a box
-  g.fillRect(5, 2, 30, 5, rgb(40, 40, 60));
+  g.fillRect(5, 2, 30, 5, { bg: rgb(40, 40, 60) });
 
   // Draw text
   g.drawText(7, 4, "Raw Drawing Demo", { fg: rgb(255, 200, 100), bold: true });
 
   // Draw more shapes
-  g.fillRect(5, 8, 15, 3, rgb(100, 50, 50));
+  g.fillRect(5, 8, 15, 3, { bg: rgb(100, 50, 50) });
   g.drawText(6, 9, "Red Box", { fg: rgb(255, 255, 255) });
 
-  g.fillRect(22, 8, 15, 3, rgb(50, 100, 50));
+  g.fillRect(22, 8, 15, 3, { bg: rgb(50, 100, 50) });
   g.drawText(23, 9, "Green Box", { fg: rgb(255, 255, 255) });
 });
 
