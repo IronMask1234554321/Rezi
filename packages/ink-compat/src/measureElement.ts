@@ -1,5 +1,5 @@
-import type { DOMElement } from "./types.js";
 import { warnOnce } from "./internal/warn.js";
+import type { DOMElement } from "./types.js";
 
 type Output = {
   width: number;
