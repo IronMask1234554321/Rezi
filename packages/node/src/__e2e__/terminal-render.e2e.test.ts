@@ -1,8 +1,4 @@
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync } from "node:fs";
-import { mkdtemp, readFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { assert, test } from "@rezi-ui/testkit";
@@ -15,7 +11,11 @@ const ROWS = 16;
 const TIMEOUT_MS = 5000;
 
 const isLinux = process.platform === "linux";
-const scriptSkipReason = getScriptSkipReason();
+const hasPythonPty = (() => {
+  if (!isLinux) return false;
+  const probe = spawnSync("python3", ["-c", "import pty,sys"], { stdio: "ignore" });
+  return !probe.error && probe.status === 0;
+})();
 
 async function loadTerminalCtor(): Promise<TerminalCtor> {
   const mod = await import("@xterm/headless");
@@ -40,83 +40,111 @@ function snapshotScreen(term: HeadlessTerminal, rows: number): string[] {
   return out;
 }
 
-function getScriptSkipReason(): string | null {
-  if (!isLinux) return "linux-only";
+test(
+  "terminal e2e renders real output",
+  { skip: isLinux ? (hasPythonPty ? false : "python3 required for pty") : "linux-only" },
+  async () => {
+    const Terminal = await loadTerminalCtor();
+    const term = new Terminal({ cols: COLS, rows: ROWS, allowProposedApi: true });
+    const appPath = fileURLToPath(new URL("./fixtures/terminal-app.js", import.meta.url));
+    const root = fileURLToPath(new URL("../../../../", import.meta.url));
 
-  const probeDir = mkdtempSync(join(tmpdir(), "rezi-e2e-probe-"));
-  const probePath = join(probeDir, "typescript");
-  const command = `stty cols ${COLS} rows ${ROWS}; printf 'REZI_E2E_OK'`;
-  const probe = spawnSync("script", ["-q", "-f", "-c", command, probePath], {
-    stdio: "ignore",
-    env: { ...process.env, TERM: "xterm-256color" },
-  });
-  if (probe.error) {
-    return `terminal e2e requires 'script' (util-linux): ${probe.error.message}`;
-  }
+    const pythonScript = `
+import os, pty, sys, fcntl, termios, struct
 
-  try {
-    const transcript = readFileSync(probePath, "utf8");
-    if (transcript.includes("REZI_E2E_OK")) return null;
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    return `terminal e2e could not read script transcript: ${detail}`;
-  }
+cols = int(os.environ.get("REZI_E2E_COLS", "60"))
+rows = int(os.environ.get("REZI_E2E_ROWS", "16"))
+node = os.environ["REZI_E2E_NODE"]
+app = os.environ["REZI_E2E_APP"]
 
-  return "terminal e2e requires script to run with a pseudo-tty";
-}
+pid, fd = pty.fork()
+if pid == 0:
+    os.execv(node, [node, app])
+else:
+    fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
+    while True:
+        try:
+            data = os.read(fd, 1024)
+        except OSError:
+            break
+        if not data:
+            break
+        os.write(sys.stdout.fileno(), data)
+    _, status = os.waitpid(pid, 0)
+    if os.WIFEXITED(status):
+        sys.exit(os.WEXITSTATUS(status))
+    if os.WIFSIGNALED(status):
+        sys.exit(128 + os.WTERMSIG(status))
+    sys.exit(1)
+`;
 
-test("terminal e2e renders real output", { skip: scriptSkipReason ?? false }, async () => {
-  const Terminal = await loadTerminalCtor();
-  const term = new Terminal({ cols: COLS, rows: ROWS, allowProposedApi: true });
-  const appPath = fileURLToPath(new URL("./fixtures/terminal-app.js", import.meta.url));
-  const root = fileURLToPath(new URL("../../../../", import.meta.url));
-  const transcriptDir = await mkdtemp(join(tmpdir(), "rezi-e2e-"));
-  const transcriptPath = join(transcriptDir, "typescript");
+    const child = spawn("python3", ["-c", pythonScript], {
+      cwd: root,
+      env: {
+        ...process.env,
+        TERM: "xterm-256color",
+        REZI_E2E_NODE: process.execPath,
+        REZI_E2E_APP: appPath,
+        REZI_E2E_COLS: String(COLS),
+        REZI_E2E_ROWS: String(ROWS),
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
 
-  const quotedNode = JSON.stringify(process.execPath);
-  const quotedApp = JSON.stringify(appPath);
-  const command = `stty cols ${COLS} rows ${ROWS}; ${quotedNode} ${quotedApp}`;
+    assert.ok(child.stdout, "expected python pty stdout pipe");
 
-  const child = spawn("script", ["-q", "-f", "-c", command, transcriptPath], {
-    cwd: root,
-    env: { ...process.env, TERM: "xterm-256color" },
-    stdio: ["ignore", "ignore", "pipe"],
-  });
+    let stderr = "";
+    child.stderr?.on("data", (chunk) => {
+      stderr += chunk.toString("utf8");
+    });
 
-  let stderr = "";
-  child.stderr?.on("data", (chunk) => {
-    stderr += chunk.toString("utf8");
-  });
+    let sawTitle = false;
+    let sawStep = false;
+    let sawFooter = false;
+    let lastScreen = "";
+    const updateScreen = () => {
+      lastScreen = snapshotScreen(term, ROWS).join("\n");
+      if (!sawTitle && lastScreen.includes("E2E Terminal Render")) sawTitle = true;
+      if (!sawStep && lastScreen.includes("Step: 1")) sawStep = true;
+      if (!sawFooter && lastScreen.includes("Rezi UI")) sawFooter = true;
+    };
 
-  const exit = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
-    (resolve, reject) => {
-      child.on("error", reject);
-      child.on("exit", (code, signal) => resolve({ code, signal }));
-    },
-  );
+    let pending = Promise.resolve();
+    child.stdout.on("data", (chunk) => {
+      const data = chunk.toString("utf8");
+      pending = pending
+        .then(() => new Promise<void>((resolve) => term.write(data, resolve)))
+        .then(() => {
+          if (!sawTitle || !sawStep || !sawFooter) {
+            updateScreen();
+          }
+        });
+    });
 
-  const timeout = delay(TIMEOUT_MS).then(() => {
-    child.kill("SIGKILL");
-    throw new Error("terminal e2e timed out");
-  });
-
-  const { code, signal } = await Promise.race([exit, timeout]);
-  const transcript = await readFile(transcriptPath, "utf8");
-  if (transcript.includes("<not executed on terminal>")) {
-    return;
-  }
-  await new Promise<void>((resolve) => term.write(transcript, resolve));
-
-  if (code !== 0) {
-    throw new Error(
-      `terminal app exited with code=${String(code)} signal=${String(signal)}\n${stderr}`,
+    const exit = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
+      (resolve, reject) => {
+        child.on("error", reject);
+        child.on("exit", (code, signal) => resolve({ code, signal }));
+      },
     );
-  }
 
-  const lines = snapshotScreen(term, ROWS);
-  const screen = lines.join("\n");
+    const timeout = delay(TIMEOUT_MS).then(() => {
+      child.kill("SIGKILL");
+      throw new Error("terminal e2e timed out");
+    });
 
-  assert.ok(screen.includes("E2E Terminal Render"), `missing title in screen:\n${screen}`);
-  assert.ok(screen.includes("Step: 1"), `missing updated state in screen:\n${screen}`);
-  assert.ok(screen.includes("Rezi UI"), `missing footer in screen:\n${screen}`);
-});
+    const { code, signal } = await Promise.race([exit, timeout]);
+    await pending;
+    updateScreen();
+
+    if (code !== 0) {
+      throw new Error(
+        `terminal app exited with code=${String(code)} signal=${String(signal)}\n${stderr}`,
+      );
+    }
+
+    assert.ok(sawTitle, `missing title in screen:\n${lastScreen}`);
+    assert.ok(sawStep, `missing updated state in screen:\n${lastScreen}`);
+    assert.ok(sawFooter, `missing footer in screen:\n${lastScreen}`);
+  },
+);
