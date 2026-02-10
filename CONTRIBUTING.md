@@ -8,7 +8,7 @@ Rezi is a **code-first terminal UI framework** for Node.js built on the Zireael 
 
 Prerequisites:
 
-- Node.js 22+
+- Node.js 18+ (18.18+ recommended)
 - Rust (stable toolchain) for the native addon
 - Git submodules enabled
 

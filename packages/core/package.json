@@ -86,7 +86,7 @@
   },
   "files": ["dist/", "README.md"],
   "engines": {
-    "node": ">=22"
+    "node": ">=18"
   },
   "devDependencies": {
     "@rezi-ui/testkit": "0.1.0-alpha.0"
