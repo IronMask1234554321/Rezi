@@ -71,7 +71,7 @@ Choose a template: `dashboard`, `form-app`, `file-browser`, or `streaming-viewer
 npm install @rezi-ui/core @rezi-ui/node
 ```
 
-Node.js 22+ is required. Prebuilt native binaries are provided for Linux, macOS, and Windows (x64/arm64).
+Node.js 18+ is required (18.18+ recommended). Prebuilt native binaries are provided for Linux, macOS, and Windows (x64/arm64).
 
 ## Architecture
 

@@ -4,7 +4,7 @@ Install Rezi packages from npm to start building terminal applications.
 
 ## Requirements
 
-- **Node.js**: 22.0.0 or later
+- **Node.js**: 18.18.0 or later
 - **Operating System**: Linux, macOS, or Windows
 - **Terminal**: Any terminal emulator with 256-color or true-color support
 

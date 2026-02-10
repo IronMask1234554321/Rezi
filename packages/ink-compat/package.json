@@ -22,7 +22,7 @@
   },
   "files": ["dist/", "README.md"],
   "engines": {
-    "node": ">=22"
+    "node": ">=18"
   },
   "peerDependencies": {
     "react": ">=18.0.0",

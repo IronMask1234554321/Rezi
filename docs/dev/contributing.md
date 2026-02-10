@@ -4,7 +4,7 @@ Rezi welcomes issues and pull requests. This page summarizes the local workflow;
 
 ## Prerequisites
 
-- Node.js 22+
+- Node.js 18+ (18.18+ recommended)
 - npm (workspace root)
 - Rust stable (only if you build `@rezi-ui/native`)
 - Python 3 (docs build)
