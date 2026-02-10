@@ -27,5 +27,8 @@
   "dependencies": {
     "@rezi-ui/core": "0.1.0-alpha.0",
     "@rezi-ui/native": "0.1.0-alpha.0"
+  },
+  "devDependencies": {
+    "@xterm/headless": "^5.5.0"
   }
 }

@@ -77,6 +77,10 @@ jobs:
       - name: Build native addon
         run: npm run build:native
 
+      - name: Terminal e2e
+        if: runner.os == 'Linux'
+        run: npm run test:e2e
+
       - name: Native smoke + worker integration
         run: npm run test:native:smoke
 
