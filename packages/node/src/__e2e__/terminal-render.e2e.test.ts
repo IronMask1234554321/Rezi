@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,6 +15,7 @@ const ROWS = 16;
 const TIMEOUT_MS = 5000;
 
 const isLinux = process.platform === "linux";
+const scriptSkipReason = getScriptSkipReason();
 
 async function loadTerminalCtor(): Promise<TerminalCtor> {
   const mod = await import("@xterm/headless");
@@ -38,17 +40,30 @@ function snapshotScreen(term: HeadlessTerminal, rows: number): string[] {
   return out;
 }
 
-function ensureScriptAvailable(): void {
-  const probe = spawnSync("script", ["-q", "-c", "true", "/dev/null"], {
+function getScriptSkipReason(): string | null {
+  if (!isLinux) return "linux-only";
+
+  const probeDir = mkdtempSync(join(tmpdir(), "rezi-e2e-probe-"));
+  const probePath = join(probeDir, "typescript");
+  const probe = spawnSync("script", ["-q", "-c", "printf 'REZI_E2E_OK'", probePath], {
     stdio: "ignore",
   });
   if (probe.error) {
-    throw new Error(`terminal e2e requires 'script' (util-linux): ${probe.error.message}`);
+    return `terminal e2e requires 'script' (util-linux): ${probe.error.message}`;
   }
+
+  try {
+    const transcript = readFileSync(probePath, "utf8");
+    if (transcript.includes("REZI_E2E_OK")) return null;
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return `terminal e2e could not read script transcript: ${detail}`;
+  }
+
+  return "terminal e2e requires script to run with a pseudo-tty";
 }
 
-test("terminal e2e renders real output", { skip: isLinux ? false : "linux-only" }, async () => {
-  ensureScriptAvailable();
+test("terminal e2e renders real output", { skip: scriptSkipReason ?? false }, async () => {
 
   const Terminal = await loadTerminalCtor();
   const term = new Terminal({ cols: COLS, rows: ROWS, allowProposedApi: true });
