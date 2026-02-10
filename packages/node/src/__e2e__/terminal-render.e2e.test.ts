@@ -1,8 +1,8 @@
-import { assert, test } from "@rezi-ui/testkit";
-import { Terminal } from "@xterm/headless";
 import { spawn, spawnSync } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import { assert, test } from "@rezi-ui/testkit";
+import { Terminal } from "@xterm/headless";
 
 const COLS = 60;
 const ROWS = 16;
@@ -59,10 +59,12 @@ test("terminal e2e renders real output", { skip: isLinux ? false : "linux-only" 
     pending = pending.then(() => new Promise<void>((resolve) => term.write(data, resolve)));
   });
 
-  const exit = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
-    child.on("error", reject);
-    child.on("exit", (code, signal) => resolve({ code, signal }));
-  });
+  const exit = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
+    (resolve, reject) => {
+      child.on("error", reject);
+      child.on("exit", (code, signal) => resolve({ code, signal }));
+    },
+  );
 
   const timeout = delay(TIMEOUT_MS).then(() => {
     child.kill("SIGKILL");
@@ -73,7 +75,9 @@ test("terminal e2e renders real output", { skip: isLinux ? false : "linux-only" 
   await pending;
 
   if (code !== 0) {
-    throw new Error(`terminal app exited with code=${String(code)} signal=${String(signal)}\n${stderr}`);
+    throw new Error(
+      `terminal app exited with code=${String(code)} signal=${String(signal)}\n${stderr}`,
+    );
   }
 
   const lines = snapshotScreen(term, ROWS);

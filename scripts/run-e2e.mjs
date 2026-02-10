@@ -1,15 +1,13 @@
 #!/usr/bin/env node
-/**
- * run-e2e.mjs
- *
- * Deterministic e2e test runner.
- *
- * Requirements:
- * - Discover e2e test files deterministically (sorted paths)
- * - Run `node --test` with explicit file paths (no shell globs)
- * - Support:
- *   - packages/<pkg>/dist/**/__e2e__/**/*.test.js
- */
+// run-e2e.mjs
+//
+// Deterministic e2e test runner.
+//
+// Requirements:
+// - Discover e2e test files deterministically (sorted paths)
+// - Run `node --test` with explicit file paths (no shell globs)
+// - Support:
+//   - packages/<pkg>/dist/.../__e2e__/.../*.test.js
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, statSync } from "node:fs";
