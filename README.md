@@ -25,11 +25,11 @@ Rezi takes a different approach. The rendering pipeline is a native C engine ([Z
 |-------|-----|------|
 | Layout | Yoga (WASM) | Zireael (native C) |
 | Frame format | ANSI string concatenation | Binary drawlist (ZRDL) — 4-byte aligned commands, interned string pool |
-| Diffing | None — full frame rewrite every render | Row-level FNV-1a hashing with collision guard. Only dirty rows emit escape codes |
+| Diffing | String equality check on full output; any change rewrites all lines | Row-level FNV-1a hashing with collision guard. Only dirty rows emit escape codes |
 | Scroll | Redraws all cells | Detects vertical shifts, emits DECSTBM + SU/SD (3 sequences instead of thousands) |
 | Memory | Per-frame JS allocations, GC pressure | Arena allocator — bump pointer per frame, O(1) reset, no malloc/free churn |
 | Threading | Single-threaded, blocks event loop | Worker thread via SharedArrayBuffer. Main thread returns immediately after `update()` |
-| Framebuffer | None | Double-buffered. Previous frame's row hashes become next frame's baseline (zero-copy swap) |
+| Framebuffer | Previous output cached as string for equality check | Double-buffered. Previous frame's row hashes become next frame's baseline (zero-copy swap) |
 
 The result:
 
