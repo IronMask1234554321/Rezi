@@ -98,9 +98,27 @@ else:
       stderr += chunk.toString("utf8");
     });
 
-    const chunks: Buffer[] = [];
+    let sawTitle = false;
+    let sawStep = false;
+    let sawFooter = false;
+    let lastScreen = "";
+    const updateScreen = () => {
+      lastScreen = snapshotScreen(term, ROWS).join("\n");
+      if (!sawTitle && lastScreen.includes("E2E Terminal Render")) sawTitle = true;
+      if (!sawStep && lastScreen.includes("Step: 1")) sawStep = true;
+      if (!sawFooter && lastScreen.includes("Rezi UI")) sawFooter = true;
+    };
+
+    let pending = Promise.resolve();
     child.stdout.on("data", (chunk) => {
-      chunks.push(Buffer.from(chunk));
+      const data = chunk.toString("utf8");
+      pending = pending
+        .then(() => new Promise<void>((resolve) => term.write(data, resolve)))
+        .then(() => {
+          if (!sawTitle || !sawStep || !sawFooter) {
+            updateScreen();
+          }
+        });
     });
 
     const exit = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
@@ -116,8 +134,8 @@ else:
     });
 
     const { code, signal } = await Promise.race([exit, timeout]);
-    const output = Buffer.concat(chunks).toString("utf8");
-    await new Promise<void>((resolve) => term.write(output, resolve));
+    await pending;
+    updateScreen();
 
     if (code !== 0) {
       throw new Error(
@@ -125,11 +143,8 @@ else:
       );
     }
 
-    const lines = snapshotScreen(term, ROWS);
-    const screen = lines.join("\n");
-
-    assert.ok(screen.includes("E2E Terminal Render"), `missing title in screen:\n${screen}`);
-    assert.ok(screen.includes("Step: 1"), `missing updated state in screen:\n${screen}`);
-    assert.ok(screen.includes("Rezi UI"), `missing footer in screen:\n${screen}`);
+    assert.ok(sawTitle, `missing title in screen:\n${lastScreen}`);
+    assert.ok(sawStep, `missing updated state in screen:\n${lastScreen}`);
+    assert.ok(sawFooter, `missing footer in screen:\n${lastScreen}`);
   },
 );
