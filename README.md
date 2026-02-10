@@ -5,7 +5,7 @@
 [![docs](https://github.com/RtlZeroMemory/Rezi/actions/workflows/docs.yml/badge.svg)](https://rtlzeromemory.github.io/Rezi/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-A terminal UI framework for Node.js that renders 1,000-item trees in 49µs. Built on the native [Zireael](https://github.com/RtlZeroMemory/Zireael) C rendering engine with binary diff protocols — no React, no Yoga, no ANSI string concatenation.
+A terminal UI framework for Node.js that's 37x faster than Ink at full-pipeline rendering. Built on the native [Zireael](https://github.com/RtlZeroMemory/Zireael) C rendering engine with binary diff protocols — no React, no Yoga, no ANSI string concatenation.
 
 ## Preview
 
@@ -15,43 +15,43 @@ A terminal UI framework for Node.js that renders 1,000-item trees in 49µs. Buil
 
 ## Performance
 
-Rezi's native renderer bypasses the React/Yoga/ANSI pipeline entirely. The numbers speak for themselves:
+All three frameworks go through their full render pipeline end-to-end: state update, tree diff, layout, drawlist/ANSI generation, and frame delivery. No shortcuts.
 
 ### Tree construction (1000 items)
 
 | Framework | Mean | ops/s | Peak RSS |
 |---|---:|---:|---:|
-| **Rezi (native)** | **49µs** | **20,321** | **120 MB** |
-| Ink-on-Rezi | 12.74ms | 78 | 257 MB |
-| Ink | 62.77ms | 16 | 319 MB |
+| **Rezi (native)** | **1.66ms** | **603** | **188 MB** |
+| Ink-on-Rezi | 12.85ms | 78 | 251 MB |
+| Ink | 61.90ms | 16 | 360 MB |
 
-**Rezi native is 1,286x faster than Ink.** Even running Ink code unchanged on Rezi's engine (Ink-on-Rezi) is 4.9x faster.
+**Rezi native is 37x faster than Ink.** Even running Ink code unchanged on Rezi's engine (Ink-on-Rezi) is 4.8x faster.
 
 ### Rerender (single state update)
 
 | Framework | Mean | ops/s | Peak RSS |
 |---|---:|---:|---:|
-| **Rezi (native)** | **363ns** | **2,271,772** | **140 MB** |
-| Ink-on-Rezi | 74µs | 13,434 | 140 MB |
-| Ink | 16.41ms | 61 | 119 MB |
+| **Rezi (native)** | **25µs** | **38,906** | **142 MB** |
+| Ink-on-Rezi | 58µs | 16,997 | 116 MB |
+| Ink | 16.64ms | 60 | 119 MB |
 
-**Rezi native is 45,217x faster than Ink per rerender.** Ink-on-Rezi delivers a 221x speedup with zero code changes.
+**Rezi native is 655x faster than Ink per rerender.** Ink-on-Rezi delivers a 285x speedup with zero code changes.
 
 ### Speedup summary
 
 | Scenario | Ink-on-Rezi vs Ink | Rezi native vs Ink |
 |---|---:|---:|
-| tree-construction (10 items) | 73.8x | 4,069x |
-| tree-construction (100 items) | 14.3x | 4,189x |
-| tree-construction (500 items) | 5.6x | 1,462x |
-| tree-construction (1000 items) | 4.9x | 1,286x |
-| rerender | 221.5x | 45,217x |
-| memory-profile | 74.8x | 8,947x |
+| tree-construction (10 items) | 73.1x | 303x |
+| tree-construction (100 items) | 15.2x | 78x |
+| tree-construction (500 items) | 5.9x | 44x |
+| tree-construction (1000 items) | 4.8x | 37x |
+| rerender | 285x | 655x |
+| memory-profile | 73.3x | 135x |
 
 <details>
-<summary>Benchmark environment</summary>
+<summary>Benchmark environment and methodology</summary>
 
-Node v20.19.5 | Linux x64 | 200 iterations with warmup and forced GC between runs.
+Node v20.19.5 | Linux x64 | 500 iterations (construction) / 1000 iterations (rerender) with warmup and forced GC between runs. Each framework uses its own backend stub (BenchBackend for Rezi/ink-compat, MeasuringStream for Ink) to isolate render cost from terminal I/O. All paths go through the full pipeline: state update → tree rebuild → diff → frame output.
 
 [Full methodology and all results](https://rtlzeromemory.github.io/Rezi/benchmarks/)
 </details>
@@ -107,7 +107,7 @@ Already have an Ink app? Change one import:
 + import { render, Box, Text, useInput, useApp } from "@rezi-ui/ink-compat";
 ```
 
-That's it. Your existing Ink code runs on Rezi's engine — 5x to 220x faster depending on the workload, with no other changes.
+That's it. Your existing Ink code runs on Rezi's engine — 5x to 285x faster depending on the workload, with no other changes.
 
 ```bash
 npm install @rezi-ui/ink-compat @rezi-ui/core @rezi-ui/node react
@@ -115,7 +115,7 @@ npm install @rezi-ui/ink-compat @rezi-ui/core @rezi-ui/node react
 
 All Ink components (`Box`, `Text`, `Spacer`, `Newline`, `Transform`, `Static`) and hooks (`useInput`, `useApp`, `useFocus`, `useFocusManager`, `useStdin`, `useStdout`, `useStderr`) are supported.
 
-Once running, you can gradually migrate to Rezi's native `ui.*` API for the full 1,000x+ speedup.
+Once running, you can gradually migrate to Rezi's native `ui.*` API for the full 37–655x speedup.
 
 [Full migration guide](https://rtlzeromemory.github.io/Rezi/migration/ink/)
 
