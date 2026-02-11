@@ -121,17 +121,15 @@ async function checkFramework(fw: Framework, io: "stub" | "pty"): Promise<boolea
       case "ink":
         await import("ink");
         return true;
+      case "terminal-kit":
+        await import("terminal-kit");
+        return true;
       case "blessed":
-        if (io === "stub") return false;
         await import("blessed");
         return true;
       case "ratatui": {
-        const env = process.env as Readonly<{ REZI_RATATUI_BENCH_BIN?: string }>;
-        const candidate =
-          env.REZI_RATATUI_BENCH_BIN ??
-          `${process.cwd()}/benchmarks/native/ratatui-bench/target/release/ratatui-bench`;
-        accessSync(candidate, constants.X_OK);
-        return true;
+        const { checkRatatui } = await import("./ratatui-runner.js");
+        return checkRatatui();
       }
     }
   } catch {
@@ -291,7 +289,14 @@ async function main(): Promise<void> {
 
   // Check which frameworks are available
   const availableFrameworks = new Map<Framework, boolean>();
-  for (const fw of ["rezi-native", "ink-compat", "ink", "blessed", "ratatui"] as Framework[]) {
+  for (const fw of [
+    "rezi-native",
+    "ink-compat",
+    "ink",
+    "terminal-kit",
+    "blessed",
+    "ratatui",
+  ] as Framework[]) {
     if (opts.framework && opts.framework !== fw) {
       availableFrameworks.set(fw, false);
       continue;

@@ -2,7 +2,7 @@
  * Benchmark suite types.
  *
  * Covers timing, memory, CPU, and stability metrics for comparing
- * Rezi native, ink-compat, and Ink rendering pipelines.
+ * Rezi native, ink-compat, Ink, and terminal-kit rendering pipelines.
  */
 
 // ── Metric Primitives ──────────────────────────────────────────────
@@ -95,9 +95,13 @@ export interface BenchMetrics {
 
 // ── Result Envelope ────────────────────────────────────────────────
 
-export type CoreFramework = "ink" | "ink-compat" | "rezi-native";
-export type TerminalCompetitorFramework = "blessed" | "ratatui";
-export type Framework = CoreFramework | TerminalCompetitorFramework;
+export type Framework =
+  | "ink"
+  | "ink-compat"
+  | "rezi-native"
+  | "terminal-kit"
+  | "blessed"
+  | "ratatui";
 
 export interface BenchResult {
   scenario: string;

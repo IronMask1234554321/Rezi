@@ -16,12 +16,33 @@ export { default as useStdout } from "./hooks/useStdout.js";
 export { default as useStderr } from "./hooks/useStderr.js";
 export { default as useFocus } from "./hooks/useFocus.js";
 export { default as useFocusManager } from "./hooks/useFocusManager.js";
+export { default as useIsScreenReaderEnabled } from "./hooks/useIsScreenReaderEnabled.js";
 
 // Render
 export { render } from "./render.js";
 
 // Measurement
 export { default as measureElement } from "./measureElement.js";
+export {
+  getBoundingBox,
+  getInnerHeight,
+  getInnerWidth,
+  getScrollHeight,
+  getScrollWidth,
+} from "./measureElement.js";
+export { default as ResizeObserver, ResizeObserverEntry } from "./resizeObserver.js";
+
+// Styled text helpers (Ink parity)
+export {
+  clearStringWidthCache,
+  setStringWidthFunction,
+  styledCharsToString,
+  styledCharsWidth,
+  toStyledCharacters,
+  widestLineFromStyledChars,
+  wordBreakStyledChars,
+  wrapStyledChars,
+} from "./styledTextCompat.js";
 
 // Types
 export type { Instance, RenderOptions } from "./types.js";
@@ -29,3 +50,4 @@ export type { Key, BoxProps, TextProps } from "./types.js";
 export type { AppProps, StdinProps, StdoutProps, StderrProps } from "./types.js";
 export type { StaticProps, TransformProps, NewlineProps } from "./types.js";
 export type { DOMElement } from "./types.js";
+export type { StyledChar } from "./styledTextCompat.js";

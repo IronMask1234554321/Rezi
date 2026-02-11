@@ -10,6 +10,12 @@ export type MappedInkBox = Readonly<{
   stackKind: "row" | "column";
   stackProps: StackProps;
   reverseChildren: boolean;
+  overflow: "visible" | "hidden" | "scroll";
+  overflowX: "visible" | "hidden" | "scroll";
+  overflowY: "visible" | "hidden" | "scroll";
+  scrollTop: number;
+  scrollLeft: number;
+  scrollbarThumbColor?: string;
 }>;
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
@@ -36,6 +42,15 @@ function coerceNumber(v: number | string | undefined): number | undefined {
   const n = Number(v);
   if (!Number.isFinite(n)) return undefined;
   return n;
+}
+
+function normalizeOverflow(v: unknown): "visible" | "hidden" | "scroll" {
+  return v === "hidden" || v === "scroll" ? v : "visible";
+}
+
+function coerceScrollOffset(v: unknown): number {
+  if (typeof v !== "number" || !Number.isFinite(v)) return 0;
+  return v <= 0 ? 0 : v;
 }
 
 function mapAlignItems(v: BoxProps["alignItems"]): StackProps["align"] | undefined {
@@ -107,6 +122,11 @@ function mapGap(p: BoxProps, isRow: boolean): number | undefined {
 
 export function mapBoxProps(p: BoxProps): MappedInkBox {
   const hidden = p.display === "none";
+  const overflow = normalizeOverflow(p.overflow);
+  const overflowX = normalizeOverflow(p.overflowX ?? overflow);
+  const overflowY = normalizeOverflow(p.overflowY ?? overflow);
+  const scrollTop = coerceScrollOffset(p.scrollTop);
+  const scrollLeft = coerceScrollOffset(p.scrollLeft);
 
   const dir = p.flexDirection ?? "row";
   const isRow = dir === "row" || dir === "row-reverse";
@@ -132,11 +152,28 @@ export function mapBoxProps(p: BoxProps): MappedInkBox {
     }
   }
   const minWidth = coerceNumber(p.minWidth);
+  const maxWidth = coerceNumber(p.maxWidth);
   const minHeight = coerceNumber(p.minHeight);
+  const maxHeight = coerceNumber(p.maxHeight);
 
   const flex = typeof p.flexGrow === "number" ? p.flexGrow : undefined;
 
+  if (p.sticky === true) {
+    warnOnce("sticky is not fully supported by Rezi yet; rendering as regular content");
+  }
+  if (p.stickyChildren !== undefined) {
+    warnOnce("stickyChildren is not yet supported by Rezi; using regular children");
+  }
+  if (p.userSelect !== undefined && p.userSelect !== "auto") {
+    warnOnce("userSelect is not supported by Rezi yet");
+  }
+
   const border = mapBorderStyle(p.borderStyle);
+  const backgroundColor = resolveInkColor(p.backgroundColor);
+  const surfaceStyle = backgroundColor ? ({ bg: backgroundColor } as TextStyle) : undefined;
+  if (p.opaque === true && !surfaceStyle) {
+    warnOnce("opaque without backgroundColor is not supported by Rezi yet");
+  }
 
   const borderColor =
     resolveInkColor(p.borderColor) ??
@@ -151,26 +188,31 @@ export function mapBoxProps(p: BoxProps): MappedInkBox {
     p.borderBottomDimColor === true ||
     p.borderLeftDimColor === true;
 
-  const wrapperStyle = mergeStyle(undefined, {
+  const wrapperStyle = mergeStyle(surfaceStyle, {
     ...(borderColor ? { fg: borderColor } : {}),
     ...(borderDim ? { dim: true } : {}),
   });
   const paddingProps = mapPadding(p);
   const marginProps = mapMargin(p);
-  const constraintProps: Pick<StackProps, "width" | "height" | "minWidth" | "minHeight" | "flex"> =
-    {
-      ...(width === undefined ? {} : { width }),
-      ...(height === undefined ? {} : { height }),
-      ...(minWidth === undefined ? {} : { minWidth }),
-      ...(minHeight === undefined ? {} : { minHeight }),
-      ...(flex === undefined ? {} : { flex }),
-    };
+  const constraintProps: Pick<
+    StackProps,
+    "width" | "height" | "minWidth" | "maxWidth" | "minHeight" | "maxHeight" | "flex"
+  > = {
+    ...(width === undefined ? {} : { width }),
+    ...(height === undefined ? {} : { height }),
+    ...(minWidth === undefined ? {} : { minWidth }),
+    ...(maxWidth === undefined ? {} : { maxWidth }),
+    ...(minHeight === undefined ? {} : { minHeight }),
+    ...(maxHeight === undefined ? {} : { maxHeight }),
+    ...(flex === undefined ? {} : { flex }),
+  };
 
   const stackPropsBase: StackProps = {
     ...paddingProps,
     ...(gap === undefined ? {} : { gap }),
     ...(align === undefined ? {} : { align }),
     ...(justify === undefined ? {} : { justify }),
+    ...(surfaceStyle ? { style: surfaceStyle } : {}),
   };
 
   const wrapper: ReziBoxProps | null = border
@@ -196,5 +238,11 @@ export function mapBoxProps(p: BoxProps): MappedInkBox {
     stackKind: isRow ? "row" : "column",
     stackProps,
     reverseChildren,
+    overflow,
+    overflowX,
+    overflowY,
+    scrollTop,
+    scrollLeft,
+    ...(p.scrollbarThumbColor === undefined ? {} : { scrollbarThumbColor: p.scrollbarThumbColor }),
   };
 }
