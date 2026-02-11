@@ -316,6 +316,7 @@ describe("WidgetRenderer integration battery", () => {
     });
 
     const events: string[] = [];
+    const viewport = { cols: 40, rows: 10 };
     const vnode = ui.column({}, [
       ui.focusZone(
         {
@@ -341,21 +342,20 @@ describe("WidgetRenderer integration battery", () => {
     const first = renderer.submitFrame(
       () => vnode,
       undefined,
-      { cols: 40, rows: 10 },
+      viewport,
       defaultTheme,
       noRenderHooks(),
     );
     assert.ok(first.ok);
 
-    renderer.routeEngineEvent(keyEvent(3 /* TAB */));
-    renderer.routeEngineEvent(keyEvent(3 /* TAB */));
+    renderer.routeEngineEvent(mouseDownEvent(viewport.cols - 6, viewport.rows - TOAST_HEIGHT + 1));
     assert.equal(renderer.getFocusedId(), getToastActionFocusId("t0"));
 
     events.length = 0;
     const second = renderer.submitFrame(
       () => vnode,
       undefined,
-      { cols: 40, rows: 10 },
+      viewport,
       defaultTheme,
       noRenderHooks(),
     );
