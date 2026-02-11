@@ -9,6 +9,7 @@ import {
   type HostRoot,
   type HostText,
   type HostType,
+  allocateNodeId,
   appendChildNode,
   insertBeforeNode,
   removeChildNode,
@@ -61,7 +62,7 @@ const reconciler = createReconciler<
   // -------------------
   //   Instance Create
   // -------------------
-  createInstance(originalType, newProps, _root, hostContext) {
+  createInstance(originalType, newProps, root, hostContext) {
     if (hostContext.isInsideText && originalType === "ink-box") {
       throw new InkCompatError("INK_COMPAT_INVALID_PROPS", "<Box> can't be nested inside <Text>");
     }
@@ -69,7 +70,18 @@ const reconciler = createReconciler<
     const type: HostType =
       originalType === "ink-text" && hostContext.isInsideText ? "ink-virtual-text" : originalType;
 
-    return { kind: "element", type, props: { ...newProps }, children: [] };
+    const props = { ...newProps };
+    const children: HostNode[] = [];
+    return {
+      kind: "element",
+      type,
+      nodeName: type,
+      props,
+      attributes: props,
+      children,
+      childNodes: children,
+      internal_id: allocateNodeId(root),
+    };
   },
 
   createTextInstance(text, _root, hostContext) {
@@ -79,7 +91,7 @@ const reconciler = createReconciler<
         `Text string "${text}" must be rendered inside <Text> component`,
       );
     }
-    return { kind: "text", text };
+    return { kind: "text", text, nodeName: "#text", nodeValue: text };
   },
 
   // -------------------
@@ -101,10 +113,13 @@ const reconciler = createReconciler<
     return newProps;
   },
   commitUpdate(instance, updatePayload) {
-    instance.props = { ...updatePayload };
+    const props = { ...updatePayload };
+    instance.props = props;
+    instance.attributes = props;
   },
   commitTextUpdate(textInstance, _oldText, newText) {
     textInstance.text = newText;
+    textInstance.nodeValue = newText;
   },
 
   // -------------------
@@ -114,9 +129,11 @@ const reconciler = createReconciler<
   unhideInstance() {},
   hideTextInstance(textInstance) {
     textInstance.text = "";
+    textInstance.nodeValue = "";
   },
   unhideTextInstance(textInstance, text) {
     textInstance.text = text;
+    textInstance.nodeValue = text;
   },
 
   // -------------------
