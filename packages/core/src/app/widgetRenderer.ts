@@ -2277,7 +2277,11 @@ export class WidgetRenderer<S> {
     if (this._lastRenderedThemeRef !== theme) return false;
 
     // Conservative correctness: overlays can draw outside local rects.
-    if (this.dropdownStack.length > 0 || this.layerStack.length > 0 || this.toastContainers.length > 0) {
+    if (
+      this.dropdownStack.length > 0 ||
+      this.layerStack.length > 0 ||
+      this.toastContainers.length > 0
+    ) {
       return false;
     }
     return true;
@@ -2517,7 +2521,7 @@ export class WidgetRenderer<S> {
       }
       this._pooledMergedDamageRects.push(merged);
     }
-    this._pooledMergedDamageRects.sort((a, b) => (a.y - b.y) || (a.x - b.x));
+    this._pooledMergedDamageRects.sort((a, b) => a.y - b.y || a.x - b.x);
     return this._pooledMergedDamageRects;
   }
 
@@ -2628,7 +2632,10 @@ export class WidgetRenderer<S> {
         this.committedRoot = commitRes.root;
 
         const damageToken = PERF_DETAIL_ENABLED ? perfMarkStart("damage_identity_diff") : 0;
-        identityDamageFromCommit = this.computeIdentityDiffDamage(prevCommittedRoot, this.committedRoot);
+        identityDamageFromCommit = this.computeIdentityDiffDamage(
+          prevCommittedRoot,
+          this.committedRoot,
+        );
         if (PERF_DETAIL_ENABLED) perfMarkEnd("damage_identity_diff", damageToken);
 
         if (!doLayout && plan.checkLayoutStability) {
@@ -3420,7 +3427,11 @@ export class WidgetRenderer<S> {
           if (prevFocusedId !== null && !this.appendDamageRectForId(prevFocusedId)) {
             missingDamageRect = true;
           }
-          if (!missingDamageRect && nextFocusedId !== null && !this.appendDamageRectForId(nextFocusedId)) {
+          if (
+            !missingDamageRect &&
+            nextFocusedId !== null &&
+            !this.appendDamageRectForId(nextFocusedId)
+          ) {
             missingDamageRect = true;
           }
         }

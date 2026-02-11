@@ -13,14 +13,7 @@
 
 import { type VNode, ui } from "@rezi-ui/core";
 import { BenchBackend, MeasuringStream, NullReadable } from "../backends.js";
-import {
-  computeStats,
-  diffCpu,
-  peakMemory,
-  takeCpu,
-  takeMemory,
-  tryGc,
-} from "../measure.js";
+import { computeStats, diffCpu, peakMemory, takeCpu, takeMemory, tryGc } from "../measure.js";
 import type {
   BenchMetrics,
   Framework,
@@ -345,10 +338,7 @@ function termkitMemTree(
   const bar = `[${"#".repeat(filled)}${".".repeat(20 - filled)}] ${pct}%`;
   buffer.put({ x: 1, y: 1 }, bar);
   for (let j = 0; j < 20; j++) {
-    buffer.put(
-      { x: 1, y: 3 + j, attr: { dim: j % 2 === 0 } },
-      `  Line ${j}: value=${i * 20 + j}`,
-    );
+    buffer.put({ x: 1, y: 3 + j, attr: { dim: j % 2 === 0 } }, `  Line ${j}: value=${i * 20 + j}`);
   }
 }
 
@@ -437,9 +427,7 @@ function blessedMemTree(
   const pct = i % 100;
   const filled = Math.floor(pct / 5);
   const bar = `[${"#".repeat(filled)}${".".repeat(20 - filled)}] ${pct}%`;
-  screen.append(
-    blessed.text({ top: 1, left: 1, content: bar, tags: false }),
-  );
+  screen.append(blessed.text({ top: 1, left: 1, content: bar, tags: false }));
   for (let j = 0; j < 20; j++) {
     screen.append(
       blessed.text({

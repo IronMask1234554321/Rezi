@@ -157,7 +157,13 @@ function reconcileUnkeyedChildren(
     if (prev) {
       const instanceId = prev.instanceId;
       reusedInstanceIds[reusedCount++] = instanceId;
-      nextChildren[nextChildrenCount++] = { slotId, vnode, instanceId, kind: "reused", prevIndex: i };
+      nextChildren[nextChildrenCount++] = {
+        slotId,
+        vnode,
+        instanceId,
+        kind: "reused",
+        prevIndex: i,
+      };
       continue;
     }
     const instanceId = allocator.allocate();
@@ -191,7 +197,10 @@ function reconcileUnkeyedChildren(
     nextChildren,
     reusedInstanceIds,
     newInstanceIds,
-    unmountedInstanceIds: unmountedInstanceIds.length === 0 ? (EMPTY_INSTANCE_IDS as InstanceId[]) : unmountedInstanceIds,
+    unmountedInstanceIds:
+      unmountedInstanceIds.length === 0
+        ? (EMPTY_INSTANCE_IDS as InstanceId[])
+        : unmountedInstanceIds,
   };
 }
 

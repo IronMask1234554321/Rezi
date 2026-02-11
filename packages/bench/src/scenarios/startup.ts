@@ -16,16 +16,20 @@
  */
 
 import { BenchBackend, MeasuringStream, NullReadable } from "../backends.js";
+import { computeStats, diffCpu, peakMemory, takeCpu, takeMemory, tryGc } from "../measure.js";
+import type {
+  BenchMetrics,
+  Framework,
+  MemorySnapshot,
+  Scenario,
+  ScenarioConfig,
+} from "../types.js";
 import {
-  computeStats,
-  diffCpu,
-  peakMemory,
-  takeCpu,
-  takeMemory,
-  tryGc,
-} from "../measure.js";
-import type { BenchMetrics, Framework, MemorySnapshot, Scenario, ScenarioConfig } from "../types.js";
-import { buildBlessedTree, buildReactTree, buildReziTree, buildTermkitTree } from "./treeBuilders.js";
+  buildBlessedTree,
+  buildReactTree,
+  buildReziTree,
+  buildTermkitTree,
+} from "./treeBuilders.js";
 
 const TREE_SIZE = 50;
 
@@ -164,15 +168,12 @@ async function runInk(config: ScenarioConfig): Promise<BenchMetrics> {
     const stdout = new MeasuringStream();
     const stdin = new NullReadable();
     const p = stdout.waitForWrite();
-    const inst = Ink.render(
-      buildReactTree(React, Ink, TREE_SIZE, w) as React.ReactNode,
-      {
-        stdout: stdout as unknown as NodeJS.WriteStream,
-        stdin: stdin as unknown as NodeJS.ReadStream,
-        patchConsole: false,
-        exitOnCtrlC: false,
-      },
-    );
+    const inst = Ink.render(buildReactTree(React, Ink, TREE_SIZE, w) as React.ReactNode, {
+      stdout: stdout as unknown as NodeJS.WriteStream,
+      stdin: stdin as unknown as NodeJS.ReadStream,
+      patchConsole: false,
+      exitOnCtrlC: false,
+    });
     await p;
     inst.unmount();
   }
@@ -190,15 +191,12 @@ async function runInk(config: ScenarioConfig): Promise<BenchMetrics> {
 
     const ts = performance.now();
     const p = stdout.waitForWrite();
-    const inst = Ink.render(
-      buildReactTree(React, Ink, TREE_SIZE, i) as React.ReactNode,
-      {
-        stdout: stdout as unknown as NodeJS.WriteStream,
-        stdin: stdin as unknown as NodeJS.ReadStream,
-        patchConsole: false,
-        exitOnCtrlC: false,
-      },
-    );
+    const inst = Ink.render(buildReactTree(React, Ink, TREE_SIZE, i) as React.ReactNode, {
+      stdout: stdout as unknown as NodeJS.WriteStream,
+      stdin: stdin as unknown as NodeJS.ReadStream,
+      patchConsole: false,
+      exitOnCtrlC: false,
+    });
     await p;
     samples.push(performance.now() - ts);
 

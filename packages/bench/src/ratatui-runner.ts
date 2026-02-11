@@ -6,7 +6,7 @@
  * back into BenchMetrics.
  */
 
-import { execSync, execFileSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { computeStats, takeMemory } from "./measure.js";
@@ -87,7 +87,7 @@ interface RatatuiOutput {
 export function runRatatui(
   scenario: string,
   config: ScenarioConfig,
-  params: Record<string, number | string> = {},
+  params: Readonly<{ items?: number | string }> = {},
 ): BenchMetrics {
   ensureBuilt();
 
@@ -100,8 +100,8 @@ export function runRatatui(
     String(config.iterations),
   ];
 
-  if (params["items"] !== undefined) {
-    args.push("--items", String(params["items"]));
+  if (params.items !== undefined) {
+    args.push("--items", String(params.items));
   }
 
   const stdout = execFileSync(BINARY, args, {

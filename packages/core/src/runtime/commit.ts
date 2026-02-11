@@ -49,8 +49,28 @@ const EMPTY_CHILDREN: readonly RuntimeInstance[] = Object.freeze([]);
  * Returns true if both styles produce identical render output.
  */
 function textStyleEqual(
-  a: { bold?: boolean; dim?: boolean; italic?: boolean; underline?: boolean; inverse?: boolean; fg?: unknown; bg?: unknown } | undefined,
-  b: { bold?: boolean; dim?: boolean; italic?: boolean; underline?: boolean; inverse?: boolean; fg?: unknown; bg?: unknown } | undefined,
+  a:
+    | {
+        bold?: boolean;
+        dim?: boolean;
+        italic?: boolean;
+        underline?: boolean;
+        inverse?: boolean;
+        fg?: unknown;
+        bg?: unknown;
+      }
+    | undefined,
+  b:
+    | {
+        bold?: boolean;
+        dim?: boolean;
+        italic?: boolean;
+        underline?: boolean;
+        inverse?: boolean;
+        fg?: unknown;
+        bg?: unknown;
+      }
+    | undefined,
 ): boolean {
   if (a === b) return true;
   if (!a || !b) return false;
@@ -75,8 +95,23 @@ function leafVNodeEqual(a: VNode, b: VNode): boolean {
     case "text": {
       if (b.kind !== "text") return false;
       if (a.text !== b.text) return false;
-      const ap = a.props as { style?: unknown; textOverflow?: unknown; variant?: unknown; maxWidth?: unknown };
-      const bp = b.props as { style?: unknown; textOverflow?: unknown; variant?: unknown; maxWidth?: unknown };
+      const ap = a.props as {
+        id?: unknown;
+        style?: unknown;
+        textOverflow?: unknown;
+        variant?: unknown;
+        maxWidth?: unknown;
+      };
+      const bp = b.props as {
+        id?: unknown;
+        style?: unknown;
+        textOverflow?: unknown;
+        variant?: unknown;
+        maxWidth?: unknown;
+      };
+      // Even when render output is identical, `id` changes must re-commit so downstream
+      // id-based lookups (layout rect indexing, anchors, etc) don't observe stale ids.
+      if (ap.id !== bp.id) return false;
       if (ap.textOverflow !== bp.textOverflow) return false;
       if (ap.variant !== bp.variant) return false;
       if (ap.maxWidth !== bp.maxWidth) return false;
@@ -93,8 +128,18 @@ function leafVNodeEqual(a: VNode, b: VNode): boolean {
     }
     case "divider": {
       if (b.kind !== "divider") return false;
-      const ap = a.props as { direction?: unknown; char?: unknown; label?: unknown; color?: unknown };
-      const bp = b.props as { direction?: unknown; char?: unknown; label?: unknown; color?: unknown };
+      const ap = a.props as {
+        direction?: unknown;
+        char?: unknown;
+        label?: unknown;
+        color?: unknown;
+      };
+      const bp = b.props as {
+        direction?: unknown;
+        char?: unknown;
+        label?: unknown;
+        color?: unknown;
+      };
       return (
         ap.direction === bp.direction &&
         ap.char === bp.char &&
@@ -471,6 +516,7 @@ function commitNode(
   // Do this before any bookkeeping so unchanged leaf-heavy subtrees (lists, tables)
   // don't pay per-node validation overhead.
   if (prev && prev.vnode.kind === vnode.kind && leafVNodeEqual(prev.vnode, vnode)) {
+    if (ctx.collectLifecycleInstanceIds) ctx.lists.reused.push(instanceId);
     return { ok: true, value: { root: prev } };
   }
 
@@ -706,7 +752,10 @@ function commitNode(
           if (!nextChildren || !committedChildVNodes) {
             return {
               ok: false,
-              fatal: { code: "ZRUI_INVALID_PROPS", detail: "commitNode: internal fast-reuse invariant" },
+              fatal: {
+                code: "ZRUI_INVALID_PROPS",
+                detail: "commitNode: internal fast-reuse invariant",
+              },
             };
           }
           (nextChildren as RuntimeInstance[])[i] = committed.value.root;
@@ -714,7 +763,11 @@ function commitNode(
         }
       }
 
-      if (allChildrenSame && prev !== null && canFastReuseContainerSelf(prev.vnode, vnodeForCommit)) {
+      if (
+        allChildrenSame &&
+        prev !== null &&
+        canFastReuseContainerSelf(prev.vnode, vnodeForCommit)
+      ) {
         // All children are identical references → reuse parent entirely.
         return { ok: true, value: { root: prev } };
       }

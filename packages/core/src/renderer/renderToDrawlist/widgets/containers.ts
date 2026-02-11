@@ -29,7 +29,8 @@ function findStackChildRange(
   damageRect: Rect,
 ): Readonly<{ start: number; end: number }> | null {
   const damageStart = direction === "column" ? damageRect.y : damageRect.x;
-  const damageEnd = direction === "column" ? damageRect.y + damageRect.h : damageRect.x + damageRect.w;
+  const damageEnd =
+    direction === "column" ? damageRect.y + damageRect.h : damageRect.x + damageRect.w;
 
   let start = 0;
   while (start < childCount) {
@@ -80,7 +81,12 @@ function pushChildrenWithLayout(
   let rangeEnd = childCount - 1;
   if (damageRect) {
     if (stackDirection) {
-      const range = findStackChildRange(layoutNode.children, childCount, stackDirection, damageRect);
+      const range = findStackChildRange(
+        layoutNode.children,
+        childCount,
+        stackDirection,
+        damageRect,
+      );
       if (!range) return;
       rangeStart = range.start;
       rangeEnd = range.end;

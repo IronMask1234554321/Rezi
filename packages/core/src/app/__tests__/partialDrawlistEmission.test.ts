@@ -7,13 +7,13 @@ import type {
 } from "../../drawlist/index.js";
 import type { CursorState } from "../../drawlist/index.js";
 import type { DrawlistTextRunSegment } from "../../drawlist/types.js";
-import { ZR_KEY_TAB } from "../../keybindings/keyCodes.js";
 import type { TextStyle, VNode } from "../../index.js";
 import { ui } from "../../index.js";
+import { ZR_KEY_TAB } from "../../keybindings/keyCodes.js";
 import { DEFAULT_TERMINAL_CAPS } from "../../terminalCaps.js";
 import { defaultTheme } from "../../theme/defaultTheme.js";
 import type { Viewport } from "../widgetRenderer.js";
-import { WidgetRenderer, type WidgetRenderPlan } from "../widgetRenderer.js";
+import { type WidgetRenderPlan, WidgetRenderer } from "../widgetRenderer.js";
 
 type RecordedOp =
   | Readonly<{ kind: "clear" }>
@@ -333,7 +333,10 @@ describe("WidgetRenderer incremental drawlist emission", () => {
     const framebufferBPartial = applyOps(framebufferA, opsBPartial);
 
     assertFramebuffersEqual(framebufferBPartial, framebufferBExpected);
-    assert.equal(opsBPartial.some((op) => op.kind === "clearTo"), false);
+    assert.equal(
+      opsBPartial.some((op) => op.kind === "clearTo"),
+      false,
+    );
 
     const viewportArea = viewport.cols * viewport.rows;
     let damagedArea = 0;
@@ -347,7 +350,10 @@ describe("WidgetRenderer incremental drawlist emission", () => {
     const viewport: Viewport = { cols: 50, rows: 10 };
     const backend = createNoopBackend();
     const viewFn = () =>
-      ui.column({}, [ui.button({ id: "a", label: "Alpha" }), ui.button({ id: "b", label: "Beta" })]);
+      ui.column({}, [
+        ui.button({ id: "a", label: "Alpha" }),
+        ui.button({ id: "b", label: "Beta" }),
+      ]);
 
     const partialBuilder = new RecordingBuilder();
     const partialRenderer = new WidgetRenderer<void>({
@@ -366,7 +372,14 @@ describe("WidgetRenderer incremental drawlist emission", () => {
     const partialPlan = { commit: false, layout: false, checkLayoutStability: false } as const;
     const forcedFullPlan = { commit: false, layout: true, checkLayoutStability: false } as const;
 
-    const opsA = submitOps(partialRenderer, partialBuilder, viewFn, undefined, viewport, initialPlan);
+    const opsA = submitOps(
+      partialRenderer,
+      partialBuilder,
+      viewFn,
+      undefined,
+      viewport,
+      initialPlan,
+    );
     const framebufferA = applyOps(createFramebuffer(viewport), opsA);
 
     partialRenderer.routeEngineEvent({
@@ -406,7 +419,10 @@ describe("WidgetRenderer incremental drawlist emission", () => {
 
     assertFramebuffersEqual(framebufferFocusedPartial, framebufferFocusedExpected);
     if (!opsFocusedPartial.some((op) => op.kind === "clearTo")) {
-      assert.equal(opsFocusedPartial.some((op) => op.kind === "fillRect"), true);
+      assert.equal(
+        opsFocusedPartial.some((op) => op.kind === "fillRect"),
+        true,
+      );
     }
   });
 
@@ -430,9 +446,20 @@ describe("WidgetRenderer incremental drawlist emission", () => {
 
     const initialPlan = { commit: true, layout: true, checkLayoutStability: true } as const;
     const partialTickPlan = { commit: false, layout: false, checkLayoutStability: false } as const;
-    const forcedFullTickPlan = { commit: false, layout: true, checkLayoutStability: false } as const;
+    const forcedFullTickPlan = {
+      commit: false,
+      layout: true,
+      checkLayoutStability: false,
+    } as const;
 
-    const opsTick0 = submitOps(partialRenderer, partialBuilder, viewFn, undefined, viewport, initialPlan);
+    const opsTick0 = submitOps(
+      partialRenderer,
+      partialBuilder,
+      viewFn,
+      undefined,
+      viewport,
+      initialPlan,
+    );
     const framebufferTick0 = applyOps(createFramebuffer(viewport), opsTick0);
     const opsTick1Partial = submitOps(
       partialRenderer,
@@ -456,7 +483,10 @@ describe("WidgetRenderer incremental drawlist emission", () => {
     const framebufferTick1Expected = applyOps(createFramebuffer(viewport), opsTick1Expected);
 
     assertFramebuffersEqual(framebufferTick1Partial, framebufferTick1Expected);
-    assert.equal(opsTick1Partial.some((op) => op.kind === "clearTo"), false);
+    assert.equal(
+      opsTick1Partial.some((op) => op.kind === "clearTo"),
+      false,
+    );
   });
 
   test("incremental v2 cursor is emitted even when focused input is outside damage rect", () => {
@@ -472,14 +502,11 @@ describe("WidgetRenderer incremental drawlist emission", () => {
     const viewFn = () =>
       ui.column({}, [ui.input({ id: "q", value: "hello" }), ui.spinner({ variant: "line" })]);
 
-    submitOps(
-      renderer,
-      builder,
-      viewFn,
-      undefined,
-      viewport,
-      { commit: true, layout: true, checkLayoutStability: true },
-    );
+    submitOps(renderer, builder, viewFn, undefined, viewport, {
+      commit: true,
+      layout: true,
+      checkLayoutStability: true,
+    });
 
     renderer.routeEngineEvent({
       kind: "key",
@@ -488,25 +515,25 @@ describe("WidgetRenderer incremental drawlist emission", () => {
       mods: 0,
       action: "down",
     });
-    submitOps(
-      renderer,
-      builder,
-      viewFn,
-      undefined,
-      viewport,
-      { commit: false, layout: false, checkLayoutStability: false },
-    );
+    submitOps(renderer, builder, viewFn, undefined, viewport, {
+      commit: false,
+      layout: false,
+      checkLayoutStability: false,
+    });
 
-    const opsTick = submitOps(
-      renderer,
-      builder,
-      viewFn,
-      undefined,
-      viewport,
-      { commit: false, layout: false, checkLayoutStability: false },
+    const opsTick = submitOps(renderer, builder, viewFn, undefined, viewport, {
+      commit: false,
+      layout: false,
+      checkLayoutStability: false,
+    });
+    assert.equal(
+      opsTick.some((op) => op.kind === "clearTo"),
+      false,
     );
-    assert.equal(opsTick.some((op) => op.kind === "clearTo"), false);
-    assert.equal(opsTick.some((op) => op.kind === "hideCursor"), false);
+    assert.equal(
+      opsTick.some((op) => op.kind === "hideCursor"),
+      false,
+    );
     const setCursorOp = opsTick.find((op) => op.kind === "setCursor");
     assert.equal(setCursorOp !== undefined, true);
     if (setCursorOp && setCursorOp.kind === "setCursor") {
@@ -534,22 +561,16 @@ describe("WidgetRenderer incremental drawlist emission", () => {
           : [ui.text("Header")],
       );
 
-    submitOps(
-      renderer,
-      builder,
-      viewFn,
-      { showButton: false },
-      viewport,
-      { commit: true, layout: true, checkLayoutStability: true },
-    );
-    submitOps(
-      renderer,
-      builder,
-      viewFn,
-      { showButton: true },
-      viewport,
-      { commit: true, layout: false, checkLayoutStability: true },
-    );
+    submitOps(renderer, builder, viewFn, { showButton: false }, viewport, {
+      commit: true,
+      layout: true,
+      checkLayoutStability: true,
+    });
+    submitOps(renderer, builder, viewFn, { showButton: true }, viewport, {
+      commit: true,
+      layout: false,
+      checkLayoutStability: true,
+    });
 
     const route = renderer.routeEngineEvent({
       kind: "key",
@@ -572,14 +593,11 @@ describe("WidgetRenderer incremental drawlist emission", () => {
       requestRender: () => {},
     });
 
-    submitOps(
-      renderer,
-      builder,
-      (s) => contentUpdateTree(s.selected),
-      { selected: 0 },
-      viewport,
-      { commit: true, layout: true, checkLayoutStability: true },
-    );
+    submitOps(renderer, builder, (s) => contentUpdateTree(s.selected), { selected: 0 }, viewport, {
+      commit: true,
+      layout: true,
+      checkLayoutStability: true,
+    });
     const secondOps = submitOps(
       renderer,
       builder,
@@ -588,6 +606,9 @@ describe("WidgetRenderer incremental drawlist emission", () => {
       viewport,
       { commit: true, layout: true, checkLayoutStability: true },
     );
-    assert.equal(secondOps.some((op) => op.kind === "clearTo"), true);
+    assert.equal(
+      secondOps.some((op) => op.kind === "clearTo"),
+      true,
+    );
   });
 });

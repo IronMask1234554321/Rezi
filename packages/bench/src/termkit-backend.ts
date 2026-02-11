@@ -61,8 +61,7 @@ export function createTermkitContext(cols: number, rows: number): TermkitContext
       _encoding: BufferEncoding,
       callback: (error?: Error | null) => void,
     ) {
-      totalBytes +=
-        typeof chunk === "string" ? Buffer.byteLength(chunk) : chunk.byteLength;
+      totalBytes += typeof chunk === "string" ? Buffer.byteLength(chunk) : chunk.byteLength;
       callback();
     },
     // High watermark to avoid backpressure during benchmarks

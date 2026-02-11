@@ -13,7 +13,12 @@
 import { BenchBackend, MeasuringStream, NullReadable } from "../backends.js";
 import { benchAsync, benchSync, tryGc } from "../measure.js";
 import type { BenchMetrics, Framework, Scenario, ScenarioConfig } from "../types.js";
-import { buildBlessedTree, buildReactTree, buildReziTree, buildTermkitTree } from "./treeBuilders.js";
+import {
+  buildBlessedTree,
+  buildReactTree,
+  buildReziTree,
+  buildTermkitTree,
+} from "./treeBuilders.js";
 
 async function runRezi(config: ScenarioConfig, n: number): Promise<BenchMetrics> {
   const { createApp } = await import("@rezi-ui/core");
@@ -225,10 +230,7 @@ async function runBlessed(config: ScenarioConfig, n: number): Promise<BenchMetri
   return metrics;
 }
 
-async function runRatatui(
-  config: ScenarioConfig,
-  n: number,
-): Promise<BenchMetrics> {
+async function runRatatui(config: ScenarioConfig, n: number): Promise<BenchMetrics> {
   const { runRatatui: exec } = await import("../ratatui-runner.js");
   return exec("construction", config, { items: n });
 }

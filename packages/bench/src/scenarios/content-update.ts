@@ -68,11 +68,7 @@ function reactListTree(
         { key: String(i), flexDirection: "row", gap: 1 },
         h(C.Text as string, { bold: isSelected }, isSelected ? ">" : " "),
         h(C.Text as string, { dimColor: !isSelected }, `${String(i).padStart(3, " ")}.`),
-        h(
-          C.Text as string,
-          { bold: isSelected, inverse: isSelected },
-          `entry-${i}.log`,
-        ),
+        h(C.Text as string, { bold: isSelected, inverse: isSelected }, `entry-${i}.log`),
         h(C.Text as string, { dimColor: true }, `${(i * 1024 + 512).toLocaleString()} B`),
       ),
     );
@@ -106,14 +102,8 @@ function termkitListTree(
     const y = 2 + i;
     const isSelected = i === selected;
     buffer.put({ x: 0, y, attr: { bold: isSelected } }, isSelected ? ">" : " ");
-    buffer.put(
-      { x: 2, y, attr: { dim: !isSelected } },
-      `${String(i).padStart(3, " ")}.`,
-    );
-    buffer.put(
-      { x: 8, y, attr: { bold: isSelected, inverse: isSelected } },
-      `entry-${i}.log`,
-    );
+    buffer.put({ x: 2, y, attr: { dim: !isSelected } }, `${String(i).padStart(3, " ")}.`);
+    buffer.put({ x: 8, y, attr: { bold: isSelected, inverse: isSelected } }, `entry-${i}.log`);
     buffer.put({ x: 25, y, attr: { dim: true } }, `${(i * 1024 + 512).toLocaleString()} B`);
   }
 }
@@ -184,9 +174,7 @@ async function runInkCompat(config: ScenarioConfig): Promise<BenchMetrics> {
     for (let i = 0; i < config.warmup; i++) {
       selected = (selected + 1) % LIST_SIZE;
       const frameP = backend.waitForFrame();
-      instance.rerender(
-        reactListTree(React, InkCompat, selected) as React.ReactNode,
-      );
+      instance.rerender(reactListTree(React, InkCompat, selected) as React.ReactNode);
       await frameP;
     }
 
@@ -197,9 +185,7 @@ async function runInkCompat(config: ScenarioConfig): Promise<BenchMetrics> {
       async () => {
         selected = (selected + 1) % LIST_SIZE;
         const frameP = backend.waitForFrame();
-        instance.rerender(
-          reactListTree(React, InkCompat, selected) as React.ReactNode,
-        );
+        instance.rerender(reactListTree(React, InkCompat, selected) as React.ReactNode);
         await frameP;
       },
       0,
@@ -223,24 +209,19 @@ async function runInk(config: ScenarioConfig): Promise<BenchMetrics> {
 
   let selected = 0;
   const initialWrite = stdout.waitForWrite();
-  const instance = Ink.render(
-    reactListTree(React, Ink, selected) as React.ReactNode,
-    {
-      stdout: stdout as unknown as NodeJS.WriteStream,
-      stdin: stdin as unknown as NodeJS.ReadStream,
-      patchConsole: false,
-      exitOnCtrlC: false,
-    },
-  );
+  const instance = Ink.render(reactListTree(React, Ink, selected) as React.ReactNode, {
+    stdout: stdout as unknown as NodeJS.WriteStream,
+    stdin: stdin as unknown as NodeJS.ReadStream,
+    patchConsole: false,
+    exitOnCtrlC: false,
+  });
   await initialWrite;
 
   try {
     for (let i = 0; i < config.warmup; i++) {
       selected = (selected + 1) % LIST_SIZE;
       const writeP = stdout.waitForWrite();
-      instance.rerender(
-        reactListTree(React, Ink, selected) as React.ReactNode,
-      );
+      instance.rerender(reactListTree(React, Ink, selected) as React.ReactNode);
       await writeP;
     }
 
@@ -251,9 +232,7 @@ async function runInk(config: ScenarioConfig): Promise<BenchMetrics> {
       async () => {
         selected = (selected + 1) % LIST_SIZE;
         const writeP = stdout.waitForWrite();
-        instance.rerender(
-          reactListTree(React, Ink, selected) as React.ReactNode,
-        );
+        instance.rerender(reactListTree(React, Ink, selected) as React.ReactNode);
         await writeP;
       },
       0,
@@ -315,16 +294,23 @@ function buildInitialBlessedList(
   blessed: { text: (opts: Record<string, unknown>) => unknown },
   screen: { append: (el: unknown) => void },
   selected: number,
-): { headerSel: BlessedWidget; markers: BlessedWidget[]; indices: BlessedWidget[]; names: BlessedWidget[] } {
+): {
+  headerSel: BlessedWidget;
+  markers: BlessedWidget[];
+  indices: BlessedWidget[];
+  names: BlessedWidget[];
+} {
   // Header
   screen.append(
     blessed.text({ top: 0, left: 0, content: "Files", style: { bold: true }, tags: false }),
   );
-  screen.append(
-    blessed.text({ top: 0, left: 8, content: `${LIST_SIZE} items`, tags: false }),
-  );
+  screen.append(blessed.text({ top: 0, left: 8, content: `${LIST_SIZE} items`, tags: false }));
   const headerSel = blessed.text({
-    top: 0, left: 22, content: `Selected: ${selected}`, style: { fg: "grey" }, tags: false,
+    top: 0,
+    left: 22,
+    content: `Selected: ${selected}`,
+    style: { fg: "grey" },
+    tags: false,
   });
   screen.append(headerSel);
 
@@ -335,10 +321,34 @@ function buildInitialBlessedList(
   for (let i = 0; i < LIST_SIZE; i++) {
     const y = 2 + i;
     const isSel = i === selected;
-    const marker = blessed.text({ top: y, left: 0, content: isSel ? ">" : " ", style: { bold: isSel }, tags: false });
-    const idx = blessed.text({ top: y, left: 2, content: `${String(i).padStart(3, " ")}.`, style: { fg: isSel ? "white" : "grey" }, tags: false });
-    const name = blessed.text({ top: y, left: 8, content: `entry-${i}.log`, style: { bold: isSel, inverse: isSel }, tags: false });
-    const size = blessed.text({ top: y, left: 25, content: `${(i * 1024 + 512).toLocaleString()} B`, style: { fg: "grey" }, tags: false });
+    const marker = blessed.text({
+      top: y,
+      left: 0,
+      content: isSel ? ">" : " ",
+      style: { bold: isSel },
+      tags: false,
+    });
+    const idx = blessed.text({
+      top: y,
+      left: 2,
+      content: `${String(i).padStart(3, " ")}.`,
+      style: { fg: isSel ? "white" : "grey" },
+      tags: false,
+    });
+    const name = blessed.text({
+      top: y,
+      left: 8,
+      content: `entry-${i}.log`,
+      style: { bold: isSel, inverse: isSel },
+      tags: false,
+    });
+    const size = blessed.text({
+      top: y,
+      left: 25,
+      content: `${(i * 1024 + 512).toLocaleString()} B`,
+      style: { fg: "grey" },
+      tags: false,
+    });
     screen.append(marker);
     screen.append(idx);
     screen.append(name);
@@ -356,7 +366,12 @@ function buildInitialBlessedList(
  * matching the partial-update behavior measured by other frameworks.
  */
 function updateBlessedSelection(
-  refs: { headerSel: BlessedWidget; markers: BlessedWidget[]; indices: BlessedWidget[]; names: BlessedWidget[] },
+  refs: {
+    headerSel: BlessedWidget;
+    markers: BlessedWidget[];
+    indices: BlessedWidget[];
+    names: BlessedWidget[];
+  },
   oldSel: number,
   newSel: number,
 ): void {
@@ -424,8 +439,7 @@ async function runRatatui(config: ScenarioConfig): Promise<BenchMetrics> {
 
 export const contentUpdateScenario: Scenario = {
   name: "content-update",
-  description:
-    "Partial screen update: move selection in a 500-row list (measures diff efficiency)",
+  description: "Partial screen update: move selection in a 500-row list (measures diff efficiency)",
   defaultConfig: { warmup: 50, iterations: 500 },
   paramSets: [{}],
   frameworks: ["rezi-native", "ink-compat", "ink", "terminal-kit", "blessed", "ratatui"],

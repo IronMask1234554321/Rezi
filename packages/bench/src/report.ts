@@ -123,7 +123,14 @@ export function toMarkdown(results: readonly BenchResult[]): string {
     );
     lines.push("|---|---:|---:|---:|---:|---:|---:|---:|---:|");
 
-    const order: Framework[] = ["rezi-native", "ink-compat", "ink", "terminal-kit", "blessed", "ratatui"];
+    const order: Framework[] = [
+      "rezi-native",
+      "ink-compat",
+      "ink",
+      "terminal-kit",
+      "blessed",
+      "ratatui",
+    ];
     const sorted = [...items].sort(
       (a, b) => order.indexOf(a.framework) - order.indexOf(b.framework),
     );
@@ -139,7 +146,9 @@ export function toMarkdown(results: readonly BenchResult[]): string {
 
   // Summary: relative performance (ratio = other / rezi; >1 means rezi is faster)
   lines.push("## Relative Performance (vs Rezi native)\n");
-  lines.push("> \"Xx slower\" = Rezi native is X times faster. \"Xx faster\" = other framework is faster.\n");
+  lines.push(
+    '> "Xx slower" = Rezi native is X times faster. "Xx faster" = other framework is faster.\n',
+  );
 
   // Determine which frameworks have results
   const allFws: Framework[] = ["ink", "ink-compat", "terminal-kit", "blessed", "ratatui"];

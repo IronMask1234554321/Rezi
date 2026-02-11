@@ -57,8 +57,7 @@ export function createBlessedContext(cols: number, rows: number): BlessedContext
       _encoding: BufferEncoding,
       callback: (error?: Error | null) => void,
     ) {
-      totalBytes +=
-        typeof chunk === "string" ? Buffer.byteLength(chunk) : chunk.byteLength;
+      totalBytes += typeof chunk === "string" ? Buffer.byteLength(chunk) : chunk.byteLength;
       callback();
     },
     highWaterMark: 1024 * 1024,
@@ -69,10 +68,12 @@ export function createBlessedContext(cols: number, rows: number): BlessedContext
   Object.defineProperty(measureStream, "rows", { value: rows, writable: true });
   Object.defineProperty(measureStream, "isTTY", { value: true });
 
-  const nullInput = new Readable({ read() {} });
+  const nullInput = new Readable({ read() {} }) as Readable & {
+    setRawMode?: (mode: boolean) => unknown;
+  };
   Object.defineProperty(nullInput, "isTTY", { value: false });
   // blessed calls setRawMode on stdin
-  (nullInput as unknown as Record<string, unknown>)["setRawMode"] = () => nullInput;
+  nullInput.setRawMode = () => nullInput;
 
   const screen = blessed.screen({
     output: measureStream,
@@ -91,7 +92,7 @@ export function createBlessedContext(cols: number, rows: number): BlessedContext
     screen,
     blessed,
     flush() {
-      if (screen.program && screen.program.flush) {
+      if (screen.program?.flush) {
         screen.program.flush();
       }
     },

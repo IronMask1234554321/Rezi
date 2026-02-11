@@ -20,11 +20,7 @@ import type { BenchMetrics, Framework, Scenario, ScenarioConfig } from "../types
 function reziCounterTree(count: number): VNode {
   return ui.column({ p: 1, gap: 1 }, [
     ui.text("Counter Benchmark", { style: { bold: true } }),
-    ui.row({ gap: 2 }, [
-      ui.text(`Count: ${count}`),
-      ui.text("[+1]"),
-      ui.text("[-1]"),
-    ]),
+    ui.row({ gap: 2 }, [ui.text(`Count: ${count}`), ui.text("[+1]"), ui.text("[-1]")]),
     ui.text(`Last updated: iteration ${count}`, { style: { dim: true } }),
   ]);
 }
@@ -207,15 +203,9 @@ function blessedCounterTree(
       tags: false,
     }),
   );
-  screen.append(
-    blessed.text({ top: 3, left: 1, content: `Count: ${count}`, tags: false }),
-  );
-  screen.append(
-    blessed.text({ top: 3, left: 12, content: "[+1]", tags: false }),
-  );
-  screen.append(
-    blessed.text({ top: 3, left: 18, content: "[-1]", tags: false }),
-  );
+  screen.append(blessed.text({ top: 3, left: 1, content: `Count: ${count}`, tags: false }));
+  screen.append(blessed.text({ top: 3, left: 12, content: "[+1]", tags: false }));
+  screen.append(blessed.text({ top: 3, left: 18, content: "[-1]", tags: false }));
   screen.append(
     blessed.text({
       top: 5,

@@ -3,7 +3,7 @@
  * Usage: REZI_PERF=1 REZI_PERF_DETAIL=1 npx tsx src/profile-construction.ts
  */
 
-import { createApp, perfSnapshot, perfReset } from "@rezi-ui/core";
+import { createApp, perfReset, perfSnapshot } from "@rezi-ui/core";
 import { BenchBackend } from "./backends.js";
 import { buildReziTree } from "./scenarios/treeBuilders.js";
 
@@ -53,9 +53,9 @@ async function main() {
     if (!stats || stats.count === 0) continue;
     console.log(
       `  ${phase.padEnd(22)} avg=${(stats.avg * 1000).toFixed(0).padStart(6)}µs  ` +
-      `p95=${(stats.p95 * 1000).toFixed(0).padStart(6)}µs  ` +
-      `p99=${(stats.p99 * 1000).toFixed(0).padStart(6)}µs  ` +
-      `count=${String(stats.count).padStart(5)}`
+        `p95=${(stats.p95 * 1000).toFixed(0).padStart(6)}µs  ` +
+        `p99=${(stats.p99 * 1000).toFixed(0).padStart(6)}µs  ` +
+        `count=${String(stats.count).padStart(5)}`,
     );
   }
 

@@ -90,12 +90,8 @@ export function buildBlessedTree(
     }),
   );
   // Summary row
-  screen.append(
-    blessed.text({ top: 1, left: 1, content: `Total: ${n}`, tags: false }),
-  );
-  screen.append(
-    blessed.text({ top: 1, left: 60, content: "Page 1", tags: false }),
-  );
+  screen.append(blessed.text({ top: 1, left: 1, content: `Total: ${n}`, tags: false }));
+  screen.append(blessed.text({ top: 1, left: 60, content: "Page 1", tags: false }));
   // Item rows
   for (let i = 0; i < n; i++) {
     const y = 3 + i;
@@ -108,9 +104,7 @@ export function buildBlessedTree(
         tags: false,
       }),
     );
-    screen.append(
-      blessed.text({ top: y, left: 7, content: `Item ${i}`, tags: false }),
-    );
+    screen.append(blessed.text({ top: y, left: 7, content: `Item ${i}`, tags: false }));
     screen.append(
       blessed.text({
         top: y,
