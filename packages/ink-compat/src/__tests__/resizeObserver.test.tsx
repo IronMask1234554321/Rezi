@@ -1,6 +1,6 @@
 import { assert, describe, test } from "@rezi-ui/testkit";
 import React from "react";
-import { Box, ResizeObserver, Text, render, type DOMElement } from "../index.js";
+import { Box, type DOMElement, ResizeObserver, Text, render } from "../index.js";
 import {
   StubBackend,
   encodeZrevBatchV1,

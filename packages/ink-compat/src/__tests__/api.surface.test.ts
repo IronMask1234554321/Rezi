@@ -1,10 +1,10 @@
 import { assert, describe, test } from "@rezi-ui/testkit";
 import {
+  type RenderOptions,
   ResizeObserver,
   getBoundingBox,
   getScrollHeight,
   render,
-  type RenderOptions,
 } from "../index.js";
 
 describe("api surface", () => {

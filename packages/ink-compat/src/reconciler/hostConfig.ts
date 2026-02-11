@@ -3,13 +3,13 @@ import { DefaultEventPriority } from "react-reconciler/constants.js";
 import { InkCompatError } from "../errors.js";
 import { convertRoot } from "./convert.js";
 import {
-  allocateNodeId,
   type HostContext,
   type HostElement,
   type HostNode,
   type HostRoot,
   type HostText,
   type HostType,
+  allocateNodeId,
   appendChildNode,
   insertBeforeNode,
   removeChildNode,

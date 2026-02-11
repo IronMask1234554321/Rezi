@@ -69,10 +69,12 @@ describe("render parity", () => {
   test("useStdin exposes meaningful raw-mode support and ref-counted toggles", async () => {
     const backend = new StubBackend();
     const calls: string[] = [];
-    let stdinHook: {
-      setRawMode: (enabled: boolean) => void;
-      isRawModeSupported: boolean;
-    } | undefined;
+    let stdinHook:
+      | {
+          setRawMode: (enabled: boolean) => void;
+          isRawModeSupported: boolean;
+        }
+      | undefined;
 
     const stdin = {
       isTTY: true,
@@ -116,7 +118,13 @@ describe("render parity", () => {
     hook.setRawMode(false);
     hook.setRawMode(false);
 
-    assert.deepEqual(calls, ["setEncoding:utf8", "ref", "setRawMode:true", "setRawMode:false", "unref"]);
+    assert.deepEqual(calls, [
+      "setEncoding:utf8",
+      "ref",
+      "setRawMode:true",
+      "setRawMode:false",
+      "unref",
+    ]);
 
     inst.unmount();
     await inst.waitUntilExit();
@@ -124,10 +132,12 @@ describe("render parity", () => {
 
   test("useStdin throws on unsupported raw mode", async () => {
     const backend = new StubBackend();
-    let stdinHook: {
-      setRawMode: (enabled: boolean) => void;
-      isRawModeSupported: boolean;
-    } | undefined;
+    let stdinHook:
+      | {
+          setRawMode: (enabled: boolean) => void;
+          isRawModeSupported: boolean;
+        }
+      | undefined;
 
     const stdin = {
       isTTY: false,

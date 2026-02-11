@@ -72,7 +72,7 @@ export function appendChildNode(
 ): void {
   parent.children.push(child);
   if (parent.kind === "element") child.parentNode = parent;
-  else delete child.parentNode;
+  else Reflect.deleteProperty(child, "parentNode");
 }
 
 export function insertBeforeNode(
@@ -84,12 +84,12 @@ export function insertBeforeNode(
   if (idx < 0) {
     parent.children.push(child);
     if (parent.kind === "element") child.parentNode = parent;
-    else delete child.parentNode;
+    else Reflect.deleteProperty(child, "parentNode");
     return;
   }
   parent.children.splice(idx, 0, child);
   if (parent.kind === "element") child.parentNode = parent;
-  else delete child.parentNode;
+  else Reflect.deleteProperty(child, "parentNode");
 }
 
 export function removeChildNode(
@@ -99,5 +99,5 @@ export function removeChildNode(
   const idx = parent.children.indexOf(child);
   if (idx < 0) return;
   parent.children.splice(idx, 1);
-  delete child.parentNode;
+  Reflect.deleteProperty(child, "parentNode");
 }

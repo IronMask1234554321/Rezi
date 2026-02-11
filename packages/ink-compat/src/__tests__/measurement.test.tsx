@@ -2,12 +2,12 @@ import { assert, describe, test } from "@rezi-ui/testkit";
 import React from "react";
 import {
   Box,
+  type DOMElement,
   Text,
   getBoundingBox,
   getScrollHeight,
   measureElement,
   render,
-  type DOMElement,
 } from "../index.js";
 import {
   StubBackend,

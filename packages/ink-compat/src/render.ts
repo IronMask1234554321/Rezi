@@ -19,9 +19,7 @@ type AppState = Readonly<{ vnode: VNode; consoleLines: readonly string[] }>;
 const ANSI_ALTERNATE_BUFFER_ENTER = "\u001B[?1049h";
 const ANSI_ALTERNATE_BUFFER_EXIT = "\u001B[?1049l";
 
-function hasRawMode(
-  stdin: NodeJS.ReadStream,
-): stdin is NodeJS.ReadStream & {
+function hasRawMode(stdin: NodeJS.ReadStream): stdin is NodeJS.ReadStream & {
   isTTY: true;
   setRawMode: (value: boolean) => void;
   ref: () => void;
@@ -56,7 +54,9 @@ export function render(
   const exitOnCtrlC = opts.exitOnCtrlC !== false;
   const maxFps = opts.maxFps ?? 60;
   const isScreenReaderEnabled =
-    opts.isScreenReaderEnabled ?? process.env["INK_SCREEN_READER"] === "true";
+    opts.isScreenReaderEnabled ??
+    // biome-ignore lint/complexity/useLiteralKeys: process.env is typed with an index signature under our TS config.
+    process.env["INK_SCREEN_READER"] === "true";
 
   let alternateBufferActive = opts.alternateBufferAlreadyActive === true;
   const canUseAlternateBuffer =

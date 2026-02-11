@@ -27,7 +27,9 @@ function readLayout(node: DOMElement): HostLayoutRect {
   return layout ?? ZERO_LAYOUT;
 }
 
-export function measureElementFromLayout(node: DOMElement): Readonly<{ width: number; height: number }> {
+export function measureElementFromLayout(
+  node: DOMElement,
+): Readonly<{ width: number; height: number }> {
   const layout = readLayout(node);
   return { width: layout.width, height: layout.height };
 }
@@ -148,10 +150,7 @@ function updateNodeLayout(
   return layout;
 }
 
-export function applyLayoutSnapshot(
-  root: HostRoot,
-  idRects: ReadonlyMap<string, CoreRect>,
-): void {
+export function applyLayoutSnapshot(root: HostRoot, idRects: ReadonlyMap<string, CoreRect>): void {
   const observerBatches = new Map<ResizeObserverLike, ResizeObserverEntry[]>();
 
   for (const child of root.children) {

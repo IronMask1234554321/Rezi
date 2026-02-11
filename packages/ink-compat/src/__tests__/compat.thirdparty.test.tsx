@@ -1,5 +1,6 @@
 import { assert, describe, test } from "@rezi-ui/testkit";
-import React, { useEffect, useState } from "react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { Text, Transform, render } from "../index.js";
 import {
   StubBackend,
@@ -28,7 +29,7 @@ describe("third-party compatibility smoke", () => {
           setFrame((prev) => (prev + 1) % frames.length);
         }, 10);
         return () => clearInterval(timer);
-      }, []);
+      }, [frames.length]);
 
       return <Text>{frames[frame]}</Text>;
     }
