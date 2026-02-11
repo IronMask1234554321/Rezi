@@ -65,6 +65,8 @@ export type RenderToDrawlistParams = Readonly<{
   viewport: Readonly<{ cols: number; rows: number }>;
   focusState: FocusState;
   builder: DrawlistBuilderV1;
+  /** Optional animation tick/frame index (used by spinners, etc.). */
+  tick?: number | undefined;
   /** Optional app theme for themed widgets (e.g., divider). */
   theme?: Theme | undefined;
   /** Optional v2 cursor info for native cursor support */

@@ -244,6 +244,7 @@ export class WidgetRenderer<S> {
   /* --- Committed Tree State --- */
   private committedRoot: RuntimeInstance | null = null;
   private layoutTree: LayoutTree | null = null;
+  private renderTick = 0;
 
   /* --- Focus/Interaction State --- */
   private focusState: FocusManagerState = createFocusManagerState();
@@ -2272,12 +2273,15 @@ export class WidgetRenderer<S> {
       }
 
       const renderToken = perfMarkStart("render");
+      const tick = this.renderTick;
+      this.renderTick = (this.renderTick + 1) >>> 0;
       renderToDrawlist({
         tree: this.committedRoot,
         layout: this.layoutTree,
         viewport,
         focusState: this.focusState,
         builder: this.builder,
+        tick,
         theme,
         cursorInfo,
         virtualListStore: this.virtualListStore,

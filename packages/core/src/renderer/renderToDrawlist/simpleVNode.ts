@@ -209,6 +209,7 @@ export function renderVNodeSimple(
   w: number,
   h: number,
   focused: boolean,
+  tick: number,
   theme: Theme,
   inheritedStyle: ResolvedTextStyle,
 ): void {
@@ -278,7 +279,7 @@ export function renderVNodeSimple(
       const ownStyle = asTextStyle(props.style);
       const style = mergeTextStyle(inheritedStyle, ownStyle);
       const frameStyle = mergeTextStyle(style, { fg: theme.colors.primary, bold: true });
-      const frame = getSpinnerFrame(variant, 0);
+      const frame = getSpinnerFrame(variant, tick);
 
       builder.pushClip(x, y, w, h);
       drawSegments(
@@ -627,7 +628,7 @@ export function renderVNodeSimple(
               ? remaining
               : Math.max(0, Math.min(available, estimateChildWidth(child)));
 
-          renderVNodeSimple(builder, child, cursorX, iy, childW, ih, focused, theme, style);
+          renderVNodeSimple(builder, child, cursorX, iy, childW, ih, focused, tick, theme, style);
           cursorX += childW;
           if (i < count - 1) cursorX += gap;
         }
@@ -642,7 +643,7 @@ export function renderVNodeSimple(
           if (cursorY >= limitY) break;
           const remaining = limitY - cursorY;
           const childH = Math.min(remaining, 1);
-          renderVNodeSimple(builder, child, ix, cursorY, iw, childH, focused, theme, style);
+          renderVNodeSimple(builder, child, ix, cursorY, iw, childH, focused, tick, theme, style);
           cursorY += childH;
           if (i < count - 1) cursorY += gap;
         }
@@ -773,7 +774,7 @@ export function renderVNodeSimple(
       for (const child of vnode.children) {
         if (cursorY >= cy + ch) break;
         const childH = 1; // Default height for child items
-        renderVNodeSimple(builder, child, cx, cursorY, cw, childH, focused, theme, style);
+        renderVNodeSimple(builder, child, cx, cursorY, cw, childH, focused, tick, theme, style);
         cursorY += childH;
       }
       builder.popClip();

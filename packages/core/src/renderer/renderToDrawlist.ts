@@ -41,6 +41,10 @@ function isV2Builder(builder: DrawlistBuilderV1): builder is DrawlistBuilderV2 {
  */
 export function renderToDrawlist(params: RenderToDrawlistParams): void {
   const theme = params.theme ?? defaultTheme;
+  const tick =
+    typeof params.tick === "number" && Number.isFinite(params.tick) && params.tick >= 0
+      ? Math.trunc(params.tick)
+      : 0;
   // Clear the framebuffer each frame to a deterministic base style so terminals
   // with non-black defaults don't leak through when the UI doesn't explicitly
   // paint every cell.
@@ -57,6 +61,7 @@ export function renderToDrawlist(params: RenderToDrawlistParams): void {
     idRectIndex,
     params.viewport,
     theme,
+    tick,
     DEFAULT_BASE_STYLE,
     params.tree,
     params.cursorInfo,

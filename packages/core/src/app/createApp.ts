@@ -529,6 +529,10 @@ export function createApp<S>(
             markDirty(DIRTY_LAYOUT);
           }
         }
+        if (ev.kind === "tick") {
+          // Tick events drive render-only animation frames (e.g., Spinner).
+          markDirty(DIRTY_RENDER);
+        }
 
         const isWidgetRoutableEvent =
           ev.kind === "key" || ev.kind === "text" || ev.kind === "paste" || ev.kind === "mouse";
