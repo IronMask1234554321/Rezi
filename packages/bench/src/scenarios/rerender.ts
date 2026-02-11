@@ -11,7 +11,8 @@
  */
 
 import { type VNode, ui } from "@rezi-ui/core";
-import { BenchBackend, MeasuringStream, NullReadable } from "../backends.js";
+import { NullReadable } from "../backends.js";
+import { createBenchBackend, createInkStdout } from "../io.js";
 import { benchAsync, benchSync, tryGc } from "../measure.js";
 import type { BenchMetrics, Framework, Scenario, ScenarioConfig } from "../types.js";
 
@@ -50,7 +51,7 @@ function reactCounterTree(
 
 async function runRezi(config: ScenarioConfig): Promise<BenchMetrics> {
   const { createApp } = await import("@rezi-ui/core");
-  const backend = new BenchBackend();
+  const backend = await createBenchBackend();
 
   type State = { count: number };
   const app = createApp<State>({
@@ -96,7 +97,7 @@ async function runRezi(config: ScenarioConfig): Promise<BenchMetrics> {
 async function runInkCompat(config: ScenarioConfig): Promise<BenchMetrics> {
   const React = await import("react");
   const InkCompat = await import("@rezi-ui/ink-compat");
-  const backend = new BenchBackend();
+  const backend = await createBenchBackend();
 
   const initialFrame = backend.waitForFrame();
   const instance = InkCompat.render(
@@ -139,7 +140,7 @@ async function runInkCompat(config: ScenarioConfig): Promise<BenchMetrics> {
 async function runInk(config: ScenarioConfig): Promise<BenchMetrics> {
   const React = await import("react");
   const Ink = await import("ink");
-  const stdout = new MeasuringStream();
+  const stdout = createInkStdout();
   const stdin = new NullReadable();
 
   const initialWrite = stdout.waitForWrite();

@@ -12,12 +12,14 @@
  */
 
 import { type VNode, ui } from "@rezi-ui/core";
-import { BenchBackend, MeasuringStream, NullReadable } from "../backends.js";
+import { NullReadable } from "../backends.js";
+import { createBenchBackend, createInkStdout } from "../io.js";
 import { computeStats, diffCpu, peakMemory, takeCpu, takeMemory, tryGc } from "../measure.js";
 import type {
   BenchMetrics,
   Framework,
   MemorySnapshot,
+  NodeMemorySnapshot,
   Scenario,
   ScenarioConfig,
 } from "../types.js";
@@ -70,20 +72,23 @@ function reactTree(
 // ── Core measurement loop ───────────────────────────────────────────
 
 interface MemoryProfile {
-  samples: MemorySnapshot[];
+  samples: NodeMemorySnapshot[];
   growthRateKbPerIter: number;
+  heapUsedGrowthRateKbPerIter: number;
   stable: boolean;
 }
 
-function analyzeMemory(samples: MemorySnapshot[]): MemoryProfile {
+function analyzeMemory(samples: NodeMemorySnapshot[]): MemoryProfile {
   if (samples.length < 3) {
-    return { samples, growthRateKbPerIter: 0, stable: true };
+    return { samples, growthRateKbPerIter: 0, heapUsedGrowthRateKbPerIter: 0, stable: true };
   }
-  // Linear regression on RSS to detect growth (slope in KB / iteration).
+  // Linear regression on RSS/heapUsed to detect growth (slope in KB / iteration).
   const n = samples.length;
   let sumX = 0;
   let sumY = 0;
+  let sumYHeap = 0;
   let sumXY = 0;
+  let sumXYHeap = 0;
   let sumXX = 0;
   for (let i = 0; i < n; i++) {
     const x = (i + 1) * SAMPLE_INTERVAL;
@@ -92,18 +97,23 @@ function analyzeMemory(samples: MemorySnapshot[]): MemoryProfile {
       continue;
     }
     const y = sample.rssKb;
+    const yHeap = sample.heapUsedKb;
     sumX += x;
     sumY += y;
+    sumYHeap += yHeap;
     sumXY += x * y;
+    sumXYHeap += x * yHeap;
     sumXX += x * x;
   }
   const denom = n * sumXX - sumX * sumX;
-  const slope = denom === 0 ? 0 : (n * sumXY - sumX * sumY) / denom;
+  const slopeRss = denom === 0 ? 0 : (n * sumXY - sumX * sumY) / denom;
+  const slopeHeap = denom === 0 ? 0 : (n * sumXYHeap - sumX * sumYHeap) / denom;
   // Stable if RSS grows < 1KB per sample interval
   return {
     samples,
-    growthRateKbPerIter: slope,
-    stable: Math.abs(slope) < 1 / SAMPLE_INTERVAL,
+    growthRateKbPerIter: slopeRss,
+    heapUsedGrowthRateKbPerIter: slopeHeap,
+    stable: Math.abs(slopeRss) < 1 / SAMPLE_INTERVAL,
   };
 }
 
@@ -111,7 +121,7 @@ function analyzeMemory(samples: MemorySnapshot[]): MemoryProfile {
 
 async function runRezi(config: ScenarioConfig): Promise<BenchMetrics> {
   const { createApp } = await import("@rezi-ui/core");
-  const backend = new BenchBackend();
+  const backend = await createBenchBackend();
 
   type State = { iteration: number };
   const app = createApp<State>({
@@ -125,7 +135,7 @@ async function runRezi(config: ScenarioConfig): Promise<BenchMetrics> {
   await app.start();
   await initialFrame;
 
-  const memorySamples: MemorySnapshot[] = [];
+  const memorySamples: NodeMemorySnapshot[] = [];
   const timingSamples: number[] = [];
 
   try {
@@ -142,7 +152,7 @@ async function runRezi(config: ScenarioConfig): Promise<BenchMetrics> {
     tryGc();
     const memBefore = takeMemory();
     const cpuBefore = takeCpu();
-    let memMax = memBefore;
+    let memMax: MemorySnapshot = memBefore;
     const t0 = performance.now();
 
     for (let i = 0; i < config.iterations; i++) {
@@ -164,13 +174,18 @@ async function runRezi(config: ScenarioConfig): Promise<BenchMetrics> {
     const memAfter = takeMemory();
     memMax = peakMemory(memMax, memAfter);
 
-    void analyzeMemory(memorySamples);
+    const prof = analyzeMemory(memorySamples);
 
     return {
       timing: computeStats(timingSamples),
       memBefore,
       memAfter,
       memPeak: memMax,
+      rssGrowthKb: memAfter.rssKb - memBefore.rssKb,
+      heapUsedGrowthKb: memAfter.heapUsedKb - memBefore.heapUsedKb,
+      rssSlopeKbPerIter: prof.growthRateKbPerIter,
+      heapUsedSlopeKbPerIter: prof.heapUsedGrowthRateKbPerIter,
+      memStable: prof.stable,
       cpu: diffCpu(cpuBefore, cpuAfter),
       iterations: config.iterations,
       totalWallMs,
@@ -187,7 +202,7 @@ async function runRezi(config: ScenarioConfig): Promise<BenchMetrics> {
 async function runInkCompat(config: ScenarioConfig): Promise<BenchMetrics> {
   const React = await import("react");
   const InkCompat = await import("@rezi-ui/ink-compat");
-  const backend = new BenchBackend();
+  const backend = await createBenchBackend();
 
   const initialFrame = backend.waitForFrame();
   const instance = InkCompat.render(
@@ -196,7 +211,7 @@ async function runInkCompat(config: ScenarioConfig): Promise<BenchMetrics> {
   );
   await initialFrame;
 
-  const memorySamples: MemorySnapshot[] = [];
+  const memorySamples: NodeMemorySnapshot[] = [];
   const timingSamples: number[] = [];
 
   // Warmup — offset by 1 to differ from initial render (i=0)
@@ -213,7 +228,7 @@ async function runInkCompat(config: ScenarioConfig): Promise<BenchMetrics> {
     tryGc();
     const memBefore = takeMemory();
     const cpuBefore = takeCpu();
-    let memMax = memBefore;
+    let memMax: MemorySnapshot = memBefore;
     const t0 = performance.now();
 
     for (let i = 0; i < config.iterations; i++) {
@@ -234,13 +249,18 @@ async function runInkCompat(config: ScenarioConfig): Promise<BenchMetrics> {
     const cpuAfter = takeCpu();
     const memAfter = takeMemory();
     memMax = peakMemory(memMax, memAfter);
-    void analyzeMemory(memorySamples);
+    const prof = analyzeMemory(memorySamples);
 
     return {
       timing: computeStats(timingSamples),
       memBefore,
       memAfter,
       memPeak: memMax,
+      rssGrowthKb: memAfter.rssKb - memBefore.rssKb,
+      heapUsedGrowthKb: memAfter.heapUsedKb - memBefore.heapUsedKb,
+      rssSlopeKbPerIter: prof.growthRateKbPerIter,
+      heapUsedSlopeKbPerIter: prof.heapUsedGrowthRateKbPerIter,
+      memStable: prof.stable,
       cpu: diffCpu(cpuBefore, cpuAfter),
       iterations: config.iterations,
       totalWallMs,
@@ -256,7 +276,7 @@ async function runInkCompat(config: ScenarioConfig): Promise<BenchMetrics> {
 async function runInk(config: ScenarioConfig): Promise<BenchMetrics> {
   const React = await import("react");
   const Ink = await import("ink");
-  const stdout = new MeasuringStream();
+  const stdout = createInkStdout();
   const stdin = new NullReadable();
 
   const initialWrite = stdout.waitForWrite();
@@ -268,7 +288,7 @@ async function runInk(config: ScenarioConfig): Promise<BenchMetrics> {
   });
   await initialWrite;
 
-  const memorySamples: MemorySnapshot[] = [];
+  const memorySamples: NodeMemorySnapshot[] = [];
   const timingSamples: number[] = [];
 
   // Warmup — offset by 1 to differ from initial render (Ink deduplicates identical output)
@@ -285,7 +305,7 @@ async function runInk(config: ScenarioConfig): Promise<BenchMetrics> {
     tryGc();
     const memBefore = takeMemory();
     const cpuBefore = takeCpu();
-    let memMax = memBefore;
+    let memMax: MemorySnapshot = memBefore;
     const t0 = performance.now();
 
     for (let i = 0; i < config.iterations; i++) {
@@ -306,13 +326,18 @@ async function runInk(config: ScenarioConfig): Promise<BenchMetrics> {
     const cpuAfter = takeCpu();
     const memAfter = takeMemory();
     memMax = peakMemory(memMax, memAfter);
-    void analyzeMemory(memorySamples);
+    const prof = analyzeMemory(memorySamples);
 
     return {
       timing: computeStats(timingSamples),
       memBefore,
       memAfter,
       memPeak: memMax,
+      rssGrowthKb: memAfter.rssKb - memBefore.rssKb,
+      heapUsedGrowthKb: memAfter.heapUsedKb - memBefore.heapUsedKb,
+      rssSlopeKbPerIter: prof.growthRateKbPerIter,
+      heapUsedSlopeKbPerIter: prof.heapUsedGrowthRateKbPerIter,
+      memStable: prof.stable,
       cpu: diffCpu(cpuBefore, cpuAfter),
       iterations: config.iterations,
       totalWallMs,

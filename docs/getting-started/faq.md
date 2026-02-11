@@ -250,7 +250,13 @@ Yes. Install `@rezi-ui/ink-compat` and change your imports from `"ink"` to `"@re
 
 ### How fast is Rezi compared to Ink?
 
-Rezi native is **1,800x–40,000x faster** than Ink depending on the scenario. Even using the Ink compatibility layer (`@rezi-ui/ink-compat`), you get **7–200x** speedup with zero code changes. See the [benchmark results](../benchmarks.md).
+It depends on the scenario and I/O mode. Rezi includes a benchmark suite that compares:
+
+- Rezi (native)
+- Ink-on-Rezi (`@rezi-ui/ink-compat`)
+- Ink
+
+See the benchmark write-up for methodology, limitations, and the latest committed results: [benchmarks](../benchmarks.md).
 
 ### What is Zireael?
 

@@ -55,7 +55,7 @@ await app.start();
 : Drop-in Ink compatibility layer (`@rezi-ui/ink-compat`) to run existing Ink apps on Rezi's engine. [Migration guide →](migration/ink.md)
 
 **Performance**
-: 1,800x–40,000x faster than Ink. [Benchmark results →](benchmarks.md)
+: See [benchmarks →](benchmarks.md) for methodology, limitations, and the latest committed results.
 
 ## Architecture
 

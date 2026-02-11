@@ -5,72 +5,91 @@
 [![docs](https://github.com/RtlZeroMemory/Rezi/actions/workflows/docs.yml/badge.svg)](https://rtlzeromemory.github.io/Rezi/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-> **Alpha** — Rezi is under active development. APIs may change between releases. Bug reports and contributions welcome.
+> **Alpha** — under active development; APIs may change between releases.
 
-A terminal UI framework for Node.js built on the [Zireael](https://github.com/RtlZeroMemory/Zireael) C rendering engine.
+Rezi is a TypeScript/Node.js terminal UI framework with near-native rendering performance. Write your UI in TypeScript — with React, JSX, or a direct widget API — while a native C engine (Zireael) handles framebuffer diffing and terminal output.
+
+Across benchmarked scenarios, Rezi's render pipeline is within 3–5x of ratatui (Rust) and 10–50x faster than Ink. See [BENCHMARKS.md](BENCHMARKS.md) for methodology, caveats, and full results.
 
 ![Rezi overview](Assets/REZI_MAIN.png)
 
 ![Rezi core demo](Assets/REZICORE.gif)
 
-## Three ways in
+## Why Rezi exists
 
-### Ink compatibility — change one import
+Terminal UIs typically pay for each update by rebuilding a full ANSI frame in userland, then writing it to stdout. That approach is simple and broadly compatible, but it tends to scale poorly for repeated small state changes or large trees.
+
+Rezi separates the concerns:
+
+- App code builds a declarative widget tree.
+- Rezi computes layout and emits a compact binary drawlist.
+- A native engine consumes the drawlist and handles terminal-diff/present logic.
+
+The result is per-frame rendering costs closer to compiled TUI frameworks than to JavaScript-side ANSI generation.
+
+## How it works (high level)
+
+1. `createApp()` runs your view function to produce VNodes.
+2. Rezi commits the tree, runs layout, and builds a ZRDL drawlist.
+3. `@rezi-ui/node` transports drawlists/events to `@rezi-ui/native`.
+4. The Zireael engine diffs/presents output to the terminal.
+
+## Three ways to use it
+
+### 1) Ink compatibility (React)
+
+For existing Ink apps, the entry point is `@rezi-ui/ink-compat`:
 
 ```diff
 - import { render, Box, Text, useInput, useApp } from "ink";
 + import { render, Box, Text, useInput, useApp } from "@rezi-ui/ink-compat";
 ```
 
-Existing Ink code runs on Rezi's engine with no other changes. All components (`Box`, `Text`, `Spacer`, `Newline`, `Transform`, `Static`) and hooks (`useInput`, `useApp`, `useFocus`, `useFocusManager`, `useStdin`, `useStdout`, `useStderr`) are supported. [Migration guide](https://rtlzeromemory.github.io/Rezi/migration/ink/)
-
 ```bash
 npm install @rezi-ui/ink-compat @rezi-ui/core @rezi-ui/node react
 ```
 
-### JSX — no React required
+### 2) JSX runtime (no React)
 
-`@rezi-ui/jsx` provides a standalone JSX runtime. Same syntax React developers know, but compiles directly to Rezi VNodes with no reconciler overhead.
+`@rezi-ui/jsx` is a standalone JSX runtime that produces Rezi VNodes directly.
 
 ```tsx
 /** @jsxImportSource @rezi-ui/jsx */
-import { createApp, rgb } from "@rezi-ui/core";
+import { createApp } from "@rezi-ui/core";
 import { createNodeBackend } from "@rezi-ui/node";
-import { Column, Text, Row, Button, Divider } from "@rezi-ui/jsx";
+import { Column, Row, Text, Button, Divider } from "@rezi-ui/jsx";
 
-type State = { count: number };
-
-const app = createApp<State>({
+const app = createApp<{ count: number }>({
   backend: createNodeBackend(),
   initialState: { count: 0 },
 });
 
-app.view((state) =>
+app.view((s) => (
   <Column p={1} gap={1}>
-    <Text style={{ fg: rgb(120, 200, 255), bold: true }}>Counter</Text>
+    <Text style={{ bold: true }}>Counter</Text>
     <Row gap={2}>
-      <Text>Count: {state.count}</Text>
-      <Button id="inc" label="+1" onPress={() => app.update((s) => ({ count: s.count + 1 }))} />
+      <Text>Count: {s.count}</Text>
+      <Button id="inc" label="+1" onPress={() => app.update((st) => ({ count: st.count + 1 }))} />
     </Row>
     <Divider />
     <Text style={{ dim: true }}>Press q to quit</Text>
   </Column>
-);
+));
 
 app.keys({ q: () => app.stop() });
 await app.start();
 ```
 
-50+ JSX elements: `Table`, `CodeEditor`, `DiffViewer`, `FilePicker`, `CommandPalette`, `Modal`, `Tree`, `VirtualList`, `BarChart`, and more.
-
 ```bash
 npm install @rezi-ui/jsx @rezi-ui/core @rezi-ui/node
 ```
 
-### Native `ui.*` API — maximum performance
+### 3) Native `ui.*` API
+
+Direct VNode authoring (no React, no JSX runtime):
 
 ```ts
-import { createApp, ui, rgb } from "@rezi-ui/core";
+import { createApp, ui } from "@rezi-ui/core";
 import { createNodeBackend } from "@rezi-ui/node";
 
 const app = createApp<{ count: number }>({
@@ -78,16 +97,17 @@ const app = createApp<{ count: number }>({
   initialState: { count: 0 },
 });
 
-app.view((state) =>
+app.view((s) =>
   ui.column({ p: 1, gap: 1 }, [
-    ui.text("Counter", { style: { fg: rgb(120, 200, 255), bold: true } }),
-    ui.button("inc", "+1", {
-      onPress: () => app.update((s) => ({ count: s.count + 1 })),
-    }),
-    ui.text(`Count: ${state.count}`),
-  ])
+    ui.text("Counter", { style: { bold: true } }),
+    ui.row({ gap: 2 }, [
+      ui.text(`Count: ${s.count}`),
+      ui.button("inc", "+1", { onPress: () => app.update((st) => ({ count: st.count + 1 })) }),
+    ]),
+  ]),
 );
 
+app.keys({ q: () => app.stop() });
 await app.start();
 ```
 
@@ -95,55 +115,70 @@ await app.start();
 npm install @rezi-ui/core @rezi-ui/node
 ```
 
-All three APIs produce the same VNodes and go through the same rendering engine. The difference is authoring style, not runtime cost (JSX and `ui.*` are equivalent; ink-compat adds React reconciler overhead).
+## Performance overview
 
-Node.js 18+ required (18.18+ recommended). Prebuilt native binaries for Linux, macOS, and Windows (x64/arm64).
+The benchmark suite compares Rezi (native), Ink-on-Rezi, and Ink under controlled workloads, plus a separate terminal suite that adds blessed (Node.js) and ratatui (Rust). Each run reports mean, standard deviation, and a 95% confidence interval for the mean. Full methodology and limitations are in [BENCHMARKS.md](BENCHMARKS.md).
 
-## Why it's fast
+![Benchmark summary](Assets/benchmarks-summary.svg)
 
-Ink rebuilds the entire ANSI output from scratch on every state change — Yoga WASM layout, string concatenation, full frame write. Rezi sends structured binary drawlists to a native C engine that diffs frames at the row level and writes only what changed.
+Selected results from `benchmarks/2026-02-11-full` (`--io stub`, isolates the render pipeline from terminal I/O):
 
-| Layer | Ink | Rezi |
-|-------|-----|------|
-| Layout | Yoga (WASM) | Zireael (native C) |
-| Frame format | ANSI string concatenation | Binary drawlist (ZRDL) — 4-byte aligned commands, interned string pool |
-| Diffing | String equality check on full output; any change rewrites all lines | Row-level FNV-1a hashing with collision guard. Only dirty rows emit escape codes |
-| Scroll | Redraws all cells | Detects vertical shifts, emits DECSTBM + SU/SD (3 sequences instead of thousands) |
-| Memory | Per-frame JS allocations, GC pressure | Arena allocator — bump pointer per frame, O(1) reset, no malloc/free churn |
-| Threading | Single-threaded, blocks event loop | Worker thread via SharedArrayBuffer. Main thread returns immediately after `update()` |
-| Framebuffer | Previous output cached as string for equality check | Double-buffered. Previous frame's row hashes become next frame's baseline (zero-copy swap) |
-
-### Benchmarks
-
-All three frameworks go through their full render pipeline end-to-end.
-
-**Tree construction (1000 items):**
-
-| Framework | Mean | ops/s | Peak RSS |
+| Scenario | Rezi (native) | Ink-on-Rezi | Ink |
 |---|---:|---:|---:|
-| **Rezi (native)** | **1.66ms** | **603** | **188 MB** |
-| Ink-on-Rezi | 12.85ms | 78 | 251 MB |
-| Ink | 61.90ms | 16 | 360 MB |
+| Tree construction (items=1000) | 1.47ms | 10.90ms | 50.45ms |
+| Rerender (single update) | 34µs | 86µs | 16.37ms |
 
-**Rerender (single state change):**
+Selected results from `benchmarks/2026-02-11-pty` (`--io pty`, measures the PTY/TTY write path; does not include terminal emulator rendering):
 
-| Framework | Mean | ops/s | Peak RSS |
+| Scenario | Rezi (native) | Ink-on-Rezi | Ink |
 |---|---:|---:|---:|
-| **Rezi (native)** | **25µs** | **38,906** | **142 MB** |
-| Ink-on-Rezi | 58µs | 16,997 | 116 MB |
-| Ink | 16.64ms | 60 | 119 MB |
+| Tree construction (items=1000) | 1.81ms | 11.27ms | 53.15ms |
+| Rerender (single update) | 353µs | 414µs | 16.52ms |
 
-37x faster for tree construction. 655x faster per rerender. Ink-on-Rezi (existing Ink code, zero changes) is 4.8–285x faster.
+A separate terminal competitor suite compares Rezi against blessed (Node.js) and ratatui (Rust) on viewport-sized PTY workloads at 120×40. In these scenarios, Rezi is within 3–5x of ratatui while remaining roughly 30–50x faster than Ink (`benchmarks/2026-02-11-terminal`):
 
-<details>
-<summary>Methodology</summary>
+| Scenario (PTY) | ratatui | blessed | Rezi (native) | Ink |
+|---|---:|---:|---:|---:|
+| `terminal-rerender` | 74µs | 126µs | 322µs | 16.39ms |
+| `terminal-table` | 178µs | 188µs | 493µs | 17.44ms |
 
-Node v20.19.5, Linux x64. Each framework uses a backend stub (BenchBackend / MeasuringStream) to isolate render cost from terminal I/O. 500 iterations (construction) / 1000 iterations (rerender) with warmup and forced GC.
+Full results, methodology, and limitations: [BENCHMARKS.md](BENCHMARKS.md)
 
-[Full results and methodology](https://rtlzeromemory.github.io/Rezi/benchmarks/)
-</details>
+## Architecture
 
-## Quick Start
+```mermaid
+flowchart TB
+  App["Application code"] --> Core["@rezi-ui/core"]
+  JSX["@rezi-ui/jsx"] -.-> Core
+  InkCompat["@rezi-ui/ink-compat"] -.-> Core
+  Core -->|"ZRDL drawlist"| Node["@rezi-ui/node"]
+  Node -->|"SharedArrayBuffer / transfer"| Native["@rezi-ui/native"]
+  Native --> Engine["Zireael (C)"]
+  Engine -->|"ANSI diff/present"| Terminal["Terminal"]
+```
+
+## Feature summary
+
+- Widget primitives: box/row/column, text, input, buttons, focus/keyboard handling
+- Higher-level widgets: tables, virtual lists, code editor, diff viewer, file picker, command palette
+- Protocols: ZRDL (drawlists) and ZREV (event batches)
+- Backends: Node worker/inline execution modes, native addon integration
+
+Node.js 18+ required (18.18+ recommended). Prebuilt native binaries are published for Linux, macOS, and Windows (x64/arm64).
+
+## Packages
+
+| Package | Description |
+|---|---|
+| [`@rezi-ui/core`](https://www.npmjs.com/package/@rezi-ui/core) | Runtime-agnostic widgets, layout, styling, input model |
+| [`@rezi-ui/node`](https://www.npmjs.com/package/@rezi-ui/node) | Node.js backend and transport (worker/inline) |
+| [`@rezi-ui/native`](https://www.npmjs.com/package/@rezi-ui/native) | N-API addon binding to the native engine |
+| [`@rezi-ui/ink-compat`](https://www.npmjs.com/package/@rezi-ui/ink-compat) | Ink API surface implemented on top of Rezi (React) |
+| [`@rezi-ui/jsx`](https://www.npmjs.com/package/@rezi-ui/jsx) | JSX runtime (no React reconciler) |
+| [`@rezi-ui/testkit`](https://www.npmjs.com/package/@rezi-ui/testkit) | Test utilities and fixtures |
+| [`create-rezi`](https://www.npmjs.com/package/create-rezi) | Scaffolding CLI |
+
+## Quick start
 
 ```bash
 npm create rezi my-app
@@ -153,53 +188,16 @@ npm start
 
 Templates: `dashboard`, `form-app`, `file-browser`, `streaming-viewer`.
 
-## Features
-
-- **50+ widgets** — code editor, diff viewer, file picker, command palette, charts, tables, trees, overlays, forms
-- **Composition API** — `defineWidget` + hooks for state and lifecycle
-- **Focus management** — built-in focus ring, keybindings, chord sequences
-- **Mouse support** — click to focus/activate, scroll wheel, drag-to-resize split panes, modal backdrop clicks
-- **6 built-in themes** with semantic color tokens and style props
-- **Binary protocols** — ZRDL (drawlists) and ZREV (event batches) for minimal IPC overhead
-
-## Architecture
-
-```mermaid
-flowchart TB
-  App["Application Code"] --> Core["@rezi-ui/core"]
-  JSX["@rezi-ui/jsx"] -.-> Core
-  InkCompat["@rezi-ui/ink-compat"] -.-> Core
-  Core -->|"ZRDL binary drawlist"| Node["@rezi-ui/node"]
-  Node -->|"SharedArrayBuffer"| Native["@rezi-ui/native"]
-  Native --> Engine["Zireael C Engine"]
-  Engine -->|"ANSI (dirty rows only)"| Terminal["Terminal"]
-```
-
-## Packages
-
-| Package | Description |
-|---|---|
-| [`@rezi-ui/core`](https://www.npmjs.com/package/@rezi-ui/core) | Runtime-agnostic widgets, layout, themes, forms, keybindings |
-| [`@rezi-ui/node`](https://www.npmjs.com/package/@rezi-ui/node) | Node.js backend and worker model |
-| [`@rezi-ui/native`](https://www.npmjs.com/package/@rezi-ui/native) | N-API addon binding to Zireael |
-| [`@rezi-ui/ink-compat`](https://www.npmjs.com/package/@rezi-ui/ink-compat) | Ink compatibility layer |
-| [`@rezi-ui/jsx`](https://www.npmjs.com/package/@rezi-ui/jsx) | JSX runtime (no React) |
-| [`@rezi-ui/testkit`](https://www.npmjs.com/package/@rezi-ui/testkit) | Test utilities and fixtures |
-| [`create-rezi`](https://www.npmjs.com/package/create-rezi) | Scaffolding CLI |
-
 ## Documentation
 
-- [Docs home](https://rtlzeromemory.github.io/Rezi/)
-- [Getting started](https://rtlzeromemory.github.io/Rezi/getting-started/quickstart/)
-- [Widgets](https://rtlzeromemory.github.io/Rezi/widgets/)
-- [Styling & themes](https://rtlzeromemory.github.io/Rezi/styling/)
-- [Examples](https://rtlzeromemory.github.io/Rezi/getting-started/examples/)
-- [API reference](https://rtlzeromemory.github.io/Rezi/api/reference/)
+- Docs home: https://rtlzeromemory.github.io/Rezi/
+- Getting started: https://rtlzeromemory.github.io/Rezi/getting-started/quickstart/
+- API reference: https://rtlzeromemory.github.io/Rezi/api/reference/
 
 ## Contributing
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for local setup and development workflows.
+See `CONTRIBUTING.md`.
 
 ## License
 
-Apache-2.0. See [`LICENSE`](LICENSE).
+Apache-2.0. See `LICENSE`.
