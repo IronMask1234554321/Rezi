@@ -84,6 +84,69 @@ type LayoutNodeFn = (
   forcedH?: number | null,
 ) => LayoutResult<LayoutTree>;
 
+function applyCollapsedPanelSizes(
+  sizes: readonly number[],
+  collapsed: readonly number[] | undefined,
+  minSizes: readonly number[] | undefined,
+): readonly number[] {
+  if (!collapsed || collapsed.length === 0) return sizes;
+  const panelCount = sizes.length;
+  if (panelCount === 0) return sizes;
+
+  const collapsedSet = new Set<number>();
+  for (const raw of collapsed) {
+    const idx = Math.trunc(Number(raw));
+    if (idx >= 0 && idx < panelCount) collapsedSet.add(idx);
+  }
+  if (collapsedSet.size === 0) return sizes;
+
+  const out = sizes.slice();
+  const totalBefore = out.reduce((a, b) => a + (b ?? 0), 0);
+
+  const collapsedSorted = Array.from(collapsedSet).sort((a, b) => a - b);
+  for (const idx of collapsedSorted) {
+    const cur = out[idx] ?? 0;
+    const minSize = Math.max(0, Math.trunc(minSizes?.[idx] ?? 0));
+    const delta = cur - minSize;
+    if (delta <= 0) {
+      // In tight layouts, initial sizes may already be below mins; forcing
+      // back to min would overflow the panel budget.
+      continue;
+    }
+
+    out[idx] = minSize;
+
+    let recipient = -1;
+    for (let j = idx - 1; j >= 0; j--) {
+      if (!collapsedSet.has(j)) {
+        recipient = j;
+        break;
+      }
+    }
+    if (recipient === -1) {
+      for (let j = idx + 1; j < panelCount; j++) {
+        if (!collapsedSet.has(j)) {
+          recipient = j;
+          break;
+        }
+      }
+    }
+    if (recipient !== -1) {
+      out[recipient] = (out[recipient] ?? 0) + delta;
+    }
+  }
+
+  // If all panels were collapsed, the loop above won't find a recipient. Preserve
+  // fill by adding any remainder back into the first panel deterministically.
+  const totalAfter = out.reduce((a, b) => a + (b ?? 0), 0);
+  const remainder = totalBefore - totalAfter;
+  if (remainder > 0) {
+    out[0] = (out[0] ?? 0) + remainder;
+  }
+
+  return Object.freeze(out);
+}
+
 export function measureSplitPaneKinds(
   vnode: VNode,
   maxW: number,
@@ -138,7 +201,7 @@ export function layoutSplitPaneKinds(
 
       const sizeMode = vnode.props.sizeMode ?? "percent";
       const available = direction === "horizontal" ? rectW : rectH;
-      const panelSizes = computePanelCellSizes(
+      const initialPanelSizes = computePanelCellSizes(
         childCount,
         sizes,
         available,
@@ -147,6 +210,10 @@ export function layoutSplitPaneKinds(
         vnode.props.minSizes,
         vnode.props.maxSizes,
       ).sizes;
+      const panelSizes =
+        vnode.props.collapsible === true
+          ? applyCollapsedPanelSizes(initialPanelSizes, vnode.props.collapsed, vnode.props.minSizes)
+          : initialPanelSizes;
 
       const childTrees: LayoutTree[] = [];
       let offset = 0;

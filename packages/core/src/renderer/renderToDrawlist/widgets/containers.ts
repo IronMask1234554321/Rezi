@@ -358,10 +358,11 @@ export function renderContainerWidget(
       const childCount = Math.min(node.children.length, layoutNode.children.length);
       if (direction === "horizontal") {
         for (let i = 0; i < childCount - 1; i++) {
-          const childRect = layoutNode.children[i]?.rect;
-          if (!childRect) continue;
+          const nextRect = layoutNode.children[i + 1]?.rect;
+          if (!nextRect) continue;
 
-          const offset = childRect.x + childRect.w - rect.x;
+          // Divider starts immediately before the next panel's x.
+          const offset = nextRect.x - rect.x - dividerSize;
           if (offset < 0 || offset >= rect.w) continue;
 
           const width = Math.min(dividerSize, rect.w - offset);
@@ -373,10 +374,11 @@ export function renderContainerWidget(
         }
       } else {
         for (let i = 0; i < childCount - 1; i++) {
-          const childRect = layoutNode.children[i]?.rect;
-          if (!childRect) continue;
+          const nextRect = layoutNode.children[i + 1]?.rect;
+          if (!nextRect) continue;
 
-          const offset = childRect.y + childRect.h - rect.y;
+          // Divider starts immediately before the next panel's y.
+          const offset = nextRect.y - rect.y - dividerSize;
           if (offset < 0 || offset >= rect.h) continue;
 
           const line = rect.w > 0 ? "─".repeat(rect.w) : "";

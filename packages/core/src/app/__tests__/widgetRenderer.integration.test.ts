@@ -22,16 +22,16 @@ function mouseEvent(
   x: number,
   y: number,
   mouseKind: 1 | 2 | 3 | 4 | 5,
-  opts: Readonly<{ wheelX?: number; wheelY?: number }> = {},
+  opts: Readonly<{ timeMs?: number; buttons?: number; wheelX?: number; wheelY?: number }> = {},
 ): ZrevEvent {
   return {
     kind: "mouse",
-    timeMs: 0,
+    timeMs: opts.timeMs ?? 0,
     x,
     y,
     mouseKind,
     mods: 0,
-    buttons: 0,
+    buttons: opts.buttons ?? 0,
     wheelX: opts.wheelX ?? 0,
     wheelY: opts.wheelY ?? 0,
   };
@@ -518,6 +518,55 @@ describe("WidgetRenderer integration battery", () => {
 
     renderer.routeEngineEvent(mouseEvent(2, 3, 4));
     assert.deepEqual(events, []);
+  });
+
+  test("splitPane double-click toggles collapse via onCollapse", () => {
+    const backend = createNoopBackend();
+    const renderer = new WidgetRenderer<void>({
+      backend,
+      requestRender: () => {},
+    });
+
+    const calls: string[] = [];
+
+    const vnode = ui.splitPane(
+      {
+        id: "sp",
+        direction: "horizontal",
+        sizes: [50, 50],
+        onResize: () => {},
+        collapsible: true,
+        collapsed: [],
+        onCollapse: (index, collapsed) => {
+          calls.push(`${String(index)}:${collapsed ? "1" : "0"}`);
+        },
+      },
+      [ui.text("A"), ui.text("B")],
+    );
+
+    const res = renderer.submitFrame(
+      () => vnode,
+      undefined,
+      { cols: 40, rows: 10 },
+      defaultTheme,
+      noRenderHooks(),
+    );
+    assert.ok(res.ok);
+
+    // divider is at x=20; hit area includes x=19 (left) and x=21 (right)
+    // Left-side double click -> panel 0
+    renderer.routeEngineEvent(mouseEvent(19, 0, 3, { timeMs: 1, buttons: 1 }));
+    renderer.routeEngineEvent(mouseEvent(19, 0, 4, { timeMs: 2, buttons: 0 }));
+    renderer.routeEngineEvent(mouseEvent(19, 0, 3, { timeMs: 100, buttons: 1 }));
+    renderer.routeEngineEvent(mouseEvent(19, 0, 4, { timeMs: 101, buttons: 0 }));
+
+    // Right-side double click -> panel 1
+    renderer.routeEngineEvent(mouseEvent(21, 0, 3, { timeMs: 200, buttons: 1 }));
+    renderer.routeEngineEvent(mouseEvent(21, 0, 4, { timeMs: 201, buttons: 0 }));
+    renderer.routeEngineEvent(mouseEvent(21, 0, 3, { timeMs: 250, buttons: 1 }));
+    renderer.routeEngineEvent(mouseEvent(21, 0, 4, { timeMs: 251, buttons: 0 }));
+
+    assert.deepEqual(calls, ["0:1", "1:1"]);
   });
 
   test("virtualList routing updates selection and activates on Enter", () => {
