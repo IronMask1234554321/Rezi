@@ -23,7 +23,6 @@ type SuspenseInstance = never;
 type HydratableInstance = never;
 type FormInstance = never;
 type PublicInstance = HostNode;
-type UpdatePayload = Props;
 type ChildSet = never;
 type TimeoutHandle = ReturnType<typeof setTimeout>;
 type NoTimeout = -1;
@@ -106,11 +105,11 @@ const hostConfig = {
   // -------------------
   //   Updates
   // -------------------
-  prepareUpdate(_instance: Instance, _type: HostType, _oldProps: Props, newProps: Props) {
-    return newProps;
+  prepareUpdate(_instance: Instance, _type: HostType, _oldProps: Props, _newProps: Props) {
+    return null;
   },
-  commitUpdate(instance: Instance, updatePayload: UpdatePayload) {
-    const props = { ...updatePayload };
+  commitUpdate(instance: Instance, _type: HostType, _oldProps: Props, newProps: Props) {
+    const props = { ...newProps };
     instance.props = props;
     instance.attributes = props;
   },

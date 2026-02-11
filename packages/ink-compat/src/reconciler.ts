@@ -35,23 +35,54 @@ type RuntimeReconciler = Readonly<{
 
 const runtimeReconciler = reconciler as unknown as RuntimeReconciler;
 const noop = () => {};
-const rethrow = (error: Error) => {
-  throw error;
-};
+type ContainerErrorState = { error: Error | null };
+const containerErrors = new WeakMap<RootContainer, ContainerErrorState>();
+
+function captureContainerError(container: RootContainer, error: unknown): void {
+  const state = containerErrors.get(container);
+  if (!state || state.error !== null) return;
+  state.error = error instanceof Error ? error : new Error(String(error));
+}
+
+export function flushAllUpdates(maxIterations = 100): void {
+  for (let i = 0; i < maxIterations; i++) {
+    const didSync = runtimeReconciler.flushSyncWork?.() === true;
+    const didPassive = reconciler.flushPassiveEffects() === true;
+    if (!didSync && !didPassive) break;
+  }
+}
+
+export function runWithSyncPriority(fn: () => void): void {
+  if (typeof runtimeReconciler.flushSyncFromReconciler === "function") {
+    runtimeReconciler.flushSyncFromReconciler(fn);
+  } else {
+    fn();
+  }
+  flushAllUpdates();
+}
 
 export function createRootContainer(root: HostRoot, identifierPrefix = "id"): RootContainer {
-  return runtimeReconciler.createContainer(
+  let container: RootContainer | null = null;
+  const handleError = (error: Error) => {
+    if (!container) return;
+    captureContainerError(container, error);
+  };
+
+  container = runtimeReconciler.createContainer(
     root,
     0,
     null,
     false,
     null,
     identifierPrefix,
-    rethrow,
-    rethrow,
-    rethrow,
+    handleError,
+    handleError,
+    handleError,
     undefined as unknown as null,
   );
+
+  containerErrors.set(container, { error: null });
+  return container;
 }
 
 export function updateRootContainer(
@@ -59,17 +90,21 @@ export function updateRootContainer(
   element: React.ReactNode | null,
   callback: (() => void) | null = noop,
 ): void {
+  const state = containerErrors.get(container);
+  if (state) state.error = null;
+
   if (typeof runtimeReconciler.updateContainerSync === "function") {
     runtimeReconciler.updateContainerSync(element, container, null, null);
   } else {
     runtimeReconciler.updateContainer(element, container, null, null);
   }
 
-  // Drain sync + passive work until stable so callers can observe committed state.
-  for (let i = 0; i < 100; i++) {
-    const didSync = runtimeReconciler.flushSyncWork?.() === true;
-    const didPassive = reconciler.flushPassiveEffects() === true;
-    if (!didSync && !didPassive) break;
+  flushAllUpdates();
+
+  if (state?.error) {
+    const error = state.error;
+    state.error = null;
+    throw error;
   }
 
   callback?.();
