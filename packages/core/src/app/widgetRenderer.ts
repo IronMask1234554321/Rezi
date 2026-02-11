@@ -220,6 +220,23 @@ function isI32NonNegative(n: number): boolean {
   return Number.isInteger(n) && n >= 0 && n <= 2147483647;
 }
 
+const LAYER_ZINDEX_SCALE = 1_000_000;
+const LAYER_ZINDEX_MAX_BASE = Math.floor(
+  (Number.MAX_SAFE_INTEGER - (LAYER_ZINDEX_SCALE - 1)) / LAYER_ZINDEX_SCALE,
+);
+
+function clampInt(v: number, min: number, max: number): number {
+  if (v < min) return min;
+  if (v > max) return max;
+  return v;
+}
+
+function encodeLayerZIndex(baseZ: number | null, overlaySeq: number): number {
+  if (baseZ === null) return overlaySeq;
+  const clampedBaseZ = clampInt(baseZ, -LAYER_ZINDEX_MAX_BASE, LAYER_ZINDEX_MAX_BASE);
+  return clampedBaseZ * LAYER_ZINDEX_SCALE + overlaySeq;
+}
+
 const EMPTY_ROUTING: RoutingResult = Object.freeze({});
 const EMPTY_STRING_ARRAY: readonly string[] = Object.freeze([]);
 const ROUTE_RENDER: WidgetRoutingOutcome = Object.freeze({ needsRender: true });
@@ -2188,7 +2205,7 @@ export class WidgetRenderer<S> {
                   typeof p.zIndex === "number" && Number.isFinite(p.zIndex)
                     ? Math.trunc(p.zIndex)
                     : null;
-                const zIndex = baseZ !== null ? baseZ * 1_000_000 + overlaySeq++ : overlaySeq++;
+                const zIndex = encodeLayerZIndex(baseZ, overlaySeq++);
                 const modal = p.modal === true;
                 const canClose = p.closeOnEscape !== false;
                 this._pooledCloseOnEscape.set(id, canClose);
@@ -2390,7 +2407,7 @@ export class WidgetRenderer<S> {
                   typeof p.zIndex === "number" && Number.isFinite(p.zIndex)
                     ? Math.trunc(p.zIndex)
                     : null;
-                const zIndex = baseZ !== null ? baseZ * 1_000_000 + overlaySeq++ : overlaySeq++;
+                const zIndex = encodeLayerZIndex(baseZ, overlaySeq++);
                 const modal = p.modal === true;
                 const canClose = p.closeOnEscape !== false;
                 this._pooledCloseOnEscape.set(id, canClose);

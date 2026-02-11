@@ -619,7 +619,10 @@ export type DropdownProps = Readonly<{
 export type LayerProps = Readonly<{
   id: string;
   key?: string;
-  /** Z-index for layer ordering (higher = on top). Default is insertion order. */
+  /**
+   * Z-index for layer ordering (higher = on top). Default is insertion order.
+   * Values are truncated to integers and clamped to `±9,007,199,253` for deterministic ordering.
+   */
   zIndex?: number;
   /** Backdrop to render behind content. */
   backdrop?: BackdropStyle;
