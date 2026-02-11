@@ -7,6 +7,7 @@
  *
  * Validation rules:
  *   - Numeric props must be int32 >= 0 (pad, gap, size)
+ *   - Spacing props accept int32 >= 0 OR spacing keys ("sm", "md", etc.)
  *   - String props must be non-empty where required (id)
  *   - Enum props must be valid values (align, border)
  *   - Boolean props default to false if undefined
@@ -23,6 +24,7 @@ import type {
   StackProps,
   TextProps,
 } from "../index.js";
+import { SPACING_SCALE, isSpacingKey } from "./spacing-scale.js";
 import type { SizeConstraint } from "./types.js";
 
 /** Fatal error type for invalid widget props. */
@@ -170,6 +172,24 @@ function requireIntNonNegative(
   return { ok: true, value: value as number };
 }
 
+function requireSpacingIntNonNegative(
+  kind: string,
+  name: string,
+  v: unknown,
+  def: number,
+): LayoutResult<number> {
+  const value = v === undefined ? def : v;
+  if (typeof value === "string") {
+    if (!isSpacingKey(value)) {
+      return invalid(
+        `${kind}.${name} must be an int32 >= 0 or a spacing key ("none" | "xs" | "sm" | "md" | "lg" | "xl" | "2xl")`,
+      );
+    }
+    return { ok: true, value: SPACING_SCALE[value] };
+  }
+  return requireIntNonNegative(kind, name, value, def);
+}
+
 function requireOptionalIntNonNegative(
   kind: string,
   name: string,
@@ -281,7 +301,7 @@ function validateSpacingProps(
   for (const k of keys) {
     const v = p[k];
     if (v === undefined) continue;
-    const r = requireIntNonNegative(kind, k, v, 0);
+    const r = requireSpacingIntNonNegative(kind, k, v, 0);
     if (!r.ok) return r;
     out[k] = r.value;
   }
@@ -358,9 +378,9 @@ export function validateStackProps(
 ): LayoutResult<ValidatedStackProps> {
   const p = (props ?? {}) as StackPropBag;
 
-  const padRes = requireIntNonNegative(kind, "pad", p.pad, 0);
+  const padRes = requireSpacingIntNonNegative(kind, "pad", p.pad, 0);
   if (!padRes.ok) return padRes;
-  const gapRes = requireIntNonNegative(kind, "gap", p.gap, 0);
+  const gapRes = requireSpacingIntNonNegative(kind, "gap", p.gap, 0);
   if (!gapRes.ok) return gapRes;
 
   const alignRaw = p.items ?? p.align;
@@ -411,7 +431,7 @@ export function validateStackProps(
 export function validateBoxProps(props: BoxProps | unknown): LayoutResult<ValidatedBoxProps> {
   const p = (props ?? {}) as BoxPropBag;
 
-  const padRes = requireIntNonNegative("box", "pad", p.pad, 0);
+  const padRes = requireSpacingIntNonNegative("box", "pad", p.pad, 0);
   if (!padRes.ok) return padRes;
 
   const borderValue = p.border === undefined ? "single" : p.border;
