@@ -10,14 +10,15 @@
  * Parameterized by tree size: 10, 100, 500, 1000, 5000 items.
  */
 
-import { BenchBackend, MeasuringStream, NullReadable } from "../backends.js";
+import { NullReadable } from "../backends.js";
+import { createBenchBackend, createInkStdout } from "../io.js";
 import { benchAsync, tryGc } from "../measure.js";
 import type { BenchMetrics, Framework, Scenario, ScenarioConfig } from "../types.js";
 import { buildReactTree, buildReziTree } from "./treeBuilders.js";
 
 async function runRezi(config: ScenarioConfig, n: number): Promise<BenchMetrics> {
   const { createApp } = await import("@rezi-ui/core");
-  const backend = new BenchBackend();
+  const backend = await createBenchBackend();
 
   type State = { seed: number };
   const app = createApp<State>({
@@ -70,7 +71,7 @@ async function runInkCompat(config: ScenarioConfig, n: number): Promise<BenchMet
     throw new Error("@rezi-ui/ink-compat or react not available");
   }
 
-  const backend = new BenchBackend();
+  const backend = await createBenchBackend();
 
   // Set up the frame waiter BEFORE render() — the initial frame may be
   // produced in microtasks before we get a chance to await.
@@ -122,7 +123,7 @@ async function runInk(config: ScenarioConfig, n: number): Promise<BenchMetrics> 
     throw new Error("ink or react not available — install: npm i ink react");
   }
 
-  const stdout = new MeasuringStream();
+  const stdout = createInkStdout();
   const stdin = new NullReadable();
 
   const tree = buildReactTree(React, Ink, n) as React.ReactNode;
@@ -183,6 +184,8 @@ export const constructionScenario: Scenario = {
         return runInkCompat(config, n);
       case "ink":
         return runInk(config, n);
+      default:
+        throw new Error(`tree-construction: unsupported framework "${framework}"`);
     }
   },
 };

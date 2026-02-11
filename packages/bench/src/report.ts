@@ -7,8 +7,18 @@
  *   - JSON (for automated tracking / CI)
  */
 
-import { fmtKb, fmtMs, fmtOps, fmtPercent } from "./measure.js";
-import type { BenchResult, Framework } from "./types.js";
+import { fmtKb, fmtMs, fmtOps } from "./measure.js";
+import type { BenchResult, BenchRun, Framework } from "./types.js";
+
+function fmtCi95(lowMs: number, highMs: number): string {
+  if (!Number.isFinite(lowMs) || !Number.isFinite(highMs)) return "n/a";
+  if (lowMs === 0 && highMs === 0) return "n/a";
+  return `${fmtMs(lowMs)}–${fmtMs(highMs)}`;
+}
+
+function fmtKbOpt(kb: number | null): string {
+  return kb === null ? "n/a" : fmtKb(kb);
+}
 
 // ── Terminal Table ──────────────────────────────────────────────────
 
@@ -22,6 +32,8 @@ const FRAMEWORK_LABELS: Record<Framework, string> = {
   "rezi-native": "Rezi (native)",
   "ink-compat": "Ink-on-Rezi",
   ink: "Ink",
+  blessed: "blessed",
+  ratatui: "ratatui",
 };
 
 export function printTerminalTable(results: readonly BenchResult[]): void {
@@ -39,23 +51,24 @@ export function printTerminalTable(results: readonly BenchResult[]): void {
 
   for (const [group, items] of groups) {
     console.log(`\n  ${group}`);
-    console.log(`  ${"─".repeat(98)}`);
+    console.log(`  ${"─".repeat(118)}`);
     const header = [
       pad("Framework", 16),
       pad("Mean", 12, "right"),
-      pad("p95", 12, "right"),
-      pad("p99", 12, "right"),
+      pad("Stddev", 12, "right"),
+      pad("Mean CI95", 18, "right"),
       pad("ops/s", 14, "right"),
+      pad("Wall", 12, "right"),
+      pad("CPU (u+s)", 12, "right"),
       pad("RSS", 10, "right"),
       pad("Heap", 10, "right"),
-      pad("CPU", 12, "right"),
-      pad("CV", 8, "right"),
+      pad("Bytes", 12, "right"),
     ].join("");
     console.log(`  ${header}`);
-    console.log(`  ${"─".repeat(98)}`);
+    console.log(`  ${"─".repeat(118)}`);
 
     // Sort: rezi-native first, then ink-compat, then ink
-    const order: Framework[] = ["rezi-native", "ink-compat", "ink"];
+    const order: Framework[] = ["ratatui", "rezi-native", "ink-compat", "ink", "blessed"];
     const sorted = [...items].sort(
       (a, b) => order.indexOf(a.framework) - order.indexOf(b.framework),
     );
@@ -68,16 +81,18 @@ export function printTerminalTable(results: readonly BenchResult[]): void {
         r.framework === sorted[0]?.framework
           ? ""
           : ` (${(m.timing.mean / baseline).toFixed(1)}x slower)`;
+      const bytesPerFrameKb = m.bytesProduced / Math.max(1, m.framesProduced) / 1024;
       const row = [
         pad(FRAMEWORK_LABELS[r.framework] ?? r.framework, 16),
         pad(fmtMs(m.timing.mean), 12, "right"),
-        pad(fmtMs(m.timing.p95), 12, "right"),
-        pad(fmtMs(m.timing.p99), 12, "right"),
+        pad(fmtMs(m.timing.stddev), 12, "right"),
+        pad(fmtCi95(m.timing.meanCi95Low, m.timing.meanCi95High), 18, "right"),
         pad(fmtOps(m.opsPerSec), 14, "right"),
-        pad(fmtKb(m.memPeak.rssKb), 10, "right"),
-        pad(fmtKb(m.memPeak.heapUsedKb), 10, "right"),
+        pad(fmtMs(m.totalWallMs), 12, "right"),
         pad(fmtMs(m.cpu.userMs + m.cpu.systemMs), 12, "right"),
-        pad(fmtPercent(m.timing.cv), 8, "right"),
+        pad(fmtKb(m.memPeak.rssKb), 10, "right"),
+        pad(fmtKbOpt(m.memPeak.heapUsedKb), 10, "right"),
+        pad(fmtKb(bytesPerFrameKb), 12, "right"),
       ].join("");
 
       console.log(`  ${row}${speedup}`);
@@ -88,11 +103,15 @@ export function printTerminalTable(results: readonly BenchResult[]): void {
 
 // ── Markdown Table ──────────────────────────────────────────────────
 
-export function toMarkdown(results: readonly BenchResult[]): string {
+export function toMarkdown(run: BenchRun): string {
+  const { meta, invocation, results } = run;
   const lines: string[] = [];
   lines.push("# Benchmark Results\n");
   lines.push(
-    `> Node ${results[0]?.nodeVersion ?? "?"} | ${results[0]?.platform ?? "?"} ${results[0]?.arch ?? "?"} | ${results[0]?.timestamp ?? ""}\n`,
+    `> ${meta.timestamp} | Node ${meta.nodeVersion} | ${meta.osType} ${meta.osRelease} | ${meta.platform} ${meta.arch} | ${meta.cpuModel} (${meta.cpuCores} cores) | RAM ${meta.memoryTotalMb}MB\n`,
+  );
+  lines.push(
+    `> Invocation: suite=${invocation.suite} scenario=${invocation.scenarioFilter ?? "all"} framework=${invocation.frameworkFilter ?? "all"} warmup=${invocation.warmupOverride ?? "default"} iterations=${invocation.iterationsOverride ?? "default"} quick=${invocation.quick ? "yes" : "no"} io=${invocation.ioMode}\n`,
   );
 
   // Group by scenario+params
@@ -110,11 +129,11 @@ export function toMarkdown(results: readonly BenchResult[]): string {
   for (const [group, items] of groups) {
     lines.push(`## ${group}\n`);
     lines.push(
-      "| Framework | Mean | p95 | p99 | ops/s | Peak RSS | Peak Heap | CPU | Stability (CV) |",
+      "| Framework | Mean | Std dev | Mean CI95 | ops/s | Wall | CPU user | CPU sys | Peak RSS | Peak Heap | Bytes |",
     );
-    lines.push("|---|---:|---:|---:|---:|---:|---:|---:|---:|");
+    lines.push("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|");
 
-    const order: Framework[] = ["rezi-native", "ink-compat", "ink"];
+    const order: Framework[] = ["ratatui", "rezi-native", "ink-compat", "ink", "blessed"];
     const sorted = [...items].sort(
       (a, b) => order.indexOf(a.framework) - order.indexOf(b.framework),
     );
@@ -122,7 +141,7 @@ export function toMarkdown(results: readonly BenchResult[]): string {
     for (const r of sorted) {
       const m = r.metrics;
       lines.push(
-        `| ${FRAMEWORK_LABELS[r.framework]} | ${fmtMs(m.timing.mean)} | ${fmtMs(m.timing.p95)} | ${fmtMs(m.timing.p99)} | ${fmtOps(m.opsPerSec)} | ${fmtKb(m.memPeak.rssKb)} | ${fmtKb(m.memPeak.heapUsedKb)} | ${fmtMs(m.cpu.userMs + m.cpu.systemMs)} | ${fmtPercent(m.timing.cv)} |`,
+        `| ${FRAMEWORK_LABELS[r.framework]} | ${fmtMs(m.timing.mean)} | ${fmtMs(m.timing.stddev)} | ${fmtCi95(m.timing.meanCi95Low, m.timing.meanCi95High)} | ${fmtOps(m.opsPerSec)} | ${fmtMs(m.totalWallMs)} | ${fmtMs(m.cpu.userMs)} | ${fmtMs(m.cpu.systemMs)} | ${fmtKb(m.memPeak.rssKb)} | ${fmtKbOpt(m.memPeak.heapUsedKb)} | ${fmtKb(m.bytesProduced / 1024)} |`,
       );
     }
     lines.push("");
@@ -152,17 +171,35 @@ export function toMarkdown(results: readonly BenchResult[]): string {
   }
 
   lines.push("\n## Memory Comparison\n");
-  lines.push("| Scenario | Framework | Peak RSS | Peak Heap | Mem Growth |");
-  lines.push("|---|---|---:|---:|---:|");
+  lines.push(
+    "| Scenario | Framework | Peak RSS | Peak Heap | RSS Growth | Heap Growth | RSS Slope | Stable |",
+  );
+  lines.push("|---|---|---:|---:|---:|---:|---:|---:|");
 
   for (const [group, items] of groups) {
     for (const r of items) {
       const m = r.metrics;
-      const growth = m.memAfter.rssKb - m.memBefore.rssKb;
-      const growthStr =
-        growth > 0 ? `+${fmtKb(growth)}` : growth < 0 ? `-${fmtKb(Math.abs(growth))}` : "0KB";
+      const rssGrowth = m.rssGrowthKb;
+      const heapGrowth = m.heapUsedGrowthKb;
+      const rssGrowthStr =
+        rssGrowth > 0
+          ? `+${fmtKb(rssGrowth)}`
+          : rssGrowth < 0
+            ? `-${fmtKb(Math.abs(rssGrowth))}`
+            : "0KB";
+      const heapGrowthStr =
+        heapGrowth === null
+          ? "n/a"
+          : heapGrowth > 0
+            ? `+${fmtKb(heapGrowth)}`
+            : heapGrowth < 0
+              ? `-${fmtKb(Math.abs(heapGrowth))}`
+              : "0KB";
+      const slope =
+        m.rssSlopeKbPerIter === null ? "N/A" : `${m.rssSlopeKbPerIter.toFixed(4)} KB/iter`;
+      const stable = m.memStable === null ? "N/A" : m.memStable ? "yes" : "no";
       lines.push(
-        `| ${group} | ${FRAMEWORK_LABELS[r.framework]} | ${fmtKb(m.memPeak.rssKb)} | ${fmtKb(m.memPeak.heapUsedKb)} | ${growthStr} |`,
+        `| ${group} | ${FRAMEWORK_LABELS[r.framework]} | ${fmtKb(m.memPeak.rssKb)} | ${fmtKbOpt(m.memPeak.heapUsedKb)} | ${rssGrowthStr} | ${heapGrowthStr} | ${slope} | ${stable} |`,
       );
     }
   }
@@ -172,6 +209,8 @@ export function toMarkdown(results: readonly BenchResult[]): string {
 
 // ── JSON ────────────────────────────────────────────────────────────
 
-export function toJSON(results: readonly BenchResult[]): string {
-  return JSON.stringify(results, null, 2);
+export function toJSON(run: BenchRun): string {
+  // Keep artifacts stable across tooling (e.g. formatters) by always
+  // ending with a trailing newline.
+  return `${JSON.stringify(run, null, 2)}\n`;
 }

@@ -67,7 +67,7 @@ const instance = render(element, options?);
 
 ## Performance
 
-Using ink-compat gives you **70–200x** speedup over stock Ink, with zero code changes beyond swapping the import. See the [benchmark results](../benchmarks.md) for details.
+Ink-on-Rezi (`@rezi-ui/ink-compat`) keeps the React reconciler API surface but routes rendering through Rezi's pipeline. See [benchmarks](../benchmarks.md) for methodology, limitations, and the latest committed results.
 
 ## Further reading
 

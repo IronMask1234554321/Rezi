@@ -2,13 +2,77 @@
  * Measurement utilities: timing statistics, memory & CPU snapshots, formatting.
  */
 
-import type { BenchMetrics, CpuUsage, MemorySnapshot, TimingStats } from "./types.js";
+import type {
+  BenchMetrics,
+  CpuUsage,
+  MemorySnapshot,
+  NodeMemorySnapshot,
+  TimingStats,
+} from "./types.js";
 
 // ── Statistics ──────────────────────────────────────────────────────
 
+function xorshift32(seed: number): () => number {
+  let x = seed >>> 0;
+  return () => {
+    // xorshift32
+    x ^= x << 13;
+    x ^= x >>> 17;
+    x ^= x << 5;
+    // Normalize to [0, 1)
+    return (x >>> 0) / 0x1_0000_0000;
+  };
+}
+
+function percentile(sorted: readonly number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  const idx = Math.min(Math.max(Math.floor(p * sorted.length), 0), sorted.length - 1);
+  return sorted[idx] ?? 0;
+}
+
+function bootstrapMeanCi95(samples: readonly number[]): { low: number; high: number } {
+  const n = samples.length;
+  if (n < 2) {
+    const m = samples[0] ?? 0;
+    return { low: m, high: m };
+  }
+
+  // Deterministic bootstrap (fixed seed) so CI is reproducible.
+  const rnd = xorshift32(0x6b33_17f5);
+  const resamples = Math.min(2000, Math.max(500, Math.floor(200_000 / n))); // budgeted O(resamples*n)
+  const means: number[] = [];
+  means.length = resamples;
+
+  for (let r = 0; r < resamples; r++) {
+    let sum = 0;
+    for (let i = 0; i < n; i++) {
+      const j = Math.floor(rnd() * n);
+      sum += samples[j] ?? 0;
+    }
+    means[r] = sum / n;
+  }
+
+  means.sort((a, b) => a - b);
+  const low = percentile(means, 0.025);
+  const high = percentile(means, 0.975);
+  return { low, high };
+}
+
 export function computeStats(samples: readonly number[]): TimingStats {
   if (samples.length === 0) {
-    return { mean: 0, median: 0, p95: 0, p99: 0, min: 0, max: 0, stddev: 0, cv: 0 };
+    return {
+      n: 0,
+      mean: 0,
+      median: 0,
+      p95: 0,
+      p99: 0,
+      min: 0,
+      max: 0,
+      stddev: 0,
+      cv: 0,
+      meanCi95Low: 0,
+      meanCi95High: 0,
+    };
   }
   const sorted = [...samples].sort((a, b) => a - b);
   const n = sorted.length;
@@ -27,13 +91,26 @@ export function computeStats(samples: readonly number[]): TimingStats {
   const variance = sorted.reduce((acc, v) => acc + (v - mean) ** 2, 0) / n;
   const stddev = Math.sqrt(variance);
   const cv = mean > 0 ? stddev / mean : 0;
+  const ci = bootstrapMeanCi95(sorted);
 
-  return { mean, median, p95, p99, min, max, stddev, cv };
+  return {
+    n,
+    mean,
+    median,
+    p95,
+    p99,
+    min,
+    max,
+    stddev,
+    cv,
+    meanCi95Low: ci.low,
+    meanCi95High: ci.high,
+  };
 }
 
 // ── Snapshots ───────────────────────────────────────────────────────
 
-export function takeMemory(): MemorySnapshot {
+export function takeMemory(): NodeMemorySnapshot {
   const m = process.memoryUsage();
   return {
     rssKb: Math.round(m.rss / 1024),
@@ -57,12 +134,18 @@ export function diffCpu(before: CpuUsage, after: CpuUsage): CpuUsage {
 }
 
 export function peakMemory(a: MemorySnapshot, b: MemorySnapshot): MemorySnapshot {
+  const maxOpt = (x: number | null, y: number | null): number | null => {
+    if (x === null && y === null) return null;
+    if (x === null) return y;
+    if (y === null) return x;
+    return Math.max(x, y);
+  };
   return {
     rssKb: Math.max(a.rssKb, b.rssKb),
-    heapUsedKb: Math.max(a.heapUsedKb, b.heapUsedKb),
-    heapTotalKb: Math.max(a.heapTotalKb, b.heapTotalKb),
-    externalKb: Math.max(a.externalKb, b.externalKb),
-    arrayBuffersKb: Math.max(a.arrayBuffersKb, b.arrayBuffersKb),
+    heapUsedKb: maxOpt(a.heapUsedKb, b.heapUsedKb),
+    heapTotalKb: maxOpt(a.heapTotalKb, b.heapTotalKb),
+    externalKb: maxOpt(a.externalKb, b.externalKb),
+    arrayBuffersKb: maxOpt(a.arrayBuffersKb, b.arrayBuffersKb),
   };
 }
 
@@ -94,7 +177,7 @@ export function benchSync(
   tryGc();
   const memBefore = takeMemory();
   const cpuBefore = takeCpu();
-  let memPeak = memBefore;
+  let memPeak: MemorySnapshot = memBefore;
 
   const samples: number[] = [];
   const t0 = performance.now();
@@ -120,6 +203,11 @@ export function benchSync(
     memBefore,
     memAfter,
     memPeak,
+    rssGrowthKb: memAfter.rssKb - memBefore.rssKb,
+    heapUsedGrowthKb: memAfter.heapUsedKb - memBefore.heapUsedKb,
+    rssSlopeKbPerIter: null,
+    heapUsedSlopeKbPerIter: null,
+    memStable: null,
     cpu: diffCpu(cpuBefore, cpuAfter),
     iterations,
     totalWallMs,
@@ -147,7 +235,7 @@ export async function benchAsync(
   tryGc();
   const memBefore = takeMemory();
   const cpuBefore = takeCpu();
-  let memPeak = memBefore;
+  let memPeak: MemorySnapshot = memBefore;
 
   const samples: number[] = [];
   const t0 = performance.now();
@@ -172,6 +260,11 @@ export async function benchAsync(
     memBefore,
     memAfter,
     memPeak,
+    rssGrowthKb: memAfter.rssKb - memBefore.rssKb,
+    heapUsedGrowthKb: memAfter.heapUsedKb - memBefore.heapUsedKb,
+    rssSlopeKbPerIter: null,
+    heapUsedSlopeKbPerIter: null,
+    memStable: null,
     cpu: diffCpu(cpuBefore, cpuAfter),
     iterations,
     totalWallMs,

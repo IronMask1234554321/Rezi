@@ -8,6 +8,8 @@
 // ── Metric Primitives ──────────────────────────────────────────────
 
 export interface TimingStats {
+  /** Sample count */
+  n: number;
   /** Arithmetic mean (ms) */
   mean: number;
   /** Median / p50 (ms) */
@@ -24,15 +26,29 @@ export interface TimingStats {
   stddev: number;
   /** Coefficient of variation (stddev / mean). Lower = more stable. */
   cv: number;
+  /**
+   * 95% bootstrap confidence interval for the mean (ms).
+   * Deterministic (seeded) so the same samples produce the same interval.
+   */
+  meanCi95Low: number;
+  meanCi95High: number;
 }
 
 export interface MemorySnapshot {
+  rssKb: number;
+  heapUsedKb: number | null;
+  heapTotalKb: number | null;
+  externalKb: number | null;
+  arrayBuffersKb: number | null;
+}
+
+export type NodeMemorySnapshot = Readonly<{
   rssKb: number;
   heapUsedKb: number;
   heapTotalKb: number;
   externalKb: number;
   arrayBuffersKb: number;
-}
+}>;
 
 export interface CpuUsage {
   userMs: number;
@@ -50,6 +66,19 @@ export interface BenchMetrics {
   memAfter: MemorySnapshot;
   /** Peak memory observed during the loop */
   memPeak: MemorySnapshot;
+  /** RSS growth during the measured loop (KB). */
+  rssGrowthKb: number;
+  /** heapUsed growth during the measured loop (KB). */
+  heapUsedGrowthKb: number | null;
+  /**
+   * Estimated memory growth slope (KB / iteration), if the scenario collects samples.
+   * `null` if not measured.
+   */
+  rssSlopeKbPerIter: number | null;
+  /** See rssSlopeKbPerIter. */
+  heapUsedSlopeKbPerIter: number | null;
+  /** True/false if slope is evaluated against a stability threshold, else null. */
+  memStable: boolean | null;
   /** CPU time consumed by the measured loop */
   cpu: CpuUsage;
   /** Number of measured iterations (excludes warmup) */
@@ -66,7 +95,9 @@ export interface BenchMetrics {
 
 // ── Result Envelope ────────────────────────────────────────────────
 
-export type Framework = "ink" | "ink-compat" | "rezi-native";
+export type CoreFramework = "ink" | "ink-compat" | "rezi-native";
+export type TerminalCompetitorFramework = "blessed" | "ratatui";
+export type Framework = CoreFramework | TerminalCompetitorFramework;
 
 export interface BenchResult {
   scenario: string;
@@ -77,6 +108,34 @@ export interface BenchResult {
   nodeVersion: string;
   platform: string;
   arch: string;
+}
+
+export interface BenchMeta {
+  timestamp: string;
+  nodeVersion: string;
+  platform: string;
+  arch: string;
+  osType: string;
+  osRelease: string;
+  cpuModel: string;
+  cpuCores: number;
+  memoryTotalMb: number;
+}
+
+export interface BenchInvocation {
+  suite: "all" | "terminal";
+  scenarioFilter: string | null;
+  frameworkFilter: Framework | null;
+  iterationsOverride: number | null;
+  warmupOverride: number | null;
+  quick: boolean;
+  ioMode: "stub" | "pty";
+}
+
+export interface BenchRun {
+  meta: BenchMeta;
+  invocation: BenchInvocation;
+  results: BenchResult[];
 }
 
 // ── Scenario Interface ─────────────────────────────────────────────

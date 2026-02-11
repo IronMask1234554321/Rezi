@@ -169,6 +169,7 @@ packages/demo/benchmarks/
 # Bench artifacts
 packages/bench/results/
 packages/bench/ratatui/target/
+benchmarks/native/ratatui-bench/target/
 
 # Local investigation artifacts
 Screens/
