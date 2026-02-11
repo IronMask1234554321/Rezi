@@ -125,8 +125,12 @@ function computeLayoutStabilitySignature(node: RuntimeInstance): number | null {
             : null;
       if (maxWidth === null) return null;
 
+      const measuredWidth = measureTextCells(node.vnode.text);
+      const cappedWidth =
+        maxWidth === undefined ? measuredWidth : Math.min(measuredWidth, maxWidth);
+
       let hash = hashString(HASH_FNV_OFFSET, "text");
-      hash = hashNumber(hash, measureTextCells(node.vnode.text));
+      hash = hashNumber(hash, cappedWidth);
       hash = hashString(hash, "maxWidth");
       const next = hashLayoutPropValue(hash, maxWidth);
       if (next === null) return null;
