@@ -208,6 +208,92 @@ describe("WidgetRenderer integration battery", () => {
     assert.equal(renderer.getFocusedId(), "z3");
   });
 
+  test("focusZone onEnter/onExit fire on zone transitions", () => {
+    const backend = createNoopBackend();
+    const renderer = new WidgetRenderer<void>({
+      backend,
+      requestRender: () => {},
+    });
+
+    const events: string[] = [];
+
+    const vnode = ui.column({}, [
+      ui.focusZone(
+        {
+          id: "zone-1",
+          onEnter: () => events.push("enter:zone-1"),
+          onExit: () => events.push("exit:zone-1"),
+        },
+        [ui.button({ id: "a", label: "A" })],
+      ),
+      ui.focusZone(
+        {
+          id: "zone-2",
+          onEnter: () => events.push("enter:zone-2"),
+          onExit: () => events.push("exit:zone-2"),
+        },
+        [ui.button({ id: "b", label: "B" })],
+      ),
+    ]);
+
+    const res = renderer.submitFrame(
+      () => vnode,
+      undefined,
+      { cols: 40, rows: 10 },
+      defaultTheme,
+      noRenderHooks(),
+    );
+    assert.ok(res.ok);
+    assert.equal(renderer.getFocusedId(), null);
+
+    renderer.routeEngineEvent(keyEvent(3 /* TAB */));
+    assert.equal(renderer.getFocusedId(), "a");
+    assert.deepEqual(events, ["enter:zone-1"]);
+
+    renderer.routeEngineEvent(keyEvent(3 /* TAB */));
+    assert.equal(renderer.getFocusedId(), "b");
+    assert.deepEqual(events, ["enter:zone-1", "exit:zone-1", "enter:zone-2"]);
+  });
+
+  test("focusZone onEnter/onExit swallow exceptions", () => {
+    const backend = createNoopBackend();
+    const renderer = new WidgetRenderer<void>({
+      backend,
+      requestRender: () => {},
+    });
+
+    const vnode = ui.column({}, [
+      ui.focusZone(
+        {
+          id: "zone-1",
+          onEnter: () => {
+            throw new Error("boom");
+          },
+          onExit: () => {
+            throw new Error("boom2");
+          },
+        },
+        [ui.button({ id: "a", label: "A" })],
+      ),
+      ui.focusZone({ id: "zone-2" }, [ui.button({ id: "b", label: "B" })]),
+    ]);
+
+    const res = renderer.submitFrame(
+      () => vnode,
+      undefined,
+      { cols: 40, rows: 10 },
+      defaultTheme,
+      noRenderHooks(),
+    );
+    assert.ok(res.ok);
+
+    assert.doesNotThrow(() => renderer.routeEngineEvent(keyEvent(3 /* TAB */)));
+    assert.equal(renderer.getFocusedId(), "a");
+
+    assert.doesNotThrow(() => renderer.routeEngineEvent(keyEvent(3 /* TAB */)));
+    assert.equal(renderer.getFocusedId(), "b");
+  });
+
   test("virtualList routing updates selection and activates on Enter", () => {
     const backend = createNoopBackend();
     const renderer = new WidgetRenderer<void>({
