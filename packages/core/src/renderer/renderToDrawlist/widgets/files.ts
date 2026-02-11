@@ -80,6 +80,7 @@ export function renderFileWidgets(
   focusState: FocusState,
   rect: Rect,
   theme: Theme,
+  tick: number,
   parentStyle: ResolvedTextStyle,
   node: RuntimeInstance,
   nodeStack: (RuntimeInstance | null)[],
@@ -378,6 +379,7 @@ export function renderFileWidgets(
             rect.w - (x0 - rect.x),
             1,
             nodeState.focused,
+            tick,
             theme,
             parentStyle,
           );

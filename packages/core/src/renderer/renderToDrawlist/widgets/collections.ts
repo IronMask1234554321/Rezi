@@ -70,6 +70,7 @@ export function renderCollectionWidget(
   focusState: FocusState,
   rect: Rect,
   theme: Theme,
+  tick: number,
   parentStyle: ResolvedTextStyle,
   node: RuntimeInstance,
   nodeStack: (RuntimeInstance | null)[],
@@ -139,6 +140,7 @@ export function renderCollectionWidget(
           rect.w,
           h,
           focused,
+          tick,
           theme,
           parentStyle,
         );
@@ -282,6 +284,7 @@ export function renderCollectionWidget(
               w,
               safeRowHeight,
               isFocusedRow,
+              tick,
               theme,
               mergeTextStyle(parentStyle, style),
             );
@@ -418,6 +421,7 @@ export function renderCollectionWidget(
           rect.w - prefixW,
           1,
           ns.focused,
+          tick,
           theme,
           parentStyle,
         );

@@ -64,3 +64,26 @@ test("non-interactive workload does not overcommit frames under backpressure", a
   await flushMicrotasks(5);
   assert.equal(backend.requestedFrames.length, 1);
 });
+
+test("raw mode tick does not force render when no state changed", async () => {
+  const backend = new StubBackend();
+  const app = createApp({ backend, initialState: 0 });
+
+  app.draw((g) => g.clear());
+
+  await app.start();
+  await flushMicrotasks(3);
+  assert.equal(backend.requestedFrames.length, 1);
+
+  backend.resolveNextFrame();
+  await flushMicrotasks(3);
+
+  const bytes = encodeZrevBatchV1({
+    flags: 0,
+    events: [{ kind: "tick", timeMs: 10 }],
+  });
+  backend.pushBatch(makeBackendBatch({ bytes }));
+
+  await flushMicrotasks(5);
+  assert.equal(backend.requestedFrames.length, 1);
+});

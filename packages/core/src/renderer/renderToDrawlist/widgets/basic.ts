@@ -364,6 +364,7 @@ export function renderBasicWidget(
   focusState: FocusState,
   rect: Rect,
   theme: Theme,
+  tick: number,
   parentStyle: ResolvedTextStyle,
   node: RuntimeInstance,
   layoutNode: LayoutTree,
@@ -763,7 +764,7 @@ export function renderBasicWidget(
       const style = mergeTextStyle(parentStyle, ownStyle);
       maybeFillOwnBackground(builder, rect, ownStyle, style);
 
-      const frame = getSpinnerFrame(variant, 0);
+      const frame = getSpinnerFrame(variant, tick);
       const frameStyle = mergeTextStyle(style, { fg: theme.colors.primary, bold: true });
       const segments: StyledSegment[] = [{ text: frame, style: frameStyle }];
       if (label && label.length > 0) {
