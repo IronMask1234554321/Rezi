@@ -41,6 +41,64 @@ export type RuntimeInstance = Readonly<{
   children: readonly RuntimeInstance[];
 }>;
 
+/** Shared frozen empty array for leaf RuntimeInstance children. Avoids per-node allocation. */
+const EMPTY_CHILDREN: readonly RuntimeInstance[] = Object.freeze([]);
+
+/**
+ * Fast shallow equality for text style objects.
+ * Returns true if both styles produce identical render output.
+ */
+function textStyleEqual(
+  a: { bold?: boolean; dim?: boolean; italic?: boolean; underline?: boolean; inverse?: boolean; fg?: unknown; bg?: unknown } | undefined,
+  b: { bold?: boolean; dim?: boolean; italic?: boolean; underline?: boolean; inverse?: boolean; fg?: unknown; bg?: unknown } | undefined,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.bold === b.bold &&
+    a.dim === b.dim &&
+    a.italic === b.italic &&
+    a.underline === b.underline &&
+    a.inverse === b.inverse &&
+    a.fg === b.fg &&
+    a.bg === b.bg
+  );
+}
+
+/**
+ * Check if two leaf VNodes are semantically equal (same render output).
+ * Used to skip allocating new RuntimeInstance objects for unchanged leaves.
+ * Only covers common leaf kinds; returns false for unknown kinds (safe fallback).
+ */
+function leafVNodeEqual(a: VNode, b: VNode): boolean {
+  switch (a.kind) {
+    case "text": {
+      if (b.kind !== "text") return false;
+      if (a.text !== b.text) return false;
+      const ap = a.props as { style?: unknown; key?: string };
+      const bp = b.props as { style?: unknown; key?: string };
+      return textStyleEqual(
+        ap.style as Parameters<typeof textStyleEqual>[0],
+        bp.style as Parameters<typeof textStyleEqual>[0],
+      );
+    }
+    case "spacer": {
+      if (b.kind !== "spacer") return false;
+      const ap = a.props as { size?: number; flex?: number };
+      const bp = b.props as { size?: number; flex?: number };
+      return ap.size === bp.size && ap.flex === bp.flex;
+    }
+    case "divider": {
+      if (b.kind !== "divider") return false;
+      const ap = a.props as { direction?: string };
+      const bp = b.props as { direction?: string };
+      return ap.direction === bp.direction;
+    }
+    default:
+      return false;
+  }
+}
+
 /** Fatal errors from tree commitment. */
 export type CommitFatal =
   | ReconcileFatal
@@ -393,14 +451,33 @@ function commitNode(
       for (const c of prevChildren) byPrevInstanceId.set(c.instanceId, c);
     }
 
+    // Container fast path: when reconciliation reuses all children with no
+    // additions/removals, commit each child and check if all return the exact
+    // same RuntimeInstance reference. If so, reuse the parent's RuntimeInstance,
+    // avoiding new arrays, VNode spreads, and RuntimeInstance allocation.
+    const canTryFastReuse =
+      prev !== null &&
+      res.value.newInstanceIds.length === 0 &&
+      res.value.unmountedInstanceIds.length === 0 &&
+      res.value.nextChildren.length === prevChildren.length;
+
     const nextChildren: RuntimeInstance[] = [];
     const committedChildVNodes: VNode[] = [];
+    let allChildrenSame = canTryFastReuse;
     for (const child of res.value.nextChildren) {
       const prevChild = child.prevIndex !== null ? byPrevIndex[child.prevIndex] : null;
       const committed = commitNode(prevChild ?? null, child.instanceId, child.vnode, ctx);
       if (!committed.ok) return committed;
       nextChildren.push(committed.value.root);
       committedChildVNodes.push(committed.value.root.vnode);
+      if (allChildrenSame && committed.value.root !== prevChild) {
+        allChildrenSame = false;
+      }
+    }
+
+    if (allChildrenSame && prev !== null) {
+      // All children are identical references → reuse parent entirely.
+      return { ok: true, value: { root: prev } };
     }
 
     for (const unmountedId of res.value.unmountedInstanceIds) {
@@ -422,11 +499,17 @@ function commitNode(
     };
   }
 
-  // Leaf nodes
+  // Leaf nodes — fast path: reuse previous RuntimeInstance when content is unchanged.
+  // This avoids allocating a new RuntimeInstance object + result wrapper per frame
+  // for the majority of leaf nodes that don't change (e.g., 498/500 rows in a list update).
+  if (prev && prev.vnode.kind === vnode.kind && leafVNodeEqual(prev.vnode, vnode)) {
+    return { ok: true, value: { root: prev } };
+  }
+
   return {
     ok: true,
     value: {
-      root: { instanceId, vnode, children: [] },
+      root: { instanceId, vnode, children: EMPTY_CHILDREN },
     },
   };
 }
@@ -488,10 +571,10 @@ export function commitVNodeTree(
     ok: true,
     value: {
       root: committedRoot.value.root,
-      mountedInstanceIds: Object.freeze(ctx.lists.mounted.slice()),
-      reusedInstanceIds: Object.freeze(ctx.lists.reused.slice()),
-      unmountedInstanceIds: Object.freeze(ctx.lists.unmounted.slice()),
-      pendingEffects: Object.freeze(ctx.pendingEffects.slice()),
+      mountedInstanceIds: ctx.lists.mounted,
+      reusedInstanceIds: ctx.lists.reused,
+      unmountedInstanceIds: ctx.lists.unmounted,
+      pendingEffects: ctx.pendingEffects,
     },
   };
 }
