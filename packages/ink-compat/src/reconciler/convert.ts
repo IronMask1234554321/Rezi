@@ -8,6 +8,16 @@ import type { HostElement, HostNode, HostRoot } from "./types.js";
 type ConvertCtx = Readonly<{ staticVNodes: VNode[] }>;
 
 type ConvertedChild = Readonly<{ vnode: VNode; estimatedHeight: number }>;
+type LayoutSizingProps = Readonly<{
+  padding?: unknown;
+  paddingY?: unknown;
+  paddingTop?: unknown;
+  paddingBottom?: unknown;
+  borderStyle?: unknown;
+  border?: unknown;
+  borderTop?: unknown;
+  borderBottom?: unknown;
+}>;
 
 function coerceNonNegativeNumber(v: unknown): number | undefined {
   if (typeof v === "number" && Number.isFinite(v) && v >= 0) return v;
@@ -18,18 +28,17 @@ function coerceNonNegativeNumber(v: unknown): number | undefined {
   return undefined;
 }
 
-function resolveVerticalInsets(props: Record<string, unknown>): number {
-  const padding = coerceNonNegativeNumber(props["padding"]) ?? 0;
-  const paddingY = coerceNonNegativeNumber(props["paddingY"]) ?? padding;
-  const paddingTop = coerceNonNegativeNumber(props["paddingTop"]) ?? paddingY;
-  const paddingBottom = coerceNonNegativeNumber(props["paddingBottom"]) ?? paddingY;
+function resolveVerticalInsets(props: LayoutSizingProps): number {
+  const padding = coerceNonNegativeNumber(props.padding) ?? 0;
+  const paddingY = coerceNonNegativeNumber(props.paddingY) ?? padding;
+  const paddingTop = coerceNonNegativeNumber(props.paddingTop) ?? paddingY;
+  const paddingBottom = coerceNonNegativeNumber(props.paddingBottom) ?? paddingY;
 
-  const hasAnyBorder = props["borderStyle"] !== undefined || props["border"] !== undefined;
-  const borderStyle = props["borderStyle"] ?? props["border"];
+  const hasAnyBorder = props.borderStyle !== undefined || props.border !== undefined;
+  const borderStyle = props.borderStyle ?? props.border;
   const hasBorder = hasAnyBorder && borderStyle !== "none";
-  const borderTop = typeof props["borderTop"] === "boolean" ? props["borderTop"] : hasBorder;
-  const borderBottom =
-    typeof props["borderBottom"] === "boolean" ? props["borderBottom"] : hasBorder;
+  const borderTop = typeof props.borderTop === "boolean" ? props.borderTop : hasBorder;
+  const borderBottom = typeof props.borderBottom === "boolean" ? props.borderBottom : hasBorder;
 
   return paddingTop + paddingBottom + (borderTop ? 1 : 0) + (borderBottom ? 1 : 0);
 }
@@ -56,7 +65,7 @@ function estimateNodeHeight(node: HostNode): number {
 
   const direction = (node.props as { flexDirection?: unknown }).flexDirection;
   const isColumn = direction === "column" || direction === "column-reverse";
-  const insets = resolveVerticalInsets(node.props);
+  const insets = resolveVerticalInsets(node.props as LayoutSizingProps);
 
   if (node.children.length === 0) return insets;
 

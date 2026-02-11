@@ -148,12 +148,10 @@ describe("measurement", () => {
   test("overflowY=scroll and scrollTop update visible viewport in Gemini-like container", async () => {
     const backend = new StubBackend();
     const containerRef = React.createRef<DOMElement>();
-    const itemRefs = [
-      React.createRef<DOMElement>(),
-      React.createRef<DOMElement>(),
-      React.createRef<DOMElement>(),
-      React.createRef<DOMElement>(),
-    ];
+    const firstRef = React.createRef<DOMElement>();
+    const secondRef = React.createRef<DOMElement>();
+    const thirdRef = React.createRef<DOMElement>();
+    const fourthRef = React.createRef<DOMElement>();
 
     const tree = (scrollTop: number) => (
       <Box
@@ -165,16 +163,16 @@ describe("measurement", () => {
         overflowX="hidden"
         scrollTop={scrollTop}
       >
-        <Box ref={itemRefs[0]!} height={1}>
+        <Box ref={firstRef} height={1}>
           <Text>row-1</Text>
         </Box>
-        <Box ref={itemRefs[1]!} height={1}>
+        <Box ref={secondRef} height={1}>
           <Text>row-2</Text>
         </Box>
-        <Box ref={itemRefs[2]!} height={1}>
+        <Box ref={thirdRef} height={1}>
           <Text>row-3</Text>
         </Box>
-        <Box ref={itemRefs[3]!} height={1}>
+        <Box ref={fourthRef} height={1}>
           <Text>row-4</Text>
         </Box>
       </Box>
@@ -185,9 +183,9 @@ describe("measurement", () => {
     await pushInitialResize(backend);
 
     const container = containerRef.current;
-    const first = itemRefs[0]!.current;
-    const second = itemRefs[1]!.current;
-    const third = itemRefs[2]!.current;
+    const first = firstRef.current;
+    const second = secondRef.current;
+    const third = thirdRef.current;
     assert.ok(container);
     assert.ok(first);
     assert.ok(second);

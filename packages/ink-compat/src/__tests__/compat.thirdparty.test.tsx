@@ -1,6 +1,6 @@
 import { assert, describe, test } from "@rezi-ui/testkit";
-import Gradient from "ink-gradient";
 import { Transform } from "ink";
+import Gradient from "ink-gradient";
 import Spinner from "ink-spinner";
 import React from "react";
 import { Box, type DOMElement, Text, getInnerHeight, getScrollHeight, render } from "../index.js";
@@ -54,13 +54,15 @@ describe("third-party compatibility (real packages)", () => {
   });
 
   test("ink-gradient uses Ink Transform behavior with real package runtime", async () => {
-    const gradientElement = (Gradient as unknown as (props: {
-      name: string;
-      children: React.ReactNode;
-    }) => React.ReactElement<{
-      transform: (input: string) => string;
-      children: React.ReactNode;
-    }>)({
+    const gradientElement = (
+      Gradient as unknown as (props: {
+        name: string;
+        children: React.ReactNode;
+      }) => React.ReactElement<{
+        transform: (input: string) => string;
+        children: React.ReactNode;
+      }>
+    )({
       name: "rainbow",
       children: <Text>rainbow</Text>,
     });

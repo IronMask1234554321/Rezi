@@ -7,6 +7,25 @@ type CoreRect = Readonly<{ x: number; y: number; w: number; h: number }>;
 type ResizeObserverLike = Readonly<{
   internalTrigger: (entries: ResizeObserverEntry[]) => void;
 }>;
+type MeasurementProps = Readonly<{
+  overflow?: unknown;
+  overflowX?: unknown;
+  overflowY?: unknown;
+  borderStyle?: unknown;
+  border?: unknown;
+  borderTop?: unknown;
+  borderRight?: unknown;
+  borderBottom?: unknown;
+  borderLeft?: unknown;
+  padding?: unknown;
+  paddingY?: unknown;
+  paddingTop?: unknown;
+  paddingBottom?: unknown;
+  scrollTop?: unknown;
+  scrollLeft?: unknown;
+  flexDirection?: unknown;
+  height?: unknown;
+}>;
 
 const ZERO_LAYOUT: HostLayoutRect = Object.freeze({ x: 0, y: 0, width: 0, height: 0 });
 const ZERO_INSETS = Object.freeze({ top: 0, right: 0, bottom: 0, left: 0 });
@@ -46,33 +65,33 @@ function normalizeOverflow(v: unknown): "visible" | "hidden" | "scroll" {
   return v === "hidden" || v === "scroll" ? v : "visible";
 }
 
-function readOverflowFromProps(props: Record<string, unknown>): Readonly<{
+function readOverflowFromProps(props: MeasurementProps): Readonly<{
   overflow: "visible" | "hidden" | "scroll";
   overflowX: "visible" | "hidden" | "scroll";
   overflowY: "visible" | "hidden" | "scroll";
 }> {
-  const overflow = normalizeOverflow(props["overflow"]);
-  const overflowX = normalizeOverflow(props["overflowX"] ?? overflow);
-  const overflowY = normalizeOverflow(props["overflowY"] ?? overflow);
+  const overflow = normalizeOverflow(props.overflow);
+  const overflowX = normalizeOverflow(props.overflowX ?? overflow);
+  const overflowY = normalizeOverflow(props.overflowY ?? overflow);
   return { overflow, overflowX, overflowY };
 }
 
-function readBorderInsets(props: Record<string, unknown>): Readonly<{
+function readBorderInsets(props: MeasurementProps): Readonly<{
   top: number;
   right: number;
   bottom: number;
   left: number;
 }> {
-  const hasAnyBorder = props["borderStyle"] !== undefined || props["border"] !== undefined;
-  const borderStyle = props["borderStyle"] ?? props["border"];
+  const hasAnyBorder = props.borderStyle !== undefined || props.border !== undefined;
+  const borderStyle = props.borderStyle ?? props.border;
   const hasBorder = hasAnyBorder && borderStyle !== "none";
 
   if (!hasBorder) return ZERO_INSETS;
 
-  const top = typeof props["borderTop"] === "boolean" ? props["borderTop"] : true;
-  const right = typeof props["borderRight"] === "boolean" ? props["borderRight"] : true;
-  const bottom = typeof props["borderBottom"] === "boolean" ? props["borderBottom"] : true;
-  const left = typeof props["borderLeft"] === "boolean" ? props["borderLeft"] : true;
+  const top = typeof props.borderTop === "boolean" ? props.borderTop : true;
+  const right = typeof props.borderRight === "boolean" ? props.borderRight : true;
+  const bottom = typeof props.borderBottom === "boolean" ? props.borderBottom : true;
+  const left = typeof props.borderLeft === "boolean" ? props.borderLeft : true;
   return {
     top: top ? 1 : 0,
     right: right ? 1 : 0,
@@ -81,11 +100,11 @@ function readBorderInsets(props: Record<string, unknown>): Readonly<{
   };
 }
 
-function resolveVerticalInsets(props: Record<string, unknown>): number {
-  const padding = coerceNonNegativeNumber(props["padding"]) ?? 0;
-  const paddingY = coerceNonNegativeNumber(props["paddingY"]) ?? padding;
-  const paddingTop = coerceNonNegativeNumber(props["paddingTop"]) ?? paddingY;
-  const paddingBottom = coerceNonNegativeNumber(props["paddingBottom"]) ?? paddingY;
+function resolveVerticalInsets(props: MeasurementProps): number {
+  const padding = coerceNonNegativeNumber(props.padding) ?? 0;
+  const paddingY = coerceNonNegativeNumber(props.paddingY) ?? padding;
+  const paddingTop = coerceNonNegativeNumber(props.paddingTop) ?? paddingY;
+  const paddingBottom = coerceNonNegativeNumber(props.paddingBottom) ?? paddingY;
   const border = readBorderInsets(props);
   return paddingTop + paddingBottom + border.top + border.bottom;
 }
@@ -102,15 +121,17 @@ function estimateTextNodeHeight(node: HostElement): number {
 function estimateNodeHeight(node: HostNode): number {
   if (node.kind === "text") return Math.max(1, node.text.split("\n").length);
 
-  const explicitHeight = coerceNonNegativeNumber((node.props as { height?: unknown }).height);
+  const props = node.props as MeasurementProps;
+  const explicitHeight = coerceNonNegativeNumber(props.height);
   if (explicitHeight !== undefined) return explicitHeight;
 
   if (node.type === "ink-spacer") return 1;
-  if (node.type === "ink-text" || node.type === "ink-virtual-text") return estimateTextNodeHeight(node);
+  if (node.type === "ink-text" || node.type === "ink-virtual-text")
+    return estimateTextNodeHeight(node);
 
-  const direction = (node.props as { flexDirection?: unknown }).flexDirection;
+  const direction = props.flexDirection;
   const isColumn = direction === "column" || direction === "column-reverse";
-  const insets = resolveVerticalInsets(node.props);
+  const insets = resolveVerticalInsets(props);
 
   if (node.children.length === 0) return insets;
 
@@ -131,11 +152,12 @@ function estimateNodeHeight(node: HostNode): number {
 }
 
 function estimateScrollHeight(node: HostElement): number {
-  if (node.children.length === 0) return resolveVerticalInsets(node.props);
+  const props = node.props as MeasurementProps;
+  if (node.children.length === 0) return resolveVerticalInsets(props);
 
-  const direction = (node.props as { flexDirection?: unknown }).flexDirection;
+  const direction = props.flexDirection;
   const isColumn = direction === "column" || direction === "column-reverse";
-  const insets = resolveVerticalInsets(node.props);
+  const insets = resolveVerticalInsets(props);
 
   if (isColumn) {
     let total = insets;
@@ -181,7 +203,7 @@ export function getInnerHeight(node: DOMElement): number {
   if (scrollState) return scrollState.clientHeight;
 
   const layout = readLayout(node);
-  const border = readBorderInsets(element.props);
+  const border = readBorderInsets(element.props as MeasurementProps);
   return Math.max(0, layout.height - border.top - border.bottom);
 }
 
@@ -213,6 +235,7 @@ function updateNodeLayout(
   idRects: ReadonlyMap<string, CoreRect>,
   observerBatches: Map<ResizeObserverLike, ResizeObserverEntry[]>,
 ): HostLayoutRect {
+  const props = node.props as MeasurementProps;
   let layout = node.type === "ink-box" ? toLayout(idRects.get(node.internal_id)) : ZERO_LAYOUT;
 
   let haveChildBounds = false;
@@ -221,7 +244,7 @@ function updateNodeLayout(
   let maxChildX = 0;
   let maxChildY = 0;
 
-  const borderInsets = readBorderInsets(node.props);
+  const borderInsets = readBorderInsets(props);
   const contentOriginX = layout.x + borderInsets.left;
   const contentOriginY = layout.y + borderInsets.top;
   let maxRelRight = 0;
@@ -264,14 +287,14 @@ function updateNodeLayout(
 
   node.internal_layout = layout;
 
-  const overflow = readOverflowFromProps(node.props);
+  const overflow = readOverflowFromProps(props);
   const clientWidth = Math.max(0, layout.width - borderInsets.left - borderInsets.right);
   const clientHeight = Math.max(0, layout.height - borderInsets.top - borderInsets.bottom);
 
   let scrollHeight = Math.max(clientHeight, maxRelBottom);
   let scrollWidth = Math.max(clientWidth, maxRelRight);
-  const rawScrollTop = readScrollOffset(node.props["scrollTop"]);
-  const rawScrollLeft = readScrollOffset(node.props["scrollLeft"]);
+  const rawScrollTop = readScrollOffset(props.scrollTop);
+  const rawScrollLeft = readScrollOffset(props.scrollLeft);
 
   if (overflow.overflowY === "scroll") {
     const estimated = estimateScrollHeight(node);
