@@ -1,7 +1,7 @@
 import { assert, describe, test } from "@rezi-ui/testkit";
 import type { RuntimeBackend } from "../../backend.js";
 import type { ZrevEvent } from "../../events.js";
-import { defineWidget, ui } from "../../index.js";
+import { type VNode, defineWidget, ui } from "../../index.js";
 import { DEFAULT_TERMINAL_CAPS } from "../../terminalCaps.js";
 import { defaultTheme } from "../../theme/defaultTheme.js";
 import { TOAST_HEIGHT, getToastActionFocusId } from "../../widgets/toast.js";
@@ -638,6 +638,76 @@ describe("WidgetRenderer integration battery", () => {
       { scrollTop: 3, range: [0, 16] },
       { scrollTop: 90, range: [87, 100] },
     ]);
+  });
+
+  test("routing rebuild GC clears virtualList/table local state for removed ids", () => {
+    const backend = createNoopBackend();
+    const renderer = new WidgetRenderer<void>({
+      backend,
+      requestRender: () => {},
+    });
+
+    const vlistSelected: string[] = [];
+    const tablePressed: string[] = [];
+
+    const Virtual = () =>
+      ui.virtualList({
+        id: "v",
+        items: ["a", "b"],
+        itemHeight: 1,
+        renderItem: (item) => ui.text(item),
+        onSelect: (item, index) => vlistSelected.push(`${item}:${String(index)}`),
+      });
+
+    const Table = () =>
+      ui.table({
+        id: "t",
+        columns: [{ key: "id", header: "ID", flex: 1 }],
+        data: [{ id: "r0" }, { id: "r1" }],
+        getRowKey: (row) => row.id,
+        onRowPress: (row, index) => tablePressed.push(`${row.id}:${String(index)}`),
+      });
+
+    const submit = (vnode: VNode) => {
+      const res = renderer.submitFrame(
+        () => vnode,
+        undefined,
+        { cols: 40, rows: 10 },
+        defaultTheme,
+        noRenderHooks(),
+      );
+      assert.ok(res.ok);
+    };
+
+    submit(ui.column({}, [Virtual(), Table()]));
+
+    // VirtualList: select item index=1.
+    renderer.routeEngineEvent(keyEvent(3 /* TAB */));
+    renderer.routeEngineEvent(keyEvent(21 /* DOWN */));
+    renderer.routeEngineEvent(keyEvent(2 /* ENTER */));
+
+    // Table: focus and press row index=1.
+    renderer.routeEngineEvent(keyEvent(3 /* TAB */));
+    renderer.routeEngineEvent(keyEvent(21 /* DOWN */));
+    renderer.routeEngineEvent(keyEvent(2 /* ENTER */));
+
+    assert.deepEqual(vlistSelected, ["b:1"]);
+    assert.deepEqual(tablePressed, ["r1:1"]);
+
+    // Unmount both widgets and force a routing rebuild GC pass.
+    submit(ui.text("gone"));
+
+    // Remount with same ids; state should start from defaults.
+    submit(ui.column({}, [Virtual(), Table()]));
+
+    renderer.routeEngineEvent(keyEvent(3 /* TAB */));
+    renderer.routeEngineEvent(keyEvent(2 /* ENTER */));
+
+    renderer.routeEngineEvent(keyEvent(3 /* TAB */));
+    renderer.routeEngineEvent(keyEvent(2 /* ENTER */));
+
+    assert.deepEqual(vlistSelected, ["b:1", "a:0"]);
+    assert.deepEqual(tablePressed, ["r1:1", "r0:0"]);
   });
 
   test("table routing moves focused row and activates on Enter", () => {
