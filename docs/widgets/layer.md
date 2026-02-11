@@ -25,6 +25,11 @@ ui.layer({
 | `onClose` | `() => void` | - | Called when layer should close |
 | `content` | `VNode` | **required** | Layer content |
 
+## Mouse Behavior
+
+- When `modal` is `true`, mouse events to widgets in lower layers are blocked.
+- Clicking the backdrop area triggers the `onClose` callback (if provided).
+
 ## Notes
 
 - Use [`Layers`](layers.md) to manage stacking order and modals.

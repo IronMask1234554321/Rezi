@@ -34,6 +34,7 @@ ui.radioGroup({
 ## Behavior
 
 - Focusable when enabled.
+- **Mouse click** focuses the radio group.
 - Navigate choices with **ArrowUp/ArrowDown** (or left/right in horizontal layouts).
 - Confirm with **Enter**.
 - **Tab / Shift+Tab** moves focus in/out.

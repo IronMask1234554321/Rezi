@@ -28,13 +28,14 @@ ui.button({
 
 ## Behavior
 
-Buttons are focusable when enabled. When focused:
+Buttons are focusable when enabled. They can be activated by keyboard or mouse:
 
 - **Enter** or **Space** activates the button
+- **Mouse click** focuses and activates the button (press down + release on the same button)
 - **Tab** moves focus to the next focusable widget
 - **Shift+Tab** moves focus to the previous focusable widget
 
-Buttons can be handled either via callback props or in a global `app.onEvent` handler.
+The `onPress` callback fires regardless of whether the button was activated by keyboard or mouse. Buttons can be handled either via callback props or in a global `app.onEvent` handler.
 
 ## Examples
 

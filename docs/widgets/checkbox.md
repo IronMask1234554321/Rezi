@@ -30,6 +30,7 @@ ui.checkbox({
 
 - Focusable when enabled.
 - Toggle with **Space** (and commonly **Enter** depending on terminal key mapping).
+- **Mouse click** focuses and toggles the checkbox.
 - **Tab / Shift+Tab** moves focus.
 
 ## Examples

@@ -23,6 +23,10 @@ ui.toastContainer({
 | `maxVisible` | `number` | `5` | Max visible toasts |
 | `onDismiss` | `(id) => void` | **required** | Dismiss callback |
 
+## Mouse Behavior
+
+Toast action buttons (e.g., "Undo") can be clicked with the mouse to trigger their `onAction` callback.
+
 ## Toast shape
 
 - `id`: unique toast identifier

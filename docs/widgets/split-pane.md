@@ -34,6 +34,16 @@ ui.splitPane(
 | `onResize` | `(sizes) => void` | **required** | Resize callback |
 | `onCollapse` | `(index, collapsed) => void` | - | Collapse callback |
 
+## Behavior
+
+Dividers between panels can be dragged with the mouse to resize:
+
+- **Mouse down** on a divider starts the drag
+- **Moving the mouse** updates panel sizes in real-time via the `onResize` callback
+- **Mouse up** ends the drag
+
+The hit area for dividers extends 1 cell on each side of the divider for easier grabbing.
+
 ## Notes
 
 - `sizes` length should match the number of child panels.

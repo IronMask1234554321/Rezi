@@ -1,6 +1,6 @@
 # Input & Focus
 
-Rezi routes input deterministically through a focus system that manages keyboard navigation and event delivery.
+Rezi routes input deterministically through a focus system that manages keyboard and mouse navigation and event delivery. See also the dedicated [Mouse Support](mouse-support.md) guide.
 
 ## Identity: `id` vs `key`
 
@@ -20,12 +20,13 @@ These must not be conflated:
 
 ## Focus Navigation
 
-Focusable widgets (buttons, inputs, selects) participate in Tab navigation:
+Focusable widgets (buttons, inputs, selects) participate in Tab and mouse navigation:
 
 - **Tab** - Move focus forward
 - **Shift+Tab** - Move focus backward
 - **Enter/Space** - Activate focused widget
 - **Arrow keys** - Navigate within widgets (lists, tables)
+- **Mouse click** - Focus and activate the clicked widget
 
 ### Focus Order
 
@@ -157,6 +158,19 @@ app.setMode("normal");
 
 Query current mode with `app.getMode()`.
 
+## Mouse Input
+
+Rezi supports mouse interaction when the terminal supports mouse tracking. Mouse events are routed through the same focus system as keyboard input:
+
+- **Click** any focusable widget to focus it. Clicking a button also activates its `onPress` callback.
+- **Scroll wheel** scrolls focused or hovered scrollable widgets (VirtualList, CodeEditor, LogsConsole, DiffViewer).
+- **Drag** split pane dividers to resize panels.
+- **Click** a modal backdrop to close the modal (when `closeOnBackdrop` is enabled).
+
+Mouse and keyboard input can be freely mixed. Clicking a widget updates the same focus state that Tab navigation uses.
+
+For the complete mouse support reference, see the [Mouse Support](mouse-support.md) guide.
+
 ## Event Handling
 
 ### Widget Events
@@ -232,6 +246,7 @@ This enables:
 
 ## Next Steps
 
+- [Mouse Support](mouse-support.md) - Click, scroll, and drag interactions
 - [Styling](styling.md) - Colors, themes, and visual customization
 - [Focus Zone](../widgets/focus-zone.md) - Focus zone widget reference
 - [Focus Trap](../widgets/focus-trap.md) - Focus trap widget reference

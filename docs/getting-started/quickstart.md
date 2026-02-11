@@ -77,7 +77,7 @@ Run with:
 npx tsx index.ts
 ```
 
-You should see a counter UI. Use Tab to navigate between buttons, Enter to activate them, and 'q' to quit.
+You should see a counter UI. Use Tab to navigate between buttons, Enter to activate them, and 'q' to quit. You can also click the buttons with the mouse if your terminal supports mouse tracking.
 
 ## Understanding the Code
 

@@ -161,7 +161,7 @@ Container and layout: `box`, `row`, `column`, `spacer`, `divider`
 Display information: `text`, `richText`, `icon`, `badge`, `status`
 
 ### Interactive Widgets
-Accept user input: `button`, `input`, `checkbox`, `select`, `radioGroup`
+Accept user input via keyboard and mouse: `button`, `input`, `checkbox`, `select`, `radioGroup`
 
 ### Data Widgets
 Display structured data: `table`, `virtualList`, `tree`
@@ -174,10 +174,10 @@ Loading and error states: `spinner`, `progress`, `skeleton`, `errorDisplay`
 
 ## Focus Model
 
-Rezi manages focus automatically:
+Rezi manages focus automatically through keyboard and mouse input:
 
-### Tab Navigation
-Tab moves focus forward through focusable widgets. Shift+Tab moves backward.
+### Tab and Mouse Navigation
+Tab moves focus forward through focusable widgets. Shift+Tab moves backward. Clicking any focusable widget with the mouse also moves focus to it. See [Mouse Support](mouse-support.md) for details.
 
 ### Focus Zones
 Group widgets into focus zones for organized Tab navigation:
@@ -256,5 +256,6 @@ app.modes({
 
 - [Lifecycle & Updates](lifecycle-and-updates.md) - State management in depth
 - [Layout](layout.md) - Spacing, alignment, and constraints
-- [Input & Focus](input-and-focus.md) - Keyboard navigation and focus management
+- [Input & Focus](input-and-focus.md) - Keyboard and mouse navigation
+- [Mouse Support](mouse-support.md) - Click, scroll, and drag interactions
 - [Widget Catalog](../widgets/index.md) - Complete widget reference

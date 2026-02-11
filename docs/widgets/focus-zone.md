@@ -118,8 +118,13 @@ ui.column({ gap: 2 }, [
 ])
 ```
 
+## Mouse Behavior
+
+Clicking any focusable widget inside a focus zone moves focus to that widget, just like Tab navigation. The zone's `onEnter` callback fires when focus enters the zone via mouse click.
+
 ## Related
 
 - [Focus Trap](focus-trap.md) - Constrain focus within a region
 - [Modal](modal.md) - Modal dialog with focus trap
 - [Button](button.md) - Focusable button
+- [Mouse Support](../guide/mouse-support.md) - Mouse interaction details

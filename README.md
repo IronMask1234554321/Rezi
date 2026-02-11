@@ -158,6 +158,7 @@ Templates: `dashboard`, `form-app`, `file-browser`, `streaming-viewer`.
 - **50+ widgets** — code editor, diff viewer, file picker, command palette, charts, tables, trees, overlays, forms
 - **Composition API** — `defineWidget` + hooks for state and lifecycle
 - **Focus management** — built-in focus ring, keybindings, chord sequences
+- **Mouse support** — click to focus/activate, scroll wheel, drag-to-resize split panes, modal backdrop clicks
 - **6 built-in themes** with semantic color tokens and style props
 - **Binary protocols** — ZRDL (drawlists) and ZREV (event batches) for minimal IPC overhead
 

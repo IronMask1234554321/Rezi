@@ -210,13 +210,13 @@ ui.column(
 
 ### Event Handlers
 
-Interactive widgets support event callbacks:
+Interactive widgets support event callbacks. These fire for both keyboard and mouse input:
 
 ```typescript
 ui.button({
   id: "submit",
   label: "Submit",
-  onPress: () => handleSubmit(),
+  onPress: () => handleSubmit(), // Fires on Enter, Space, or mouse click
 })
 
 ui.input({
@@ -226,6 +226,10 @@ ui.input({
   onBlur: () => validateField("name"),
 })
 ```
+
+### Mouse Support
+
+All focusable widgets can be clicked with the mouse to receive focus. Scrollable widgets (VirtualList, CodeEditor, LogsConsole, DiffViewer) respond to the mouse scroll wheel. SplitPane dividers can be dragged to resize panels. See the [Mouse Support guide](../guide/mouse-support.md) for details.
 
 ## API Reference
 
