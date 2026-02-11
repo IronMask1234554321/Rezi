@@ -357,6 +357,13 @@ export class WidgetRenderer<S> {
     startY: number;
     startCellSizes: readonly number[];
     availableCells: number;
+    didDrag: boolean;
+  }> | null = null;
+
+  private splitPaneLastDividerDown: Readonly<{
+    id: string;
+    dividerIndex: number;
+    timeMs: number;
   }> | null = null;
 
   /* --- Overlay Routing State (rebuilt each commit) --- */
@@ -654,6 +661,9 @@ export class WidgetRenderer<S> {
 
       if (this.splitPaneDrag) {
         if (event.mouseKind === MOUSE_KIND_UP) {
+          if (this.splitPaneDrag.didDrag) {
+            this.splitPaneLastDividerDown = null;
+          }
           this.splitPaneDrag = null;
           return ROUTE_RENDER;
         }
@@ -663,6 +673,13 @@ export class WidgetRenderer<S> {
           if (pane) {
             const delta =
               drag.direction === "horizontal" ? event.x - drag.startX : event.y - drag.startY;
+            const didDrag = drag.didDrag || delta !== 0;
+            if (didDrag && !drag.didDrag) {
+              this.splitPaneDrag = Object.freeze({ ...drag, didDrag: true });
+            }
+            if (didDrag) {
+              this.splitPaneLastDividerDown = null;
+            }
             const nextCellSizes = handleDividerDrag(
               drag.startCellSizes,
               drag.dividerIndex,
@@ -676,6 +693,7 @@ export class WidgetRenderer<S> {
             return ROUTE_RENDER;
           }
           // SplitPane removed mid-drag.
+          this.splitPaneLastDividerDown = null;
           this.splitPaneDrag = null;
           return ROUTE_RENDER;
         }
@@ -708,12 +726,48 @@ export class WidgetRenderer<S> {
 
           for (let i = 0; i < childRects.length - 1; i++) {
             const a = childRects[i];
-            if (!a) continue;
+            const b = childRects[i + 1];
+            if (!a || !b) continue;
             if (direction === "horizontal") {
-              const x0 = a.x + a.w;
+              // Divider starts immediately before the next panel's x.
+              const x0 = b.x - dividerSize;
               const hitX0 = x0 - expand;
               const hitX1 = x0 + dividerSize + expand;
               if (event.x >= hitX0 && event.x < hitX1) {
+                // Only allow primary-button drags/double-click collapse.
+                if ((event.buttons & 1) === 0) continue;
+
+                const prevDown = this.splitPaneLastDividerDown;
+                const DOUBLE_CLICK_MS = 500;
+                if (pane.collapsible === true && pane.onCollapse) {
+                  if (
+                    prevDown &&
+                    prevDown.id === id &&
+                    prevDown.dividerIndex === i &&
+                    event.timeMs - prevDown.timeMs <= DOUBLE_CLICK_MS
+                  ) {
+                    this.splitPaneLastDividerDown = null;
+
+                    // Select which panel to toggle based on which side of the divider was clicked.
+                    const targetIndex = event.x < x0 ? i : event.x >= x0 + dividerSize ? i + 1 : i;
+                    const isCollapsed = pane.collapsed?.includes(targetIndex) ?? false;
+                    try {
+                      pane.onCollapse(targetIndex, !isCollapsed);
+                    } catch {
+                      // Swallow collapse callback errors to preserve routing determinism.
+                    }
+                    return ROUTE_RENDER;
+                  }
+
+                  this.splitPaneLastDividerDown = Object.freeze({
+                    id,
+                    dividerIndex: i,
+                    timeMs: event.timeMs,
+                  });
+                } else {
+                  this.splitPaneLastDividerDown = null;
+                }
+
                 const availableCells = rect.w;
                 const startCellSizes = computePanelCellSizes(
                   childRects.length,
@@ -737,14 +791,49 @@ export class WidgetRenderer<S> {
                   startY: event.y,
                   startCellSizes,
                   availableCells,
+                  didDrag: false,
                 });
                 return ROUTE_RENDER;
               }
             } else {
-              const y0 = a.y + a.h;
+              // Divider starts immediately before the next panel's y.
+              const y0 = b.y - dividerSize;
               const hitY0 = y0 - expand;
               const hitY1 = y0 + dividerSize + expand;
               if (event.y >= hitY0 && event.y < hitY1) {
+                // Only allow primary-button drags/double-click collapse.
+                if ((event.buttons & 1) === 0) continue;
+
+                const prevDown = this.splitPaneLastDividerDown;
+                const DOUBLE_CLICK_MS = 500;
+                if (pane.collapsible === true && pane.onCollapse) {
+                  if (
+                    prevDown &&
+                    prevDown.id === id &&
+                    prevDown.dividerIndex === i &&
+                    event.timeMs - prevDown.timeMs <= DOUBLE_CLICK_MS
+                  ) {
+                    this.splitPaneLastDividerDown = null;
+
+                    const targetIndex = event.y < y0 ? i : event.y >= y0 + dividerSize ? i + 1 : i;
+                    const isCollapsed = pane.collapsed?.includes(targetIndex) ?? false;
+                    try {
+                      pane.onCollapse(targetIndex, !isCollapsed);
+                    } catch {
+                      // Swallow collapse callback errors to preserve routing determinism.
+                    }
+                    return ROUTE_RENDER;
+                  }
+
+                  this.splitPaneLastDividerDown = Object.freeze({
+                    id,
+                    dividerIndex: i,
+                    timeMs: event.timeMs,
+                  });
+                } else {
+                  this.splitPaneLastDividerDown = null;
+                }
+
                 const availableCells = rect.h;
                 const startCellSizes = computePanelCellSizes(
                   childRects.length,
@@ -768,6 +857,7 @@ export class WidgetRenderer<S> {
                   startY: event.y,
                   startCellSizes,
                   availableCells,
+                  didDrag: false,
                 });
                 return ROUTE_RENDER;
               }

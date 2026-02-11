@@ -44,6 +44,16 @@ Dividers between panels can be dragged with the mouse to resize:
 
 The hit area for dividers extends 1 cell on each side of the divider for easier grabbing.
 
+### Collapse
+
+When `collapsible: true`:
+
+- A panel index in `collapsed` is laid out at its minimum size (`minSizes[index]` or `0`).
+- **Double-click** near a divider to toggle collapse:
+  - Click just to the **left/top** of a divider to target the panel on that side
+  - Click just to the **right/bottom** of a divider to target the other panel
+- Use `onCollapse(index, collapsed)` to update your `collapsed` list (controlled state).
+
 ## Notes
 
 - `sizes` length should match the number of child panels.
