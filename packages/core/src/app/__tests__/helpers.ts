@@ -31,7 +31,8 @@ type EncodedEvent =
       wheelX?: number;
       wheelY?: number;
     }>
-  | Readonly<{ kind: "resize"; timeMs: number; cols: number; rows: number }>;
+  | Readonly<{ kind: "resize"; timeMs: number; cols: number; rows: number }>
+  | Readonly<{ kind: "tick"; timeMs: number; dtMs?: number }>;
 
 export function encodeZrevBatchV1(
   opts: Readonly<{ flags?: number; events?: readonly EncodedEvent[] }>,
@@ -99,6 +100,19 @@ export function encodeZrevBatchV1(
       dv.setInt32(off + 40, ev.wheelY ?? 0, true);
       dv.setUint32(off + 44, 0, true);
       off += 48;
+      continue;
+    }
+
+    if (ev.kind === "tick") {
+      dv.setUint32(off + 0, 6, true);
+      dv.setUint32(off + 4, 32, true);
+      dv.setUint32(off + 8, ev.timeMs, true);
+      dv.setUint32(off + 12, 0, true);
+      dv.setUint32(off + 16, ev.dtMs ?? 0, true);
+      dv.setUint32(off + 20, 0, true);
+      dv.setUint32(off + 24, 0, true);
+      dv.setUint32(off + 28, 0, true);
+      off += 32;
       continue;
     }
 
