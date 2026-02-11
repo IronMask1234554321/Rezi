@@ -258,7 +258,7 @@ export class WidgetRenderer<S> {
   private baseEnabledById: ReadonlyMap<string, boolean> = new Map<string, boolean>();
   private pressableIds: ReadonlySet<string> = new Set<string>();
   private pressedId: string | null = null;
-  private pressedDropdown: Readonly<{ id: string; index: number }> | null = null;
+  private pressedDropdown: Readonly<{ id: string; itemId: string }> | null = null;
   private pressedVirtualList: Readonly<{ id: string; index: number }> | null = null;
   private pressedTable: Readonly<{ id: string; rowIndex: number }> | null = null;
   private pressedTableHeader: Readonly<{ id: string; columnIndex: number }> | null = null;
@@ -578,7 +578,7 @@ export class WidgetRenderer<S> {
               if (item && !item.divider && item.disabled !== true) {
                 const prevSelected = this.dropdownSelectedIndexById.get(topDropdownId) ?? 0;
                 this.dropdownSelectedIndexById.set(topDropdownId, itemIndex);
-                this.pressedDropdown = Object.freeze({ id: topDropdownId, index: itemIndex });
+                this.pressedDropdown = Object.freeze({ id: topDropdownId, itemId: item.id });
                 return Object.freeze({ needsRender: itemIndex !== prevSelected });
               }
             }
@@ -591,14 +591,9 @@ export class WidgetRenderer<S> {
             const pressed = this.pressedDropdown;
             this.pressedDropdown = null;
 
-            if (
-              pressed &&
-              pressed.id === topDropdownId &&
-              itemIndex !== null &&
-              itemIndex === pressed.index
-            ) {
+            if (pressed && pressed.id === topDropdownId && itemIndex !== null) {
               const item = dropdown.items[itemIndex];
-              if (item && !item.divider && item.disabled !== true) {
+              if (item && item.id === pressed.itemId && !item.divider && item.disabled !== true) {
                 if (dropdown.onSelect) {
                   try {
                     dropdown.onSelect(item);
