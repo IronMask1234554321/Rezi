@@ -388,6 +388,8 @@ export class WidgetRenderer<S> {
   // Pooled Sets for tracking previous IDs (GC cleanup detection)
   private readonly _pooledPrevTreeIds = new Set<string>();
   private readonly _pooledPrevDropdownIds = new Set<string>();
+  private readonly _pooledPrevVirtualListIds = new Set<string>();
+  private readonly _pooledPrevTableIds = new Set<string>();
   private readonly _pooledPrevTreeStoreIds = new Set<string>();
   private readonly _pooledPrevCommandPaletteIds = new Set<string>();
   private readonly _pooledPrevToolApprovalDialogIds = new Set<string>();
@@ -2220,6 +2222,10 @@ export class WidgetRenderer<S> {
         for (const k of this.treeById.keys()) this._pooledPrevTreeIds.add(k);
         this._pooledPrevDropdownIds.clear();
         for (const k of this.dropdownById.keys()) this._pooledPrevDropdownIds.add(k);
+        this._pooledPrevVirtualListIds.clear();
+        for (const k of this.virtualListById.keys()) this._pooledPrevVirtualListIds.add(k);
+        this._pooledPrevTableIds.clear();
+        for (const k of this.tableById.keys()) this._pooledPrevTableIds.add(k);
         this._pooledPrevTreeStoreIds.clear();
         for (const k of this.treeById.keys()) this._pooledPrevTreeStoreIds.add(k);
         for (const k of this.filePickerById.keys()) this._pooledPrevTreeStoreIds.add(k);
@@ -2721,6 +2727,23 @@ export class WidgetRenderer<S> {
         for (const prevDropdownId of this._pooledPrevDropdownIds) {
           if (!this.dropdownById.has(prevDropdownId)) {
             this.dropdownSelectedIndexById.delete(prevDropdownId);
+          }
+        }
+
+        // Garbage collect local state for virtual lists that were removed.
+        for (const prevId of this._pooledPrevVirtualListIds) {
+          if (!this.virtualListById.has(prevId)) {
+            this.virtualListStore.delete(prevId);
+            if (this.pressedVirtualList?.id === prevId) {
+              this.pressedVirtualList = null;
+            }
+          }
+        }
+
+        // Garbage collect local state for tables that were removed.
+        for (const prevId of this._pooledPrevTableIds) {
+          if (!this.tableById.has(prevId)) {
+            this.tableStore.delete(prevId);
           }
         }
 

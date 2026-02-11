@@ -65,6 +65,20 @@ export function rebuildRenderCaches(
     emptyStringArray: readonly string[];
   }>,
 ): void {
+  // Prune caches for widgets that were removed (avoid unbounded growth with churny ids).
+  for (const id of opts.tableRenderCacheById.keys()) {
+    if (!opts.tableById.has(id)) opts.tableRenderCacheById.delete(id);
+  }
+  for (const id of opts.logsConsoleRenderCacheById.keys()) {
+    if (!opts.logsConsoleById.has(id)) opts.logsConsoleRenderCacheById.delete(id);
+  }
+  for (const id of opts.diffRenderCacheById.keys()) {
+    if (!opts.diffViewerById.has(id)) opts.diffRenderCacheById.delete(id);
+  }
+  for (const id of opts.codeEditorRenderCacheById.keys()) {
+    if (!opts.codeEditorById.has(id)) opts.codeEditorRenderCacheById.delete(id);
+  }
+
   for (const table of opts.tableById.values()) {
     const dataRef = table.data as readonly unknown[];
     const getRowKeyRef = table.getRowKey as (row: unknown, index: number) => string;
