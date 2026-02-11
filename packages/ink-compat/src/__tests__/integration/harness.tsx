@@ -4,7 +4,7 @@ import AppContext, { type AppContextValue } from "../../context/AppContext.js";
 import FocusProvider from "../../context/FocusProvider.js";
 import StdioContext, { type StdioContextValue } from "../../context/StdioContext.js";
 import { createInputEventEmitter } from "../../internal/emitter.js";
-import reconciler, { type HostRoot } from "../../reconciler.js";
+import reconciler, { createRootContainer, updateRootContainer, type HostRoot } from "../../reconciler.js";
 
 function flushPassiveEffects(): void {
   while (reconciler.flushPassiveEffects()) {}
@@ -36,7 +36,7 @@ export function createHarness(
     internal_eventEmitter: emitter,
   });
 
-  const app: AppContextValue = opts?.app ?? { exit: () => {} };
+  const app: AppContextValue = opts?.app ?? { exit: () => {}, rerender: () => {} };
 
   const root: HostRoot = {
     kind: "root",
@@ -48,7 +48,7 @@ export function createHarness(
     },
   };
 
-  const container = reconciler.createContainer(root, 0, null, false, null, "id", () => {}, null);
+  const container = createRootContainer(root);
 
   const wrap = (node: React.ReactNode) =>
     React.createElement(
@@ -62,7 +62,7 @@ export function createHarness(
     );
 
   const update = (node: React.ReactNode) => {
-    reconciler.updateContainer(wrap(node), container, null, () => {});
+    updateRootContainer(container, wrap(node));
     flushPassiveEffects();
   };
 
@@ -71,7 +71,7 @@ export function createHarness(
   };
 
   const unmount = () => {
-    reconciler.updateContainer(null, container, null, () => {});
+    updateRootContainer(container, null);
     flushPassiveEffects();
   };
 
