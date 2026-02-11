@@ -1,6 +1,29 @@
-# Event batches (ZREV)
+# Event Batches (ZREV)
 
-The engine emits input as a ZREV event batch.
+The engine emits input as a ZREV event batch — a binary format containing one or more input events.
+
+## Event Types
+
+ZREV batches contain these event record types:
+
+| Record | Description |
+|--------|-------------|
+| Key | Keyboard input with key code and modifiers |
+| Mouse | Mouse events (move, press, release, drag, scroll) with position and button state |
+| Resize | Terminal size change |
+| Tick | Animation timer |
+
+### Mouse Event Records
+
+Mouse records include:
+
+- `x`, `y` — cursor position in terminal cells
+- `mouseKind` — event type: move (1), press (2), release (3), drag (4), scroll (5)
+- `mods` — modifier keys held (shift, ctrl, alt, meta)
+- `buttons` — button state bitmask
+- `wheelX`, `wheelY` — scroll deltas
+
+## Parsing
 
 Rezi parses ZREV deterministically:
 
@@ -12,3 +35,4 @@ See:
 
 - [Safety rules](safety.md)
 - [Versioning](versioning.md)
+- [Mouse Support guide](../guide/mouse-support.md)

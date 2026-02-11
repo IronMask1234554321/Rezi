@@ -26,7 +26,7 @@ ui.input({
 
 ## Behavior
 
-Inputs are focusable when enabled. When focused:
+Inputs are focusable when enabled. **Clicking** the input focuses it. When focused:
 
 - Text entry inserts at cursor position
 - **Left/Right** arrows move the cursor

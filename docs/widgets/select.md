@@ -34,6 +34,7 @@ ui.select({
 ## Behavior
 
 - Focusable when enabled.
+- **Mouse click** focuses the select widget.
 - Navigate options with **ArrowUp/ArrowDown**.
 - Confirm selection with **Enter**.
 - **Tab / Shift+Tab** moves focus to the next/previous widget.

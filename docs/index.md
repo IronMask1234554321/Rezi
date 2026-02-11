@@ -39,6 +39,9 @@ await app.start();
 **Focus Management**
 : Automatic keyboard navigation with focus zones, focus traps, and modal stacking.
 
+**Mouse Support**
+: Click to focus and activate widgets, scroll wheel for lists and editors, drag to resize split panes, click backdrops to close modals. Detected automatically — no configuration needed.
+
 **Theming**
 : Six built-in themes (dark, light, dimmed, high-contrast, nord, dracula) with semantic color tokens.
 
@@ -167,7 +170,7 @@ ui.box({ title: "User Form", p: 1 }, [
 
 ### Focus and Navigation
 
-Interactive widgets (buttons, inputs) automatically participate in focus navigation. Use Tab/Shift+Tab to move between focusable elements:
+Interactive widgets (buttons, inputs) automatically participate in focus navigation. Use Tab/Shift+Tab to move between focusable elements, or click any focusable widget with the mouse:
 
 ```typescript
 ui.column({}, [
@@ -209,6 +212,7 @@ User feedback: `spinner`, `skeleton`, `callout`, `errorDisplay`, `empty`
 - [Lifecycle & Updates](guide/lifecycle-and-updates.md) - State management patterns
 - [Layout](guide/layout.md) - Spacing, alignment, and constraints
 - [Input & Focus](guide/input-and-focus.md) - Keyboard navigation and focus management
+- [Mouse Support](guide/mouse-support.md) - Click, scroll, and drag interactions
 - [Styling](guide/styling.md) - Colors, themes, and visual customization
 - [Performance](guide/performance.md) - Optimization techniques
 - [Debugging](guide/debugging.md) - Debug tools and frame inspection

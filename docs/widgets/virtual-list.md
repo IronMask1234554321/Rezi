@@ -32,6 +32,12 @@ ui.virtualList({
 | `onScroll` | `(scrollTop, range) => void` | - | Scroll callback with visible range |
 | `onSelect` | `(item, index) => void` | - | Selection callback |
 
+## Behavior
+
+- **Arrow Up/Down** navigates items. **Page Up/Down** and **Home/End** jump by page or to boundaries.
+- **Mouse scroll wheel** scrolls the list (3 lines per tick).
+- The `onScroll` callback fires for both keyboard navigation and mouse wheel input.
+
 ## Notes
 
 - Use `itemHeight` callback for variable-height rows.

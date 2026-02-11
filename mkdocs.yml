@@ -103,6 +103,7 @@ nav:
       - Lifecycle & Updates: guide/lifecycle-and-updates.md
       - Layout: guide/layout.md
       - Input & Focus: guide/input-and-focus.md
+      - Mouse Support: guide/mouse-support.md
       - Styling: guide/styling.md
       - Performance: guide/performance.md
       - Debugging: guide/debugging.md

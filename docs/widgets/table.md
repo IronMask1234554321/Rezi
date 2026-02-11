@@ -59,6 +59,12 @@ ui.table({
 })
 ```
 
+## Behavior
+
+- **Arrow keys** navigate rows. **Enter** activates the selected row.
+- **Mouse click** on a row selects it and moves focus to the table.
+- **Mouse scroll wheel** scrolls rows when the table is virtualized.
+
 ## Notes
 
 - Tables can be virtualized; prefer virtualization for large datasets.

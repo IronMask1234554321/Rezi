@@ -57,6 +57,12 @@ ui.modal({
 })
 ```
 
+## Mouse Behavior
+
+- **Clicking the backdrop** closes the modal when `closeOnBackdrop` is `true` (the default).
+- **Clicking action buttons** activates them the same as pressing Enter/Space.
+- Mouse events to widgets below the modal are blocked when the modal is active.
+
 ## Notes
 
 - Modals are rendered by conditionally including them in the tree (there is no `open` prop).

@@ -37,6 +37,11 @@ ui.diffViewer({
 | `onApplyHunk` | `(index) => void` | - | Apply callback |
 | `onRevertHunk` | `(index) => void` | - | Revert callback |
 
+## Mouse Behavior
+
+- **Mouse scroll wheel** scrolls diff content, firing the `onScroll` callback.
+- **Clicking** the viewer area focuses the widget.
+
 ## Notes
 
 - `DiffData` includes file paths, hunks, and optional binary flag.

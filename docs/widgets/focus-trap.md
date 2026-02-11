@@ -105,8 +105,13 @@ ui.focusTrap({ id: "outer", active: true }, [
 ])
 ```
 
+## Mouse Behavior
+
+When a focus trap is active, mouse clicks outside the trap region are blocked. Clicking widgets inside the trap works normally — the clicked widget receives focus.
+
 ## Related
 
 - [Focus Zone](focus-zone.md) - Group focusable widgets
 - [Modal](modal.md) - Modal dialog widget
 - [Layer](layer.md) - Generic overlay layer
+- [Mouse Support](../guide/mouse-support.md) - Mouse interaction details

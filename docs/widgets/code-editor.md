@@ -44,6 +44,11 @@ ui.codeEditor({
 | `onUndo` | `() => void` | - | Undo callback |
 | `onRedo` | `() => void` | - | Redo callback |
 
+## Mouse Behavior
+
+- **Mouse scroll wheel** scrolls the editor vertically and horizontally, firing the `onScroll` callback.
+- **Clicking** the editor area focuses the widget.
+
 ## Notes
 
 - `lines` is the source of truth; update it in `onChange` to keep the editor controlled.

@@ -35,6 +35,11 @@ ui.logsConsole({
 | `onEntryToggle` | `(id, expanded) => void` | - | Expand/collapse callback |
 | `onClear` | `() => void` | - | Clear entries callback |
 
+## Mouse Behavior
+
+- **Mouse scroll wheel** scrolls log entries, firing the `onScroll` callback.
+- **Clicking** the console area focuses the widget.
+
 ## Notes
 
 - `LogEntry` supports optional details, token usage, duration, and cost fields.
