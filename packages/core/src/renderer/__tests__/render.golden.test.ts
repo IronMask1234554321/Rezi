@@ -307,6 +307,19 @@ describe("renderer - widget tree to deterministic ZRDL bytes", () => {
     assertBytesEqual(actual, expected, "divider_with_label.bin");
   });
 
+  test("divider preserves surrogate-pair glyph char", () => {
+    // U+1D306 TETRAGRAM FOR CENTRE (surrogate pair in UTF-16)
+    const glyph = "𝌆";
+    const vnode: VNode = { kind: "divider", props: { char: glyph } };
+    const actual = renderBytes(vnode, Object.freeze({ focusedId: null }));
+    const strings = parseInternedStrings(actual);
+    assert.equal(
+      strings.includes(glyph.repeat(80)),
+      true,
+      "expected glyph line in interned strings",
+    );
+  });
+
   test("modal_backdrop_dim.bin", async () => {
     const expected = await load("modal_backdrop_dim.bin");
     const modal: VNode = {

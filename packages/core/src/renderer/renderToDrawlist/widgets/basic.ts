@@ -442,11 +442,12 @@ export function renderBasicWidget(
       const direction = props.direction === "vertical" ? "vertical" : "horizontal";
       const rawChar =
         typeof props.char === "string" && props.char.length > 0 ? props.char : undefined;
-      const glyph = rawChar
-        ? (rawChar[0] ?? (direction === "horizontal" ? "─" : "│"))
-        : direction === "horizontal"
-          ? "─"
-          : "│";
+      const glyph = (() => {
+        const fallback = direction === "horizontal" ? "─" : "│";
+        if (!rawChar) return fallback;
+        const cp = rawChar.codePointAt(0);
+        return cp === undefined ? fallback : String.fromCodePoint(cp);
+      })();
       const label = typeof props.label === "string" ? props.label : undefined;
       const color = typeof props.color === "string" ? props.color : undefined;
       const style = color
