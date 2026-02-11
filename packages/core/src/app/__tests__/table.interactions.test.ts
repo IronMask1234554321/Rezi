@@ -212,4 +212,48 @@ describe("table interactions", () => {
 
     assert.deepEqual(calls, ["press:1", "double:1"]);
   });
+
+  test("header click between row clicks resets double-click state", () => {
+    const backend = createNoopBackend();
+    const renderer = new WidgetRenderer<void>({
+      backend,
+      requestRender: () => {},
+    });
+
+    const calls: string[] = [];
+
+    const vnode = ui.table({
+      id: "t",
+      border: "none",
+      columns: [{ key: "id", header: "ID", flex: 1, sortable: true }],
+      data: [{ id: "r0" }, { id: "r1" }],
+      getRowKey: (r) => r.id,
+      onSort: (col, dir) => calls.push(`sort:${col}:${dir}`),
+      onRowPress: (_row, idx) => calls.push(`press:${String(idx)}`),
+      onRowDoublePress: (_row, idx) => calls.push(`double:${String(idx)}`),
+    });
+
+    const res = renderer.submitFrame(
+      () => vnode,
+      undefined,
+      { cols: 20, rows: 6 },
+      defaultTheme,
+      noRenderHooks(),
+    );
+    assert.ok(res.ok);
+
+    // First row click.
+    renderer.routeEngineEvent(mouseEvent(1, 2, 3, { timeMs: 100 }));
+    renderer.routeEngineEvent(mouseEvent(1, 2, 4, { timeMs: 120 }));
+
+    // Intervening header click (y=0 with border=none/headerHeight=1).
+    renderer.routeEngineEvent(mouseEvent(1, 0, 3, { timeMs: 180 }));
+    renderer.routeEngineEvent(mouseEvent(1, 0, 4, { timeMs: 200 }));
+
+    // Second row click within 500ms should be a normal press, not double.
+    renderer.routeEngineEvent(mouseEvent(1, 2, 3, { timeMs: 260 }));
+    renderer.routeEngineEvent(mouseEvent(1, 2, 4, { timeMs: 280 }));
+
+    assert.deepEqual(calls, ["press:1", "sort:id:asc", "press:1"]);
+  });
 });

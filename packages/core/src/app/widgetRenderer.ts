@@ -1562,6 +1562,7 @@ export class WidgetRenderer<S> {
 
             const colIndex = computeColumnIndex();
             if (colIndex !== null) {
+              this.lastTableClick = null;
               const prevRow = state.focusedRowIndex;
               const prevCol = state.focusedColumnIndex;
               this.tableStore.set(table.id, { focusedRowIndex: -1, focusedColumnIndex: colIndex });
@@ -1576,6 +1577,7 @@ export class WidgetRenderer<S> {
                 if (rowKey === undefined) {
                   this.pressedTable = null;
                   this.pressedTableHeader = null;
+                  this.lastTableClick = null;
                 } else {
                   const hasShift = (event.mods & ZR_MOD_SHIFT) !== 0;
                   const hasCtrl = (event.mods & ZR_MOD_CTRL) !== 0;
@@ -1606,6 +1608,7 @@ export class WidgetRenderer<S> {
               } else {
                 this.pressedTable = null;
                 this.pressedTableHeader = null;
+                this.lastTableClick = null;
               }
             }
           } else {
@@ -1615,6 +1618,7 @@ export class WidgetRenderer<S> {
             this.pressedTableHeader = null;
 
             if (pressedHeader && pressedHeader.id === table.id) {
+              this.lastTableClick = null;
               const colIndex = computeColumnIndex();
               if (colIndex !== null && colIndex === pressedHeader.columnIndex) {
                 const col = table.columns[colIndex];
@@ -1660,7 +1664,11 @@ export class WidgetRenderer<S> {
                     });
                   }
                   localNeedsRender = true;
+                } else {
+                  this.lastTableClick = null;
                 }
+              } else {
+                this.lastTableClick = null;
               }
             }
           }
