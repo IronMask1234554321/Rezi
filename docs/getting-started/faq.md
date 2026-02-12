@@ -239,21 +239,17 @@ If this shows orange text, your terminal supports true color.
 
 ### Can I use React/JSX with Rezi?
 
-Yes, there are two options:
+Yes. Use `@rezi-ui/jsx`, the native JSX runtime that maps JSX elements directly to Rezi VNodes (no React required).
 
-- **`@rezi-ui/jsx`** — Native JSX runtime that maps JSX elements directly to Rezi VNodes. No React required. Best for new projects that prefer JSX syntax. See the [JSX guide](jsx.md).
-- **`@rezi-ui/ink-compat`** — Drop-in Ink compatibility layer that uses React and `react-reconciler` to bridge Ink components to Rezi. Best for migrating existing Ink apps. See the [migration guide](../migration/ink.md).
+See the [JSX guide](jsx.md).
 
-### Can I migrate my Ink app to Rezi?
-
-Yes. Install `@rezi-ui/ink-compat` and change your imports from `"ink"` to `"@rezi-ui/ink-compat"`. All Ink components and hooks are supported. See the [Ink migration guide](../migration/ink.md).
-
-### How fast is Rezi compared to Ink?
+### How fast is Rezi compared to other terminal UI stacks?
 
 It depends on the scenario and I/O mode. Rezi includes a benchmark suite that compares:
 
 - Rezi (native)
-- Ink-on-Rezi (`@rezi-ui/ink-compat`)
+- ratatui (Rust)
+- blessed (Node.js)
 - Ink
 
 See the benchmark write-up for methodology, limitations, and the latest committed results: [benchmarks](../benchmarks.md).

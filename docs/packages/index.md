@@ -16,7 +16,6 @@ npm install @rezi-ui/core @rezi-ui/node
 flowchart TB
     App["Your Application"] --> Core
     JSX["@rezi-ui/jsx"] -.-> Core
-    InkCompat["@rezi-ui/ink-compat"] -.-> Core
     Core["@rezi-ui/core"] --> Node
     Node["@rezi-ui/node"] --> Native
     Native["@rezi-ui/native"] --> Engine["Zireael C Engine"]
@@ -27,7 +26,6 @@ flowchart TB
 | [@rezi-ui/core](core.md) | Widgets, layout, themes, forms, keybindings | `npm i @rezi-ui/core` |
 | [@rezi-ui/node](node.md) | Node.js backend with worker threads | `npm i @rezi-ui/node` |
 | [@rezi-ui/native](native.md) | Native addon (napi-rs + Zireael) | Bundled with node |
-| [@rezi-ui/ink-compat](ink-compat.md) | Drop-in Ink compatibility layer (React) | `npm i @rezi-ui/ink-compat` |
 | [@rezi-ui/jsx](jsx.md) | JSX runtime for Rezi widgets | `npm i @rezi-ui/jsx` |
 | [@rezi-ui/testkit](testkit.md) | Testing utilities and fixtures | `npm i -D @rezi-ui/testkit` |
 | [create-rezi](create-rezi.md) | Project scaffolding CLI | `npm create rezi` |
@@ -118,22 +116,6 @@ npm create rezi my-app
 
 [Full documentation →](create-rezi.md)
 
-## @rezi-ui/ink-compat
-
-**Ink compatibility layer**
-
-Drop-in replacement for Ink imports that runs on Rezi's native rendering engine:
-
-- All 6 Ink components (`Box`, `Text`, `Spacer`, `Newline`, `Transform`, `Static`)
-- All 7 Ink hooks (`useInput`, `useApp`, `useFocus`, `useFocusManager`, `useStdin`, `useStdout`, `useStderr`)
-- `render()` function with all standard options
-
-```bash
-npm install @rezi-ui/ink-compat react
-```
-
-[Full documentation →](ink-compat.md) | [Migration guide →](../migration/ink.md)
-
 ## @rezi-ui/jsx
 
 **JSX runtime**
@@ -154,7 +136,6 @@ The package dependency structure enforces a clean separation of concerns:
 Application Code (ui.* API or JSX)
        │
        ├─── @rezi-ui/jsx (optional JSX runtime)
-       ├─── @rezi-ui/ink-compat (optional Ink React compat)
        │
        ▼
 @rezi-ui/core (No Node APIs)

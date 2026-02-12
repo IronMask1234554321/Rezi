@@ -8,7 +8,6 @@ Rezi is built as a layered system: a runtime-agnostic UI core, a Node.js backend
 flowchart TB
   App["Application Code"] --> Core["@rezi-ui/core"]
   JSX["@rezi-ui/jsx"] -.-> Core
-  InkCompat["@rezi-ui/ink-compat"] -.-> Core
   Core --> Node["@rezi-ui/node"]
   Node --> Native["@rezi-ui/native"]
   Native --> Engine["Zireael C Engine"]

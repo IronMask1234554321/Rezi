@@ -25,7 +25,7 @@ Use `.tsx` file extensions for files containing JSX.
 
 ## Overview
 
-`@rezi-ui/jsx` provides a custom JSX runtime that maps JSX elements directly to Rezi VNodes. Unlike `@rezi-ui/ink-compat`, this does **not** use React — it's a thin layer over the native `ui.*` API.
+`@rezi-ui/jsx` provides a custom JSX runtime that maps JSX elements directly to Rezi VNodes. It does **not** use React and stays a thin layer over the native `ui.*` API.
 
 ## Available elements
 
