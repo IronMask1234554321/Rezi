@@ -269,5 +269,4 @@ await app.start();
 - [Widget Catalog](../widgets/index.md) - Browse all available widgets
 - [Layout Guide](../guide/layout.md) - Learn about spacing and alignment
 - [Styling Guide](../guide/styling.md) - Customize colors and themes
-- [Migrating from Ink](../migration/ink.md) - Already using Ink? Migrate with one import change
 - [Examples](examples.md) - More example applications

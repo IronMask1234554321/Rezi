@@ -16,17 +16,6 @@ In our terminal benchmark suite (`120x40`, PTY mode), Rezi is consistently in th
 
 ![Rezi core demo](Assets/REZICORE.gif)
 
-## Ink Compatibility Layer Status
-
-> **Visible roadmap item: currently under redesign.**
-
-A new Ink Compatibility Layer is being implemented with stricter parity and stability requirements.
-
-Current policy:
-- It is not part of the active API surface in this branch.
-- It will be reintroduced only after end-to-end validation on real applications and edge-case terminal behavior.
-- Compatibility claims will be published only with reproducible benchmark and test evidence.
-
 ## Why Rezi exists
 
 Most JS terminal frameworks do rendering and ANSI generation in userland for every update. This is flexible, but update cost grows quickly with larger trees and frequent rerenders.

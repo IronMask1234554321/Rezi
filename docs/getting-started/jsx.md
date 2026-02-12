@@ -106,10 +106,8 @@ Use fragments to group elements without a container:
 </>
 ```
 
-## Note: JSX vs ink-compat
+## Note: JSX vs `ui.*`
 
-`@rezi-ui/jsx` is the **native Rezi JSX runtime** — it creates Rezi VNodes directly, without React.
+`@rezi-ui/jsx` is the native Rezi JSX runtime. It creates Rezi VNodes directly and does not use React.
 
-`@rezi-ui/ink-compat` is the **Ink compatibility layer** — it uses React and `react-reconciler` to bridge Ink components to Rezi.
-
-If you're starting fresh, use either `ui.*` or `@rezi-ui/jsx`. If you're migrating from Ink, use `@rezi-ui/ink-compat`.
+If you prefer explicit function calls, use `ui.*`. If you prefer JSX syntax, use `@rezi-ui/jsx`.

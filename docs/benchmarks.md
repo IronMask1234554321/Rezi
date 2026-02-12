@@ -1,9 +1,8 @@
 # Benchmarks
 
-Rezi includes a benchmark suite comparing three pipelines:
+Rezi includes a benchmark suite comparing terminal UI pipelines:
 
 - **Rezi (native)**: `@rezi-ui/core` via `ui.*` VNodes
-- **Ink-on-Rezi**: `@rezi-ui/ink-compat` (React reconciler + Rezi backend)
 - **Ink**: `ink` (React + Yoga + ANSI output)
 
 The authoritative benchmark write-up and the latest committed results live in the repository:

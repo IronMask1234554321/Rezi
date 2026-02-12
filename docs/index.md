@@ -51,9 +51,6 @@ await app.start();
 **JSX Support**
 : Write widget trees using JSX syntax with `@rezi-ui/jsx` — no React required. [Getting started →](getting-started/jsx.md)
 
-**Ink Compatibility**
-: Drop-in Ink compatibility layer (`@rezi-ui/ink-compat`) to run existing Ink apps on Rezi's engine. [Migration guide →](migration/ink.md)
-
 **Performance**
 : See [benchmarks →](benchmarks.md) for methodology, limitations, and the latest committed results.
 
@@ -63,7 +60,6 @@ await app.start();
 flowchart TB
     App["Application Code"] --> Core["@rezi-ui/core"]
     JSX["@rezi-ui/jsx"] -.-> Core
-    InkCompat["@rezi-ui/ink-compat"] -.-> Core
     Core --> Node["@rezi-ui/node"]
     Node --> Native["@rezi-ui/native"]
     Native --> Engine["Zireael C Engine"]
@@ -84,7 +80,6 @@ flowchart TB
 | **@rezi-ui/node** | Node.js backend with worker thread integration. |
 | **@rezi-ui/native** | napi-rs binding to the Zireael C rendering engine. |
 | **@rezi-ui/jsx** | Optional JSX runtime for widget trees. |
-| **@rezi-ui/ink-compat** | Optional drop-in Ink compatibility layer (React). |
 
 ## Getting Started
 

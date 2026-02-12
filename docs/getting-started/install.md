@@ -70,7 +70,6 @@ If a prebuilt binary is not available for your platform, the package will attemp
 
 | Package | When to use |
 |---|---|
-| `@rezi-ui/ink-compat` | Migrating from Ink — drop-in replacement for `ink` imports |
 | `@rezi-ui/jsx` | Prefer JSX syntax over `ui.*` function calls |
 | `@rezi-ui/testkit` | Testing Rezi applications |
 

@@ -10,8 +10,6 @@ Active benchmark comparisons:
 - **blessed** (Node.js)
 - **Ink** (Node.js)
 
-The previous in-repo Ink compatibility prototype benchmark track has been removed from this document while that layer is being redesigned.
-
 ## Benchmark suites
 
 ### Terminal suite (primary)
