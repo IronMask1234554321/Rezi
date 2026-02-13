@@ -115,6 +115,20 @@ function asErrorDetail(err: unknown): string {
   return err instanceof Error ? `${err.name}: ${err.message}` : String(err);
 }
 
+function terminatePtyBestEffort(pty: PtyProcess): void {
+  try {
+    pty.kill();
+    return;
+  } catch {
+    // fall through
+  }
+  try {
+    pty.kill("SIGTERM");
+  } catch {
+    // best-effort cleanup
+  }
+}
+
 class ContractHarness {
   caps: TerminalCaps;
 
@@ -266,11 +280,7 @@ class ContractHarness {
         socket.destroy();
       }
       if (pty !== null) {
-        try {
-          pty.kill("SIGTERM");
-        } catch {
-          // ignore
-        }
+        terminatePtyBestEffort(pty);
       }
       await closeServerQuiet(server);
       throw err;
@@ -391,11 +401,7 @@ class ContractHarness {
       await delay(10);
     }
     if (!this.#exitObserved) {
-      try {
-        this.#pty.kill("SIGTERM");
-      } catch {
-        // ignore
-      }
+      terminatePtyBestEffort(this.#pty);
     }
     try {
       this.#socket.destroy();
