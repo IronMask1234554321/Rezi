@@ -11,7 +11,7 @@
  * @see docs/widgets/layers.md (GitHub issue #117)
  */
 
-import { assert, describe, test } from "@rezi-ui/testkit";
+import { assert, describe, readFixture, test } from "@rezi-ui/testkit";
 import { ZR_KEY_DOWN, ZR_KEY_ENTER, ZR_KEY_ESCAPE, ZR_KEY_UP } from "../../keybindings/keyCodes.js";
 import {
   calculateAnchorPosition,
@@ -30,6 +30,33 @@ import {
 } from "../../runtime/layers.js";
 import { routeDropdownKey, routeLayerEscape } from "../../runtime/router.js";
 import { ui } from "../ui.js";
+
+type FixtureRect = Readonly<{ x: number; y: number; w: number; h: number }>;
+
+type LayerHitFixtureCase = Readonly<{
+  name: string;
+  layers: readonly Readonly<{
+    id: string;
+    zIndex: number;
+    rect: FixtureRect;
+    modal: boolean;
+    backdrop: "none" | "dim" | "opaque";
+  }>[];
+  point: Readonly<{ x: number; y: number }>;
+  expected: Readonly<{
+    layerId: string | null;
+    blocked: boolean;
+    blockingLayerId: string | null;
+  }>;
+}>;
+
+type LayerHitFixture = Readonly<{ schemaVersion: 1; cases: readonly LayerHitFixtureCase[] }>;
+
+async function loadLayerHitFixture(): Promise<LayerHitFixture> {
+  const bytes = await readFixture("routing/layer_hit_overlap.json");
+  const json = new TextDecoder().decode(bytes);
+  return JSON.parse(json) as LayerHitFixture;
+}
 
 /* ========== Layer Registry Tests ========== */
 
@@ -102,6 +129,74 @@ describe("Layer Registry - Basic Operations", () => {
     assert.equal(layers[0]?.id, "layer2"); // z=50
     assert.equal(layers[1]?.id, "layer1"); // z=100
     assert.equal(layers[2]?.id, "layer3"); // z=200
+  });
+
+  test("equal z-index keeps deterministic registration order", () => {
+    const registry = createLayerRegistry();
+
+    registry.register({
+      id: "first",
+      zIndex: 120,
+      rect: { x: 0, y: 0, w: 10, h: 10 },
+      backdrop: "none",
+      modal: false,
+      closeOnEscape: true,
+    });
+
+    registry.register({
+      id: "second",
+      zIndex: 120,
+      rect: { x: 0, y: 0, w: 10, h: 10 },
+      backdrop: "none",
+      modal: false,
+      closeOnEscape: true,
+    });
+
+    const layers = registry.getAll();
+    assert.equal(layers.length, 2);
+    assert.equal(layers[0]?.id, "first");
+    assert.equal(layers[1]?.id, "second");
+
+    const topmost = registry.getTopmost();
+    assert.ok(topmost);
+    assert.equal(topmost.id, "second");
+  });
+
+  test("re-registering equal z-index layer moves it to top deterministically", () => {
+    const registry = createLayerRegistry();
+
+    registry.register({
+      id: "a",
+      zIndex: 120,
+      rect: { x: 0, y: 0, w: 10, h: 10 },
+      backdrop: "none",
+      modal: false,
+      closeOnEscape: true,
+    });
+    registry.register({
+      id: "b",
+      zIndex: 120,
+      rect: { x: 0, y: 0, w: 10, h: 10 },
+      backdrop: "none",
+      modal: false,
+      closeOnEscape: true,
+    });
+
+    const before = hitTestLayers(registry, 2, 2);
+    assert.equal(before.layer?.id, "b");
+
+    registry.unregister("a");
+    registry.register({
+      id: "a",
+      zIndex: 120,
+      rect: { x: 0, y: 0, w: 10, h: 10 },
+      backdrop: "none",
+      modal: false,
+      closeOnEscape: true,
+    });
+
+    const after = hitTestLayers(registry, 2, 2);
+    assert.equal(after.layer?.id, "a");
   });
 
   test("getTopmost returns highest z-index layer", () => {
@@ -261,6 +356,35 @@ describe("Layer Stack State", () => {
 /* ========== Hit Testing Tests ========== */
 
 describe("Layer Hit Testing", () => {
+  test("layer_hit_overlap.json", async () => {
+    const f = await loadLayerHitFixture();
+    assert.equal(f.schemaVersion, 1);
+
+    for (const c of f.cases) {
+      const registry = createLayerRegistry();
+
+      for (const layer of c.layers) {
+        registry.register({
+          id: layer.id,
+          zIndex: layer.zIndex,
+          rect: layer.rect,
+          backdrop: layer.backdrop,
+          modal: layer.modal,
+          closeOnEscape: true,
+        });
+      }
+
+      const result = hitTestLayers(registry, c.point.x, c.point.y);
+      assert.equal(result.layer?.id ?? null, c.expected.layerId, `${c.name}: layerId`);
+      assert.equal(result.blocked, c.expected.blocked, `${c.name}: blocked`);
+      assert.equal(
+        result.blockingLayer?.id ?? null,
+        c.expected.blockingLayerId,
+        `${c.name}: blockingLayerId`,
+      );
+    }
+  });
+
   test("hit test finds layer containing point", () => {
     const registry = createLayerRegistry();
 
@@ -399,6 +523,46 @@ describe("Layer Hit Testing", () => {
     assert.ok(result3.layer);
     assert.equal(result3.layer.id, "modal1");
     assert.equal(result3.blocked, false);
+  });
+
+  test("equal-z modal re-registration updates blocking order deterministically", () => {
+    const registry = createLayerRegistry();
+
+    registry.register({
+      id: "modal",
+      zIndex: 140,
+      rect: { x: 20, y: 0, w: 8, h: 6 },
+      backdrop: "none",
+      modal: true,
+      closeOnEscape: true,
+    });
+    registry.register({
+      id: "content",
+      zIndex: 140,
+      rect: { x: 0, y: 0, w: 12, h: 8 },
+      backdrop: "none",
+      modal: false,
+      closeOnEscape: true,
+    });
+
+    const before = hitTestLayers(registry, 3, 3);
+    assert.equal(before.layer?.id ?? null, "content");
+    assert.equal(before.blocked, false);
+
+    registry.unregister("modal");
+    registry.register({
+      id: "modal",
+      zIndex: 140,
+      rect: { x: 20, y: 0, w: 8, h: 6 },
+      backdrop: "none",
+      modal: true,
+      closeOnEscape: true,
+    });
+
+    const after = hitTestLayers(registry, 3, 3);
+    assert.equal(after.layer, null);
+    assert.equal(after.blocked, true);
+    assert.equal(after.blockingLayer?.id ?? null, "modal");
   });
 });
 
