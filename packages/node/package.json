@@ -28,5 +28,9 @@
   "dependencies": {
     "@rezi-ui/core": "0.1.0-alpha.11",
     "@rezi-ui/native": "0.1.0-alpha.11"
+  },
+  "devDependencies": {
+    "@xterm/headless": "^6.0.0",
+    "node-pty": "^1.1.0"
   }
 }
