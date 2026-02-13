@@ -21,32 +21,53 @@ bun add @rezi-ui/node
 - A stable message protocol between main thread and worker
 - Integration with `@rezi-ui/native` (prebuilt binaries when available)
 
-## Creating a backend
+## Creating an app (recommended)
 
 ```ts
-import { createNodeBackend } from "@rezi-ui/node";
+import { createNodeApp } from "@rezi-ui/node";
 
-const backend = createNodeBackend({
-  fpsCap: 60,
+const app = createNodeApp({
+  initialState: { count: 0 },
+  config: {
+    fpsCap: 60,
+    maxEventBytes: 1 << 20,
+    useV2Cursor: false,
+  },
 });
 ```
 
-Pass the backend into `createApp` from `@rezi-ui/core`. This backend is supported in Node.js and Bun runtimes.
+`createNodeApp` is the default path because it keeps core/backend config in
+lockstep:
+
+- `useV2Cursor` <-> drawlist v2
+- app/backend `maxEventBytes`
+- app/backend `fpsCap`
+
+## Deprecated legacy path
+
+Manual `createNodeBackend()` + `createApp()` wiring is deprecated for standard
+Node/Bun app construction. Prefer `createNodeApp()` so app/core and backend
+settings stay aligned automatically.
 
 ## Native engine config passthrough
 
-`createNodeBackend` accepts `nativeConfig`, a JSON-ish object forwarded to the native layer’s engine creation config.
+`createNodeApp({ config: { nativeConfig } })` forwards `nativeConfig` to the
+native layer’s engine creation config.
 
 Keys are forwarded as-is. If you want a close match to the engine’s public C structs, use `snake_case` field names:
 
 ```ts
-import { createNodeBackend } from "@rezi-ui/node";
+import { createNodeApp } from "@rezi-ui/node";
 
-const backend = createNodeBackend({
-  nativeConfig: {
-    target_fps: 60,
-    limits: {
-      dl_max_total_bytes: 16 << 20,
+const app = createNodeApp({
+  initialState: { count: 0 },
+  config: {
+    fpsCap: 60,
+    nativeConfig: {
+      target_fps: 60, // must match fpsCap when provided
+      limits: {
+        dl_max_total_bytes: 16 << 20,
+      },
     },
   },
 });
