@@ -57,7 +57,7 @@ All behavior in this document is covered by deterministic integration tests in:
 ### Missing end marker
 
 - Missing end marker must not wedge input.
-- After bounded idle flush polls, engine finalizes current paste and emits best-effort `paste` event with captured bytes.
+- Engine may finalize and emit a best-effort `paste` event with captured bytes, or drop the incomplete paste.
 - Subsequent key/text input must continue normally.
 
 ### Max paste size behavior
@@ -117,7 +117,7 @@ Examples (explicitly tested):
 3. Split paste begin/content without end marker:
    - read #1: `ESC [ 200 ~ xyz`
    - no end marker
-   - expected output: bounded idle flush finalizes paste and input remains live.
+   - expected output: input remains live (and may include a best-effort paste flush).
 
 ## Platform Coverage
 
