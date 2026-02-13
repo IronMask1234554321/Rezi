@@ -882,6 +882,11 @@ test("terminal io contract: windows ConPTY guarded coverage", async (t: TestCont
     t.skip("windows-only ConPTY coverage");
     return;
   }
+  const ci = (process.env as NodeJS.ProcessEnv & { CI?: string }).CI;
+  if (ci === "true") {
+    t.skip("ConPTY guarded coverage is skipped on Windows CI; run locally on Windows for coverage");
+    return;
+  }
 
   const harness = await createHarnessOrSkip(t, {
     env: {
