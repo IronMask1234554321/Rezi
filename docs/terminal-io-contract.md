@@ -1,6 +1,6 @@
 # Terminal I/O Contract
 
-This document defines Rezi's product-level terminal input contract for EPIC-01.
+This document defines Rezi's terminal input contract.
 
 Contract path:
 
