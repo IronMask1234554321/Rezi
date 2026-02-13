@@ -11,6 +11,16 @@ app.view((state) =>
 );
 ```
 
+## Stability
+
+Widget stability tiers and guarantees are documented in [Widget Stability](stability.md).
+
+Tier labels used in this catalog:
+
+- `stable`: semver-protected behavior contract with deterministic regression tests.
+- `beta`: core invariants are tested; contract may evolve.
+- `experimental`: no compatibility guarantees.
+
 ## Widget Categories
 
 ### Primitives
@@ -48,7 +58,7 @@ Interactive form controls:
 | Widget | Description | Focusable |
 |--------|-------------|-----------|
 | [Button](button.md) | Clickable button with label | Yes |
-| [Input](input.md) | Single-line text input | Yes |
+| [Input](input.md) | Single-line text input (`stable`) | Yes |
 | [Slider](slider.md) | Numeric range input | Yes |
 | [Checkbox](checkbox.md) | Toggle checkbox | Yes |
 | [Radio Group](radio-group.md) | Single-select options | Yes |
@@ -61,8 +71,8 @@ Tables, lists, and trees:
 
 | Widget | Description | Focusable |
 |--------|-------------|-----------|
-| [Table](table.md) | Tabular data with sorting and selection | Yes |
-| [Virtual List](virtual-list.md) | Efficiently render large lists | Yes |
+| [Table](table.md) | Tabular data with sorting and selection (`stable`) | Yes |
+| [Virtual List](virtual-list.md) | Efficiently render large lists (`stable`) | Yes |
 | [Tree](tree.md) | Hierarchical data with expand/collapse | Yes |
 
 ### Overlays
@@ -95,9 +105,9 @@ Rich, specialized widgets:
 
 | Widget | Description | Focusable |
 |--------|-------------|-----------|
-| [Command Palette](command-palette.md) | Quick command search | Yes |
-| [File Picker](file-picker.md) | File browser with selection | Yes |
-| [File Tree Explorer](file-tree-explorer.md) | File system tree view | Yes |
+| [Command Palette](command-palette.md) | Quick command search (`stable`) | Yes |
+| [File Picker](file-picker.md) | File browser with selection (`stable`) | Yes |
+| [File Tree Explorer](file-tree-explorer.md) | File system tree view (`stable`) | Yes |
 | [Code Editor](code-editor.md) | Multi-line code editing | Yes |
 | [Diff Viewer](diff-viewer.md) | Unified/side-by-side diff | Yes |
 | [Logs Console](logs-console.md) | Streaming log output | Yes |
