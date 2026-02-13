@@ -512,6 +512,12 @@ test("terminal io contract: keyboard + paste + focus + mouse + resize + split re
       "missing initial resize event",
     );
 
+    // Warm up input path so the first assertion sequence is not racing startup.
+    const warmup = await writeAndCollectUntil(harness, "v", 40, (xs) => {
+      return findIndex(xs, (ev) => isText(ev, 118)) >= 0;
+    });
+    assert.ok(findIndex(warmup, (ev) => isText(ev, 118)) >= 0, "warmup text was not observed");
+
     const ctrlUp = await writeAndCollectUntil(harness, "\x1b[1;5A", 40, (xs) => {
       return findIndex(xs, (ev) => isKey(ev, ZR_KEY_UP, ZR_MOD_CTRL)) >= 0;
     });
