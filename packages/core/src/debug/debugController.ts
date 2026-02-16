@@ -24,7 +24,9 @@ import {
   DEBUG_BUNDLE_DEFAULT_MAX_RECORDS,
   DEBUG_BUNDLE_DEFAULT_MAX_TOTAL_PAYLOAD_BYTES,
   DEBUG_BUNDLE_SCHEMA_V1,
-  DEBUG_DRAWLIST_RECORD_SIZE,
+  DEBUG_CODE_DRAWLIST_CMD,
+  DEBUG_CODE_DRAWLIST_EXECUTE,
+  DEBUG_CODE_DRAWLIST_VALIDATE,
   DEBUG_RECORD_HEADER_SIZE,
 } from "./constants.js";
 import {
@@ -96,6 +98,14 @@ function compareBigInt(a: bigint, b: bigint): number {
   if (a < b) return -1;
   if (a > b) return 1;
   return 0;
+}
+
+function isStructuredDrawlistRecordCode(code: number): boolean {
+  return code === DEBUG_CODE_DRAWLIST_VALIDATE || code === DEBUG_CODE_DRAWLIST_EXECUTE;
+}
+
+function isRawDrawlistBytesRecordCode(code: number): boolean {
+  return code === DEBUG_CODE_DRAWLIST_CMD;
 }
 
 function toBundleHeader(header: DebugRecordHeader): DebugBundleHeader {
@@ -557,8 +567,9 @@ export function createDebugController(options: CreateDebugControllerOptions = {}
           };
         } else if (
           header.category === "drawlist" &&
-          header.payloadSize !== DEBUG_DRAWLIST_RECORD_SIZE &&
-          !captureDrawlistBytes
+          !captureDrawlistBytes &&
+          (isRawDrawlistBytesRecordCode(header.code) ||
+            !isStructuredDrawlistRecordCode(header.code))
         ) {
           payloadSnapshot = {
             included: false,

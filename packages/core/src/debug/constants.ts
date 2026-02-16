@@ -36,6 +36,17 @@ export const DEBUG_SEV_INFO = 1;
 export const DEBUG_SEV_WARN = 2;
 export const DEBUG_SEV_ERROR = 3;
 
+/* --- Drawlist Record Codes (match zr_debug_code_t) --- */
+
+/** Drawlist validate summary record code (structured zr_debug_drawlist_record_t). */
+export const DEBUG_CODE_DRAWLIST_VALIDATE = 0x0300;
+
+/** Drawlist execute summary record code (structured zr_debug_drawlist_record_t). */
+export const DEBUG_CODE_DRAWLIST_EXECUTE = 0x0301;
+
+/** Raw drawlist byte-stream record code (payload may contain sensitive render bytes). */
+export const DEBUG_CODE_DRAWLIST_CMD = 0x0302;
+
 /* --- Performance Phase Constants --- */
 
 export const PERF_PHASE_POLL = 0;

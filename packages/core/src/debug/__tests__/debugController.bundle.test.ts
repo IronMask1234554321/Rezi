@@ -1,6 +1,8 @@
 import { assert, describe, test } from "@rezi-ui/testkit";
 import {
   DEBUG_BUNDLE_SCHEMA_V1,
+  DEBUG_CODE_DRAWLIST_CMD,
+  DEBUG_CODE_DRAWLIST_EXECUTE,
   DEBUG_DRAWLIST_RECORD_SIZE,
   categoryToNum,
   severityToNum,
@@ -62,6 +64,7 @@ function makeHeader(
   severity: DebugSeverity,
   payloadSize: number,
   frameId = 0n,
+  code = 7,
 ): DebugRecordHeader {
   return {
     recordId,
@@ -69,7 +72,7 @@ function makeHeader(
     frameId,
     category,
     severity,
-    code: 7,
+    code,
     payloadSize,
   };
 }
@@ -269,10 +272,31 @@ describe("debug bundle export", () => {
   test("includes or excludes sensitive payloads based on capture flags", async () => {
     const records: MockTraceRecord[] = [
       { header: makeHeader(1n, "event", "info", 6), payload: new Uint8Array([9, 8, 7, 6, 5, 4]) },
-      { header: makeHeader(2n, "drawlist", "info", 64), payload: new Uint8Array(64).fill(0xab) },
       {
-        header: makeHeader(3n, "drawlist", "info", DEBUG_DRAWLIST_RECORD_SIZE),
+        header: makeHeader(2n, "drawlist", "info", 64, 0n, DEBUG_CODE_DRAWLIST_CMD),
+        payload: new Uint8Array(64).fill(0xab),
+      },
+      {
+        header: makeHeader(
+          3n,
+          "drawlist",
+          "info",
+          DEBUG_DRAWLIST_RECORD_SIZE,
+          0n,
+          DEBUG_CODE_DRAWLIST_EXECUTE,
+        ),
         payload: new Uint8Array(DEBUG_DRAWLIST_RECORD_SIZE).fill(0xcd),
+      },
+      {
+        header: makeHeader(
+          4n,
+          "drawlist",
+          "info",
+          DEBUG_DRAWLIST_RECORD_SIZE,
+          0n,
+          DEBUG_CODE_DRAWLIST_CMD,
+        ),
+        payload: new Uint8Array(DEBUG_DRAWLIST_RECORD_SIZE).fill(0xef),
       },
     ];
     const debug = createDebugController({ backend: createMockBackend(records) });
@@ -287,6 +311,7 @@ describe("debug bundle export", () => {
     const eventDisabled = getPayload(getRecord(disabled.trace, "1"));
     const rawDrawlistDisabled = getPayload(getRecord(disabled.trace, "2"));
     const structuredDrawlistDisabled = getPayload(getRecord(disabled.trace, "3"));
+    const rawDrawlistSameSizeDisabled = getPayload(getRecord(disabled.trace, "4"));
 
     assert.equal(eventDisabled.included, false);
     if (eventDisabled.included) throw new Error("event payload should be omitted");
@@ -298,6 +323,14 @@ describe("debug bundle export", () => {
 
     assert.equal(structuredDrawlistDisabled.included, true);
 
+    assert.equal(rawDrawlistSameSizeDisabled.included, false);
+    if (rawDrawlistSameSizeDisabled.included) {
+      throw new Error(
+        "raw drawlist payload should be omitted even when size matches structured record",
+      );
+    }
+    assert.equal(rawDrawlistSameSizeDisabled.reason, "capture-drawlist-bytes-disabled");
+
     await debug.enable({
       captureRawEvents: true,
       captureDrawlistBytes: true,
@@ -306,8 +339,10 @@ describe("debug bundle export", () => {
     const enabled = await debug.exportBundle({ includeRecentFrames: false });
     const eventEnabled = getPayload(getRecord(enabled.trace, "1"));
     const rawDrawlistEnabled = getPayload(getRecord(enabled.trace, "2"));
+    const rawDrawlistSameSizeEnabled = getPayload(getRecord(enabled.trace, "4"));
 
     assert.equal(eventEnabled.included, true);
     assert.equal(rawDrawlistEnabled.included, true);
+    assert.equal(rawDrawlistSameSizeEnabled.included, true);
   });
 });
