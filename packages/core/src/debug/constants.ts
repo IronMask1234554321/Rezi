@@ -36,6 +36,17 @@ export const DEBUG_SEV_INFO = 1;
 export const DEBUG_SEV_WARN = 2;
 export const DEBUG_SEV_ERROR = 3;
 
+/* --- Drawlist Record Codes (match zr_debug_code_t) --- */
+
+/** Drawlist validate summary record code (structured zr_debug_drawlist_record_t). */
+export const DEBUG_CODE_DRAWLIST_VALIDATE = 0x0300;
+
+/** Drawlist execute summary record code (structured zr_debug_drawlist_record_t). */
+export const DEBUG_CODE_DRAWLIST_EXECUTE = 0x0301;
+
+/** Raw drawlist byte-stream record code (payload may contain sensitive render bytes). */
+export const DEBUG_CODE_DRAWLIST_CMD = 0x0302;
+
 /* --- Performance Phase Constants --- */
 
 export const PERF_PHASE_POLL = 0;
@@ -77,6 +88,23 @@ export const DEBUG_QUERY_RESULT_SIZE = 32;
 
 /** Size of zr_debug_stats_t in bytes. */
 export const DEBUG_STATS_SIZE = 32;
+
+/* --- Bundle Export Constants --- */
+
+/** Stable schema identifier for JSON debug bundles. */
+export const DEBUG_BUNDLE_SCHEMA_V1 = "rezi-debug-bundle-v1";
+
+/** Default maximum number of trace headers exported into a bundle. */
+export const DEBUG_BUNDLE_DEFAULT_MAX_RECORDS = 512;
+
+/** Default maximum payload bytes included per trace record. */
+export const DEBUG_BUNDLE_DEFAULT_MAX_PAYLOAD_BYTES = 4096;
+
+/** Default maximum payload bytes included across all records. */
+export const DEBUG_BUNDLE_DEFAULT_MAX_TOTAL_PAYLOAD_BYTES = 262_144;
+
+/** Default maximum recent frame summaries included when available. */
+export const DEBUG_BUNDLE_DEFAULT_MAX_RECENT_FRAMES = 32;
 
 /* --- Category Mapping --- */
 
