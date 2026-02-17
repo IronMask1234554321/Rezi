@@ -16,7 +16,7 @@ If you want a ready-to-run starter, use the scaffolding tool:
 npm create rezi my-app
 ```
 
-Install the core and node backend packages:
+Install the core and Node.js/Bun backend packages:
 
 ```bash
 npm install @rezi-ui/core @rezi-ui/node
@@ -63,7 +63,7 @@ If a prebuilt binary is not available for your platform, the package will attemp
 | Package | Description | Required |
 |---------|-------------|----------|
 | `@rezi-ui/core` | Widgets, layout, themes, forms, keybindings | Yes |
-| `@rezi-ui/node` | Node.js/Bun backend with native rendering | Yes |
+| `@rezi-ui/node` | Node.js/Bun backend (worker/inline modes + native rendering) | Yes |
 | `@rezi-ui/testkit` | Testing utilities and fixtures | Optional |
 
 ## Optional packages
@@ -87,9 +87,9 @@ The core package is runtime-agnostic and contains:
 
 ### @rezi-ui/node
 
-The Node.js backend provides:
+The Node.js/Bun backend provides:
 
-- Worker thread runtime for async rendering
+- Runtime execution modes (`worker`, `inline`, `auto`)
 - Native addon binding to the Zireael C engine
 - Terminal capability detection
 - Event loop integration

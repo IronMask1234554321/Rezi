@@ -1,10 +1,14 @@
 # Worker model
 
-Rezi keeps the native engine on a worker thread.
+Rezi supports three backend execution modes via `config.executionMode`:
+
+- `auto` (default): inline when `fpsCap <= 30`, worker otherwise
+- `worker`: run native engine/polling on a worker thread
+- `inline`: run native engine inline on the Node main thread
 
 High-level goals:
 
-- never block the Node main thread on IO or polling
+- worker offload when needed, inline fast path when appropriate
 - deterministic backpressure when the app cannot keep up
 - avoid unbounded queue growth
 

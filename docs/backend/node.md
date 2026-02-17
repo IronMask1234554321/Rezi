@@ -2,7 +2,7 @@
 
 The Node backend owns:
 
-- worker-thread engine ownership (native engine is never called on the main thread)
+- native engine execution mode (`auto` | `worker` | `inline`)
 - frame scheduling and buffer pooling
 - transfer of drawlists to the engine and event batches back to core
 
@@ -14,6 +14,7 @@ import { createNodeApp } from "@rezi-ui/node";
 const app = createNodeApp({
   initialState: { count: 0 },
   config: {
+    executionMode: "auto",
     fpsCap: 60,
     maxEventBytes: 1 << 20,
     useV2Cursor: false,
@@ -25,8 +26,15 @@ const app = createNodeApp({
 knobs aligned:
 
 - `useV2Cursor` and drawlist v2 are paired automatically.
-- `maxEventBytes` is applied to both app parsing and backend worker buffers.
+- `maxEventBytes` is applied to both app parsing and backend transport buffers.
 - `fpsCap` is the single scheduling knob.
+- `executionMode: "auto"` resolves to inline when `fpsCap <= 30`, worker otherwise.
+
+Execution mode details:
+
+- `auto` (default): select inline for low-fps workloads (`fpsCap <= 30`), worker otherwise.
+- `worker`: force worker-thread engine execution.
+- `inline`: run the engine inline on the Node main thread.
 
 Legacy path deprecation:
 

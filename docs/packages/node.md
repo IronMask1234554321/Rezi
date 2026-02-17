@@ -2,7 +2,7 @@
 
 Node/Bun backend package:
 
-- worker-thread engine ownership
+- configurable engine execution mode (`auto` | `worker` | `inline`)
 - transfer of drawlists/events between core and native
 - buffer pooling and scheduling
 
@@ -17,9 +17,17 @@ bun add @rezi-ui/node
 ## What you get
 
 - A backend implementation that satisfies the `@rezi-ui/core` runtime backend interface
-- A worker-thread model where the engine runs off the main thread
-- A stable message protocol between main thread and worker
+- Worker and inline execution paths for the native engine
+- A stable message protocol for worker mode
 - Integration with `@rezi-ui/native` (prebuilt binaries when available)
+
+## Execution mode
+
+Set `config.executionMode` on `createNodeApp(...)`:
+
+- `auto` (default): inline when `fpsCap <= 30`, worker otherwise
+- `worker`: always run the engine on a worker thread
+- `inline`: run the engine inline on the Node main thread
 
 ## Creating an app (recommended)
 
@@ -29,6 +37,7 @@ import { createNodeApp } from "@rezi-ui/node";
 const app = createNodeApp({
   initialState: { count: 0 },
   config: {
+    executionMode: "auto",
     fpsCap: 60,
     maxEventBytes: 1 << 20,
     useV2Cursor: false,

@@ -1,6 +1,6 @@
 # Packages
 
-Rezi is organized as a monorepo with multiple packages, each with distinct responsibilities.
+Rezi is organized as a monorepo with focused packages and clear runtime boundaries.
 
 ## Installation
 
@@ -24,7 +24,7 @@ flowchart TB
 | Package | Description | npm |
 |---------|-------------|-----|
 | [@rezi-ui/core](core.md) | Widgets, layout, themes, forms, keybindings | `npm i @rezi-ui/core` |
-| [@rezi-ui/node](node.md) | Node.js/Bun backend with worker threads | `npm i @rezi-ui/node` |
+| [@rezi-ui/node](node.md) | Node.js/Bun backend with worker/inline execution modes | `npm i @rezi-ui/node` |
 | [@rezi-ui/native](native.md) | Native addon (napi-rs + Zireael) | Bundled with node |
 | [@rezi-ui/jsx](jsx.md) | JSX runtime for Rezi widgets | `npm i @rezi-ui/jsx` |
 | [@rezi-ui/testkit](testkit.md) | Testing utilities and fixtures | `npm i -D @rezi-ui/testkit` |
@@ -34,7 +34,7 @@ flowchart TB
 
 **Runtime-agnostic TypeScript core**
 
-The core package is the heart of Rezi. It contains:
+The core package defines Rezi's runtime-agnostic API and contains:
 
 - All widget constructors (`ui.text`, `ui.button`, `ui.table`, etc.)
 - Layout engine with flexbox-like semantics
@@ -44,7 +44,7 @@ The core package is the heart of Rezi. It contains:
 - Focus management utilities
 - Binary protocol builders and parsers
 
-Critically, this package has **no Node.js-specific dependencies**. It can theoretically run in any JavaScript runtime.
+This package has **no Node.js-specific dependencies**. Runtime adapters can reuse it by implementing the backend contract.
 
 ```typescript
 import { ui, rgb, darkTheme } from "@rezi-ui/core";
@@ -56,9 +56,10 @@ import { ui, rgb, darkTheme } from "@rezi-ui/core";
 
 **Node.js/Bun runtime backend**
 
-The `@rezi-ui/node` backend provides the runtime integration:
+The `@rezi-ui/node` backend provides runtime integration:
 
-- Worker thread management for async rendering
+- Execution modes: `worker`, `inline`, and `auto`
+- Worker-mode transport and scheduling
 - Event loop integration
 - Terminal capability detection
 - Debug tracing and performance instrumentation
@@ -141,7 +142,7 @@ Application Code (ui.* API or JSX)
        │
        │ used by
        ▼
-@rezi-ui/node (Worker threads, event loop)
+@rezi-ui/node (worker/inline execution, event loop)
        │
        │ binds to
        ▼

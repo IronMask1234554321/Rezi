@@ -20,10 +20,11 @@ npm -w @rezi-ui/native run test:native:smoke
 
 ## Design and constraints
 
-- Engine ownership lives on a worker thread (never the Node main thread).
+- Engine placement is controlled by `@rezi-ui/node` `executionMode` (`auto` | `worker` | `inline`).
+- `executionMode: "auto"` selects inline when `fpsCap <= 30`, worker otherwise.
 - All buffers across the boundary are caller-owned; binary formats are validated strictly.
 
 See:
 
 - [Native addon docs](../../docs/backend/native.md)
-- [Releasing](RELEASING.md)
+- [Releasing](../../RELEASING.md)

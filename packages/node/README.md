@@ -2,7 +2,7 @@
 
 Node.js/Bun backend for Rezi. This package owns:
 
-- worker-thread engine ownership (native engine is never called on the main thread)
+- configurable native engine execution mode (`auto` | `worker` | `inline`)
 - frame scheduling and buffer pooling
 - transfer of drawlists/events between core and the native addon
 
@@ -14,7 +14,8 @@ import { createNodeApp } from "@rezi-ui/node";
 
 Use `createNodeApp({ initialState, config })` as the default path. It wires
 `@rezi-ui/core` and `@rezi-ui/node` with matched cursor protocol, event caps,
-and fps settings.
+and fps settings. `executionMode` defaults to `auto` (`fpsCap <= 30` -> inline,
+otherwise worker); set `executionMode: "worker"` or `"inline"` to force a mode.
 
 Legacy `createNodeBackend() + createApp()` wiring is deprecated for standard
 app construction.

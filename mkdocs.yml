@@ -112,8 +112,10 @@ nav:
       - Styling: guide/styling.md
       - Performance: guide/performance.md
       - Debugging: guide/debugging.md
+      - Record & Replay: guide/record-replay.md
   - Widgets:
       - Overview: widgets/index.md
+      - Stability Tiers: widgets/stability.md
       - Primitives:
           - Text: widgets/text.md
           - Box: widgets/box.md
@@ -133,6 +135,7 @@ nav:
       - Inputs:
           - Button: widgets/button.md
           - Input: widgets/input.md
+          - Slider: widgets/slider.md
           - Checkbox: widgets/checkbox.md
           - Radio Group: widgets/radio-group.md
           - Select: widgets/select.md
@@ -193,6 +196,7 @@ nav:
           - Terminal Caps: backend/terminal-caps.md
       - Protocol:
           - Overview: protocol/index.md
+          - Terminal I/O Contract: terminal-io-contract.md
           - Event Batches (ZREV): protocol/zrev.md
           - Drawlists (ZRDL): protocol/zrdl.md
           - Cursor (v2): protocol/cursor-v2.md
@@ -208,12 +212,14 @@ nav:
           - "@rezi-ui/native": packages/native.md
           - "@rezi-ui/jsx": packages/jsx.md
           - "@rezi-ui/testkit": packages/testkit.md
-          - create-rezi: packages/create-rezi.md
+          - create-rezi CLI: packages/create-rezi.md
   - Developer:
       - Contributing: dev/contributing.md
       - Repo Layout: dev/repo-layout.md
       - Build: dev/build.md
       - Testing: dev/testing.md
+      - Perf Regressions: dev/perf-regressions.md
+      - Repro Replay: dev/repro-replay.md
       - Releasing: dev/releasing.md
       - Docs: dev/docs.md
       - Style Guide: dev/style-guide.md

@@ -122,7 +122,8 @@ Rezi coalesces work:
 
 - multiple updates in a single turn produce one commit
 - rendering occurs after the commit
-- at most one frame is submitted in-flight at a time
+- in-flight submissions are bounded by `config.maxFramesInFlight` (default `1`, clamped to `1..4`)
+- interactive input (`key`/`text`/`paste`/`mouse`) gets a short urgent burst that allows one additional in-flight frame
 
 This keeps runtime behavior bounded and prevents unbounded “render storms”.
 

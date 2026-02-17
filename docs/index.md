@@ -1,6 +1,6 @@
 # Rezi
 
-Rezi is a **code-first terminal UI framework** for Node.js and Bun. Build rich, interactive terminal applications with a declarative widget API, automatic focus management, and native rendering performance.
+Rezi is a **code-first terminal UI framework** for Node.js and Bun. Build interactive terminal applications with a declarative widget API, automatic focus management, and native-backed rendering.
 
 ```typescript
 import { ui, rgb } from "@rezi-ui/core";
@@ -68,7 +68,7 @@ flowchart TB
         Core
     end
 
-    subgraph Node.js Runtime
+    subgraph Node.js/Bun Runtime
         Node
         Native
     end
@@ -77,7 +77,7 @@ flowchart TB
 | Layer | Purpose |
 |-------|---------|
 | **@rezi-ui/core** | Widgets, layout, themes, forms, keybindings. No Node.js APIs. |
-| **@rezi-ui/node** | Node.js backend with worker thread integration. |
+| **@rezi-ui/node** | Node.js/Bun backend with worker and inline execution modes. |
 | **@rezi-ui/native** | napi-rs binding to the Zireael C rendering engine. |
 | **@rezi-ui/jsx** | Optional JSX runtime for widget trees. |
 
@@ -97,7 +97,7 @@ flowchart TB
 
     ---
 
-    Build your first Rezi application in minutes.
+    Build a minimal Rezi application.
 
     [:octicons-arrow-right-24: Quickstart](getting-started/quickstart.md)
 
