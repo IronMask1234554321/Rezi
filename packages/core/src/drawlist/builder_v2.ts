@@ -133,6 +133,7 @@ function encodeStyle(style: TextStyle | undefined): EncodedStyle {
   if (style.dim) attrs |= 1 << 4;
   if (style.strikethrough) attrs |= 1 << 5;
   if (style.overline) attrs |= 1 << 6;
+  if (style.blink) attrs |= 1 << 7;
 
   return { fg, bg, attrs };
 }

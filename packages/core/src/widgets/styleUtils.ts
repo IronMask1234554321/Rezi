@@ -48,4 +48,5 @@ export const styles = {
   inverse: { inverse: true } as const,
   strikethrough: { strikethrough: true } as const,
   overline: { overline: true } as const,
+  blink: { blink: true } as const,
 } as const;

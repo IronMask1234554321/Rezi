@@ -119,3 +119,63 @@ describe("styled variant merge with overline", () => {
     });
   });
 });
+
+describe("TextStyle merge with blink", () => {
+  test("nested inheritance chain preserves and overrides blink deterministically", () => {
+    const root = mergeTextStyle(DEFAULT_BASE_STYLE, { blink: true });
+    const parent = mergeTextStyle(root, { bold: true });
+    const child = mergeTextStyle(parent, { blink: false });
+    const leaf = mergeTextStyle(child, { italic: true });
+
+    assert.equal(root.blink, true);
+    assert.equal(parent.blink, true);
+    assert.equal(child.blink, false);
+    assert.equal(leaf.blink, false);
+  });
+
+  test("cache key distinguishes blink from other boolean attrs", () => {
+    const withoutBlink = mergeTextStyle(DEFAULT_BASE_STYLE, { bold: true });
+    const withBlinkA = mergeTextStyle(DEFAULT_BASE_STYLE, { bold: true, blink: true });
+    const withBlinkB = mergeTextStyle(DEFAULT_BASE_STYLE, { bold: true, blink: true });
+    const withOverline = mergeTextStyle(DEFAULT_BASE_STYLE, { bold: true, overline: true });
+
+    assert.equal(withoutBlink === withBlinkA, false);
+    assert.equal(withBlinkA === withBlinkB, true);
+    assert.equal(withBlinkA === withOverline, false);
+  });
+});
+
+describe("styled variant merge with blink", () => {
+  test("base -> variant -> user style merge order supports blink application and overrides", () => {
+    const Button = styled("button", {
+      base: { bold: true, blink: true },
+      variants: {
+        intent: {
+          primary: { fg: { r: 1, g: 2, b: 3 } },
+          danger: { fg: { r: 9, g: 8, b: 7 }, blink: false },
+        },
+      },
+      defaults: { intent: "primary" },
+    });
+
+    const defaultNode = Button({ id: "default", label: "Default" });
+    assert.deepEqual((defaultNode.props as { style?: unknown }).style, {
+      bold: true,
+      blink: true,
+      fg: { r: 1, g: 2, b: 3 },
+    });
+
+    const dangerNode = Button({
+      id: "danger",
+      label: "Danger",
+      intent: "danger",
+      style: { blink: true, italic: true },
+    });
+    assert.deepEqual((dangerNode.props as { style?: unknown }).style, {
+      bold: true,
+      fg: { r: 9, g: 8, b: 7 },
+      blink: true,
+      italic: true,
+    });
+  });
+});

@@ -141,7 +141,7 @@ function packRgb(v: unknown): number {
 
 /**
  * Encode TextStyle to binary format: packed fg/bg colors and attribute flags.
- * Attribute bits: 0=bold, 1=italic, 2=underline, 3=inverse, 4=dim, 5=strikethrough, 6=overline
+ * Attribute bits: 0=bold, 1=italic, 2=underline, 3=inverse, 4=dim, 5=strikethrough, 6=overline, 7=blink
  */
 function encodeStyle(style: TextStyle | undefined): EncodedStyle {
   if (!style) return { fg: 0, bg: 0, attrs: 0 };
@@ -157,6 +157,7 @@ function encodeStyle(style: TextStyle | undefined): EncodedStyle {
   if (style.dim) attrs |= 1 << 4;
   if (style.strikethrough) attrs |= 1 << 5;
   if (style.overline) attrs |= 1 << 6;
+  if (style.blink) attrs |= 1 << 7;
 
   return { fg, bg, attrs };
 }

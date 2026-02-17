@@ -143,6 +143,7 @@ function styleKey(style: TextStyle | undefined): string {
     style.inverse ? "v1" : "v0",
     style.strikethrough ? "s1" : "s0",
     style.overline ? "o1" : "o0",
+    style.blink ? "k1" : "k0",
     `fg:${colorKey(style.fg)}`,
     `bg:${colorKey(style.bg)}`,
   ].join("|");
@@ -768,6 +769,77 @@ describe("WidgetRenderer incremental drawlist emission", () => {
           op.kind === "drawText" &&
           op.text === "overline-target" &&
           (op.style?.overline ?? false) === true,
+      ),
+      true,
+    );
+  });
+
+  test("blink-only style change in commit path matches full render", () => {
+    const viewport: Viewport = { cols: 32, rows: 6 };
+    const backend = createNoopBackend();
+
+    const viewFn = (s: Readonly<{ blink: boolean }>) =>
+      ui.column({}, [
+        ui.text("Header"),
+        ui.text("blink-target", { style: { blink: s.blink } }),
+        ui.text("Footer"),
+      ]);
+
+    const partialBuilder = new RecordingBuilder();
+    const partialRenderer = new WidgetRenderer<{ blink: boolean }>({
+      backend,
+      builder: partialBuilder,
+      requestRender: () => {},
+    });
+
+    const fullBuilder = new RecordingBuilder();
+    const fullRenderer = new WidgetRenderer<{ blink: boolean }>({
+      backend,
+      builder: fullBuilder,
+      requestRender: () => {},
+    });
+
+    const planBootstrap = { commit: true, layout: true, checkLayoutStability: true } as const;
+    const planUpdate = { commit: true, layout: false, checkLayoutStability: false } as const;
+
+    const opsA = submitOps(
+      partialRenderer,
+      partialBuilder,
+      viewFn,
+      { blink: false },
+      viewport,
+      planBootstrap,
+    );
+    const framebufferA = applyOps(createFramebuffer(viewport), opsA);
+
+    const opsExpected = submitOps(
+      fullRenderer,
+      fullBuilder,
+      viewFn,
+      { blink: true },
+      viewport,
+      planBootstrap,
+    );
+    const framebufferExpected = applyOps(createFramebuffer(viewport), opsExpected);
+
+    const opsPartial = submitOps(
+      partialRenderer,
+      partialBuilder,
+      viewFn,
+      { blink: true },
+      viewport,
+      planUpdate,
+    );
+    const framebufferPartial = applyOps(framebufferA, opsPartial);
+
+    assertFramebuffersEqual(framebufferPartial, framebufferExpected);
+    assert.equal(
+      opsPartial.some((op) => op.kind === "clearTo"),
+      false,
+    );
+    assert.equal(
+      opsPartial.some(
+        (op) => op.kind === "drawText" && op.text === "blink-target" && (op.style?.blink ?? false) === true,
       ),
       true,
     );
