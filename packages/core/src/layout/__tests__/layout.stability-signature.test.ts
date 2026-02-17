@@ -20,10 +20,45 @@ function rowNode(children: readonly VNode[], props: Record<string, unknown> = {}
   } as unknown as VNode;
 }
 
+function columnNode(children: readonly VNode[], props: Record<string, unknown> = {}): VNode {
+  return {
+    kind: "column",
+    props,
+    children: Object.freeze([...children]),
+  } as unknown as VNode;
+}
+
 function boxNode(children: readonly VNode[], props: Record<string, unknown> = {}): VNode {
   return {
     kind: "box",
     props,
+    children: Object.freeze([...children]),
+  } as unknown as VNode;
+}
+
+function spacerNode(props: Record<string, unknown> = {}): VNode {
+  return { kind: "spacer", props } as unknown as VNode;
+}
+
+function modalNode(content: VNode, props: Record<string, unknown> = {}): VNode {
+  return {
+    kind: "modal",
+    props: { id: "overlay-modal", content, ...props },
+  } as unknown as VNode;
+}
+
+const NOOP_RESIZE = (): void => {};
+
+function splitPaneNode(children: readonly VNode[], props: Record<string, unknown> = {}): VNode {
+  return {
+    kind: "splitPane",
+    props: {
+      id: "split-pane",
+      direction: "horizontal",
+      sizes: Object.freeze([50, 50]),
+      onResize: NOOP_RESIZE,
+      ...props,
+    },
     children: Object.freeze([...children]),
   } as unknown as VNode;
 }
@@ -46,7 +81,95 @@ function runSignatures(root: RuntimeInstance, prev: Map<InstanceId, number>): bo
   return updateLayoutStabilitySignatures(root, prev, next, stack);
 }
 
+function expectSignatureChanged(base: RuntimeInstance, changed: RuntimeInstance): void {
+  const prev = new Map<InstanceId, number>();
+  assert.equal(runSignatures(base, prev), true);
+  assert.equal(runSignatures(changed, prev), true);
+}
+
+function expectSignatureUnchanged(base: RuntimeInstance, changed: RuntimeInstance): void {
+  const prev = new Map<InstanceId, number>();
+  assert.equal(runSignatures(base, prev), true);
+  assert.equal(runSignatures(changed, prev), false);
+}
+
+function sortedEntries(
+  map: ReadonlyMap<InstanceId, number>,
+): readonly (readonly [string, number])[] {
+  return Object.freeze(
+    [...map.entries()]
+      .map(([instanceId, signature]) => [String(instanceId), signature] as const)
+      .sort((a, b) => a[0].localeCompare(b[0])),
+  );
+}
+
 describe("layout stability signatures", () => {
+  const STACK_LAYOUT_PROP_CASES = Object.freeze([
+    { name: "width", base: { width: 10 }, changed: { width: 11 } },
+    { name: "height", base: { height: 4 }, changed: { height: 5 } },
+    { name: "minWidth", base: { minWidth: 5 }, changed: { minWidth: 6 } },
+    { name: "maxWidth", base: { maxWidth: 20 }, changed: { maxWidth: 21 } },
+    { name: "minHeight", base: { minHeight: 2 }, changed: { minHeight: 3 } },
+    { name: "maxHeight", base: { maxHeight: 8 }, changed: { maxHeight: 9 } },
+    { name: "flex", base: { flex: 1 }, changed: { flex: 2 } },
+    { name: "aspectRatio", base: { aspectRatio: 2 }, changed: { aspectRatio: 3 } },
+    { name: "p", base: { p: 1 }, changed: { p: 2 } },
+    { name: "px", base: { px: 1 }, changed: { px: 2 } },
+    { name: "py", base: { py: 1 }, changed: { py: 2 } },
+    { name: "pt", base: { pt: 1 }, changed: { pt: 2 } },
+    { name: "pr", base: { pr: 1 }, changed: { pr: 2 } },
+    { name: "pb", base: { pb: 1 }, changed: { pb: 2 } },
+    { name: "pl", base: { pl: 1 }, changed: { pl: 2 } },
+    { name: "m", base: { m: 1 }, changed: { m: 2 } },
+    { name: "mx", base: { mx: 1 }, changed: { mx: 2 } },
+    { name: "my", base: { my: 1 }, changed: { my: 2 } },
+    { name: "mt (regression)", base: { mt: 1 }, changed: { mt: 2 } },
+    { name: "mr (regression)", base: { mr: 1 }, changed: { mr: 2 } },
+    { name: "mb (regression)", base: { mb: 1 }, changed: { mb: 2 } },
+    { name: "ml (regression)", base: { ml: 1 }, changed: { ml: 2 } },
+    { name: "gap", base: { gap: 1 }, changed: { gap: 2 } },
+    { name: "align", base: { align: "start" }, changed: { align: "center" } },
+    { name: "justify", base: { justify: "start" }, changed: { justify: "end" } },
+  ] as const);
+
+  const BOX_LAYOUT_PROP_CASES = Object.freeze([
+    { name: "border", base: { border: "single" }, changed: { border: "double" } },
+    {
+      name: "borderTop (regression)",
+      base: { borderTop: true },
+      changed: { borderTop: false },
+    },
+    {
+      name: "borderRight (regression)",
+      base: { borderRight: true },
+      changed: { borderRight: false },
+    },
+    {
+      name: "borderBottom (regression)",
+      base: { borderBottom: true },
+      changed: { borderBottom: false },
+    },
+    {
+      name: "borderLeft (regression)",
+      base: { borderLeft: true },
+      changed: { borderLeft: false },
+    },
+    { name: "mt (regression)", base: { mt: 1 }, changed: { mt: 2 } },
+    { name: "mr (regression)", base: { mr: 1 }, changed: { mr: 2 } },
+    { name: "mb (regression)", base: { mb: 1 }, changed: { mb: 2 } },
+    { name: "ml (regression)", base: { ml: 1 }, changed: { ml: 2 } },
+  ] as const);
+
+  const STYLE_ONLY_CASES = Object.freeze([
+    { name: "fg", base: { fg: "red" }, changed: { fg: "blue" } },
+    { name: "bg", base: { bg: "black" }, changed: { bg: "white" } },
+    { name: "bold", base: { bold: false }, changed: { bold: true } },
+    { name: "dim", base: { dim: false }, changed: { dim: true } },
+    { name: "italic", base: { italic: false }, changed: { italic: true } },
+    { name: "underline", base: { underline: false }, changed: { underline: true } },
+    { name: "inverse", base: { inverse: false }, changed: { inverse: true } },
+  ] as const);
+
   test("second pass on unchanged tree reports no change", () => {
     const prev = new Map<InstanceId, number>();
     const root = runtimeNode(1, textNode("stable"));
@@ -55,94 +178,87 @@ describe("layout stability signatures", () => {
     assert.equal(runSignatures(root, prev), false);
   });
 
-  test("row layout-relevant prop change is included", () => {
-    const prev = new Map<InstanceId, number>();
+  test("determinism across separate computations", () => {
     const child = runtimeNode(2, textNode("child"));
-    const base = runtimeNode(1, rowNode([child.vnode], { gap: 1 }), [child]);
-    const changed = runtimeNode(1, rowNode([child.vnode], { gap: 2 }), [child]);
+    const root = runtimeNode(1, rowNode([child.vnode], { gap: 1, width: 12 }), [child]);
 
-    assert.equal(runSignatures(base, prev), true);
-    assert.equal(runSignatures(changed, prev), true);
+    const prevA = new Map<InstanceId, number>();
+    const prevB = new Map<InstanceId, number>();
+    assert.equal(runSignatures(root, prevA), true);
+    assert.equal(runSignatures(root, prevB), true);
+    assert.deepEqual(sortedEntries(prevA), sortedEntries(prevB));
+    assert.equal(runSignatures(root, prevA), false);
+    assert.equal(runSignatures(root, prevB), false);
   });
 
-  test("row style-only prop change is excluded", () => {
+  test("empty tree is deterministic", () => {
     const prev = new Map<InstanceId, number>();
-    const child = runtimeNode(2, textNode("child"));
-    const base = runtimeNode(1, rowNode([child.vnode], { gap: 1, style: { fg: "red" } }), [child]);
-    const styleOnly = runtimeNode(1, rowNode([child.vnode], { gap: 1, style: { fg: "blue" } }), [
-      child,
-    ]);
-
-    assert.equal(runSignatures(base, prev), true);
-    assert.equal(runSignatures(styleOnly, prev), false);
+    const root = runtimeNode(1, rowNode([], { gap: 1 }));
+    assert.equal(runSignatures(root, prev), true);
+    assert.equal(runSignatures(root, prev), false);
   });
 
-  test("box layout-relevant prop change is included", () => {
+  test("single node tree is deterministic", () => {
     const prev = new Map<InstanceId, number>();
-    const child = runtimeNode(2, textNode("child"));
-    const base = runtimeNode(1, boxNode([child.vnode], { border: "single", pad: 1 }), [child]);
-    const changed = runtimeNode(1, boxNode([child.vnode], { border: "single", pad: 2 }), [child]);
-
-    assert.equal(runSignatures(base, prev), true);
-    assert.equal(runSignatures(changed, prev), true);
+    const root = runtimeNode(1, buttonNode("Go", { px: 2 }));
+    assert.equal(runSignatures(root, prev), true);
+    assert.equal(runSignatures(root, prev), false);
   });
 
-  test("box style-only prop change is excluded", () => {
-    const prev = new Map<InstanceId, number>();
-    const child = runtimeNode(2, textNode("child"));
-    const base = runtimeNode(
-      1,
-      boxNode([child.vnode], { border: "single", pad: 1, style: { fg: "red" } }),
-      [child],
-    );
-    const styleOnly = runtimeNode(
-      1,
-      boxNode([child.vnode], { border: "single", pad: 1, style: { fg: "green" } }),
-      [child],
-    );
+  for (const c of STACK_LAYOUT_PROP_CASES) {
+    test(`row layout-relevant ${c.name} change is included`, () => {
+      const child = runtimeNode(2, textNode("child"));
+      const base = runtimeNode(1, rowNode([child.vnode], c.base), [child]);
+      const changed = runtimeNode(1, rowNode([child.vnode], c.changed), [child]);
+      expectSignatureChanged(base, changed);
+    });
+  }
 
-    assert.equal(runSignatures(base, prev), true);
-    assert.equal(runSignatures(styleOnly, prev), false);
-  });
+  for (const c of BOX_LAYOUT_PROP_CASES) {
+    test(`box layout-relevant ${c.name} change is included`, () => {
+      const child = runtimeNode(2, textNode("child"));
+      const base = runtimeNode(1, boxNode([child.vnode], c.base), [child]);
+      const changed = runtimeNode(1, boxNode([child.vnode], c.changed), [child]);
+      expectSignatureChanged(base, changed);
+    });
+  }
+
+  for (const c of STYLE_ONLY_CASES) {
+    test(`row style-only ${c.name} change is excluded`, () => {
+      const child = runtimeNode(2, textNode("child"));
+      const base = runtimeNode(1, rowNode([child.vnode], { gap: 1, style: c.base }), [child]);
+      const styleOnly = runtimeNode(1, rowNode([child.vnode], { gap: 1, style: c.changed }), [
+        child,
+      ]);
+      expectSignatureUnchanged(base, styleOnly);
+    });
+  }
 
   test("text content change is included", () => {
-    const prev = new Map<InstanceId, number>();
     const base = runtimeNode(1, textNode("a"));
     const changed = runtimeNode(1, textNode("aaaa"));
-
-    assert.equal(runSignatures(base, prev), true);
-    assert.equal(runSignatures(changed, prev), true);
+    expectSignatureChanged(base, changed);
   });
 
   test("text style-only change is excluded", () => {
-    const prev = new Map<InstanceId, number>();
     const base = runtimeNode(1, textNode("abc", { style: { fg: "red" } }));
     const styleOnly = runtimeNode(1, textNode("abc", { style: { fg: "blue" } }));
-
-    assert.equal(runSignatures(base, prev), true);
-    assert.equal(runSignatures(styleOnly, prev), false);
+    expectSignatureUnchanged(base, styleOnly);
   });
 
   test("button label change is included", () => {
-    const prev = new Map<InstanceId, number>();
     const base = runtimeNode(1, buttonNode("Go", { id: "btn-a", px: 1 }));
     const changed = runtimeNode(1, buttonNode("Launch", { id: "btn-a", px: 1 }));
-
-    assert.equal(runSignatures(base, prev), true);
-    assert.equal(runSignatures(changed, prev), true);
+    expectSignatureChanged(base, changed);
   });
 
   test("button id-only change is excluded", () => {
-    const prev = new Map<InstanceId, number>();
     const base = runtimeNode(1, buttonNode("Go", { id: "btn-a", px: 2 }));
     const idOnly = runtimeNode(1, buttonNode("Go", { id: "btn-b", px: 2 }));
-
-    assert.equal(runSignatures(base, prev), true);
-    assert.equal(runSignatures(idOnly, prev), false);
+    expectSignatureUnchanged(base, idOnly);
   });
 
   test("adding a child is included", () => {
-    const prev = new Map<InstanceId, number>();
     const childA = runtimeNode(2, textNode("A"));
     const childB = runtimeNode(3, textNode("B"));
 
@@ -151,13 +267,10 @@ describe("layout stability signatures", () => {
       childA,
       childB,
     ]);
-
-    assert.equal(runSignatures(base, prev), true);
-    assert.equal(runSignatures(withAddedChild, prev), true);
+    expectSignatureChanged(base, withAddedChild);
   });
 
   test("removing a child is included", () => {
-    const prev = new Map<InstanceId, number>();
     const childA = runtimeNode(2, textNode("A"));
     const childB = runtimeNode(3, textNode("B"));
 
@@ -166,13 +279,10 @@ describe("layout stability signatures", () => {
       childB,
     ]);
     const withRemovedChild = runtimeNode(1, rowNode([childA.vnode], { gap: 0 }), [childA]);
-
-    assert.equal(runSignatures(base, prev), true);
-    assert.equal(runSignatures(withRemovedChild, prev), true);
+    expectSignatureChanged(base, withRemovedChild);
   });
 
   test("reordering children is included", () => {
-    const prev = new Map<InstanceId, number>();
     const childA = runtimeNode(2, textNode("A"));
     const childB = runtimeNode(3, textNode("B"));
 
@@ -184,9 +294,121 @@ describe("layout stability signatures", () => {
       childB,
       childA,
     ]);
+    expectSignatureChanged(base, reordered);
+  });
+
+  test("same child count but different child identity is included", () => {
+    const childA = runtimeNode(2, textNode("same"));
+    const childB = runtimeNode(3, textNode("same"));
+    const base = runtimeNode(1, rowNode([childA.vnode], { gap: 0 }), [childA]);
+    const differentIdentity = runtimeNode(1, rowNode([childB.vnode], { gap: 0 }), [childB]);
+    expectSignatureChanged(base, differentIdentity);
+  });
+
+  test("changing child key (new child instance id) changes signature", () => {
+    const keyedChildA = runtimeNode(2, textNode("stable", { key: "a" }));
+    const keyedChildB = runtimeNode(3, textNode("stable", { key: "b" }));
+    const base = runtimeNode(1, rowNode([keyedChildA.vnode], { gap: 1 }), [keyedChildA]);
+    const keyChanged = runtimeNode(1, rowNode([keyedChildB.vnode], { gap: 1 }), [keyedChildB]);
+    expectSignatureChanged(base, keyChanged);
+  });
+
+  test("mixed supported kinds remain stable when unchanged", () => {
+    const button = runtimeNode(2, buttonNode("Go", { px: 2 }));
+    const spacer = runtimeNode(3, spacerNode({ size: 1 }));
+    const text = runtimeNode(5, textNode("inside"));
+    const box = runtimeNode(4, boxNode([text.vnode], { border: "single", pad: 1 }), [text]);
+    const root = runtimeNode(1, columnNode([button.vnode, spacer.vnode, box.vnode], { gap: 1 }), [
+      button,
+      spacer,
+      box,
+    ]);
+    const prev = new Map<InstanceId, number>();
+    assert.equal(runSignatures(root, prev), true);
+    assert.equal(runSignatures(root, prev), false);
+  });
+
+  test("mixed supported kinds detect nested content changes", () => {
+    const button = runtimeNode(2, buttonNode("Go", { px: 2 }));
+    const textA = runtimeNode(5, textNode("inside"));
+    const textB = runtimeNode(5, textNode("inside-changed"));
+    const boxA = runtimeNode(4, boxNode([textA.vnode], { border: "single", pad: 1 }), [textA]);
+    const boxB = runtimeNode(4, boxNode([textB.vnode], { border: "single", pad: 1 }), [textB]);
+    const base = runtimeNode(1, columnNode([button.vnode, boxA.vnode], { gap: 1 }), [button, boxA]);
+    const changed = runtimeNode(1, columnNode([button.vnode, boxB.vnode], { gap: 1 }), [
+      button,
+      boxB,
+    ]);
+    expectSignatureChanged(base, changed);
+  });
+
+  test("overlay kinds are excluded and conservatively force relayout", () => {
+    const prev = new Map<InstanceId, number>();
+    const supported = runtimeNode(1, textNode("ok"));
+    assert.equal(runSignatures(supported, prev), true);
+    assert.ok(prev.size > 0);
+
+    const overlay = runtimeNode(1, modalNode(textNode("overlay")));
+    assert.equal(runSignatures(overlay, prev), true);
+    assert.equal(prev.size, 0);
+  });
+
+  test("splitPane kind is excluded and conservatively forces relayout", () => {
+    const prev = new Map<InstanceId, number>();
+    const supported = runtimeNode(1, textNode("ok"));
+    assert.equal(runSignatures(supported, prev), true);
+    assert.ok(prev.size > 0);
+
+    const childA = runtimeNode(2, textNode("A"));
+    const childB = runtimeNode(3, textNode("B"));
+    const split = runtimeNode(
+      1,
+      splitPaneNode([childA.vnode, childB.vnode], { sizes: Object.freeze([50, 50]) }),
+      [childA, childB],
+    );
+    assert.equal(runSignatures(split, prev), true);
+    assert.equal(prev.size, 0);
+  });
+
+  test("splitPane sizes array changes are covered by conservative relayout behavior", () => {
+    const prev = new Map<InstanceId, number>();
+    const childA = runtimeNode(2, textNode("A"));
+    const childB = runtimeNode(3, textNode("B"));
+
+    const base = runtimeNode(
+      1,
+      splitPaneNode([childA.vnode, childB.vnode], { sizes: Object.freeze([50, 50]) }),
+      [childA, childB],
+    );
+    const changedSizes = runtimeNode(
+      1,
+      splitPaneNode([childA.vnode, childB.vnode], { sizes: Object.freeze([60, 40]) }),
+      [childA, childB],
+    );
 
     assert.equal(runSignatures(base, prev), true);
-    assert.equal(runSignatures(reordered, prev), true);
+    assert.equal(prev.size, 0);
+    assert.equal(runSignatures(changedSizes, prev), true);
+    assert.equal(prev.size, 0);
+  });
+
+  test("unsupported child in otherwise supported tree forces relayout and clears maps", () => {
+    const prev = new Map<InstanceId, number>();
+    const supportedRoot = runtimeNode(1, rowNode([textNode("ok")], { gap: 1 }), [
+      runtimeNode(2, textNode("ok")),
+    ]);
+    assert.equal(runSignatures(supportedRoot, prev), true);
+    assert.ok(prev.size > 0);
+
+    const supportedChild = runtimeNode(2, textNode("ok"));
+    const unsupportedChild = runtimeNode(3, modalNode(textNode("overlay-child")));
+    const mixed = runtimeNode(
+      1,
+      rowNode([supportedChild.vnode, unsupportedChild.vnode], { gap: 1 }),
+      [supportedChild, unsupportedChild],
+    );
+    assert.equal(runSignatures(mixed, prev), true);
+    assert.equal(prev.size, 0);
   });
 
   test("unsupported kinds conservatively force relayout and clear maps", () => {
