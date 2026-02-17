@@ -206,6 +206,7 @@ export function measureStackKinds(
         let laidOutCount = 0;
 
         for (const child of vnode.children) {
+          if (!child) continue;
           if (remainingWidth === 0) {
             // Still validate subtree deterministically, even if it gets assigned {w:0,h:0}.
             const zeroRes = measureNode(child, 0, 0, "row");
@@ -410,6 +411,7 @@ export function measureStackKinds(
         let laidOutCount = 0;
 
         for (const child of vnode.children) {
+          if (!child) continue;
           if (remainingHeight === 0) {
             // Still validate subtree deterministically, even if it gets assigned {w:0,h:0}.
             const zeroRes = measureNode(child, 0, 0, "column");

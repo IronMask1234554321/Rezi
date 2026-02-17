@@ -125,6 +125,32 @@ describe("layout edge cases", () => {
     assert.deepEqual(laidOut.value.rect, { x: 0, y: 0, w: 0, h: 2 });
   });
 
+  test("row/column tolerate sparse children arrays without throwing", () => {
+    const sparseRow = {
+      kind: "row",
+      props: {},
+      children: Object.freeze([{ kind: "text", text: "A", props: {} }, undefined]),
+    } as unknown as VNode;
+    const rowLayout = layout(sparseRow, 0, 0, 10, 5, "row");
+    assert.equal(rowLayout.ok, true, "row with sparse children should not throw");
+    if (rowLayout.ok) {
+      assert.equal(rowLayout.value.children.length, 1);
+      assert.equal(rowLayout.value.children[0]?.rect.w, 1);
+    }
+
+    const sparseColumn = {
+      kind: "column",
+      props: {},
+      children: Object.freeze([{ kind: "text", text: "B", props: {} }, undefined]),
+    } as unknown as VNode;
+    const columnLayout = layout(sparseColumn, 0, 0, 10, 5, "column");
+    assert.equal(columnLayout.ok, true, "column with sparse children should not throw");
+    if (columnLayout.ok) {
+      assert.equal(columnLayout.value.children.length, 1);
+      assert.equal(columnLayout.value.children[0]?.rect.h, 1);
+    }
+  });
+
   test("hit testing respects ancestor clip bounds", () => {
     const child: VNode = { kind: "button", props: { id: "clipped-btn", label: "Click" } };
     const root: VNode = {
