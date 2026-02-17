@@ -1,14 +1,12 @@
 # Create Rezi
 
-The fastest way to start a new Rezi app is the scaffolding tool:
+`create-rezi` is the fastest way to scaffold a ready-to-run Rezi app.
 
 ```bash
 npm create rezi my-app
 cd my-app
 npm run start
 ```
-
-This generates a TypeScript project with a multi-panel layout, list, status bar, and keybindings.
 
 If you prefer Bun:
 
@@ -18,9 +16,9 @@ cd my-app
 bun run start
 ```
 
-## Templates
+## Templates (Canonical Overview)
 
-Canonical template names for `--template`:
+If `--template` is omitted, the CLI prompts you to choose (default: `dashboard`).
 
 - `dashboard`: Live ops dashboard with deterministic table updates.
   Highlights: live-updating table with stable row keys, filter/sort/pin controls + incident telemetry.
@@ -31,16 +29,13 @@ Canonical template names for `--template`:
 - `streaming-viewer`: High-volume stream monitor with virtualized index.
   Highlights: virtual list over 15k streams, live ingest feed with follow/pause controls.
 
-Choose a template interactively or pass a canonical name:
+Choose directly with `--template`:
 
 ```bash
 npm create rezi my-app -- --template dashboard
-npm create rezi my-app -- --template form-app
-npm create rezi my-app -- --template file-browser
-npm create rezi my-app -- --template streaming-viewer
 ```
 
-To inspect templates and highlights from the CLI:
+Inspect all templates and highlights from the CLI:
 
 ```bash
 npm create rezi -- --list-templates
@@ -48,13 +43,15 @@ npm create rezi -- --list-templates
 
 ## Options
 
-- `--template <dashboard|form-app|file-browser|streaming-viewer>`: Select a template.
-- `--no-install`: Skip dependency installation.
-- `--pm <npm|pnpm|yarn|bun>`: Choose a package manager.
-- `--list-templates`: Print available templates and highlights.
-- `--help`: Show help.
+- `--template, -t <dashboard|form-app|file-browser|streaming-viewer>`: Select a template.
+- `--no-install, --skip-install`: Skip dependency installation.
+- `--pm, --package-manager <npm|pnpm|yarn|bun>`: Choose a package manager.
+- `--list-templates, --templates`: Print available templates and highlights.
+- `--help, -h`: Show help.
+
+For package-level CLI reference (invocation forms and options), see [packages/create-rezi](../packages/create-rezi.md).
 
 ## Next Steps
 
-- [Quickstart](quickstart.md) for a manual setup walkthrough.
-- [Examples](examples.md) for more layouts and patterns.
+- [Quickstart](quickstart.md) for manual setup.
+- [Examples](examples.md) for runnable repository examples.

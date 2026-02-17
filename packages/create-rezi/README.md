@@ -17,7 +17,12 @@ npm run start
 
 ## Templates
 
-Choose a template interactively, or pass `--template` with a canonical name.
+Choose a template interactively, or pass `--template` with a canonical name:
+
+- `dashboard`
+- `form-app`
+- `file-browser`
+- `streaming-viewer`
 
 ```bash
 npm create rezi my-app -- --template dashboard
@@ -34,8 +39,11 @@ npm create rezi -- --list-templates
 
 ## Options
 
-- `--template <dashboard|form-app|file-browser|streaming-viewer>`: Choose a template.
-- `--no-install`: Skip dependency installation.
-- `--pm <npm|pnpm|yarn|bun>`: Choose a package manager.
-- `--list-templates`: Print available templates and highlights.
-- `--help`: Show help.
+- `--template, -t <dashboard|form-app|file-browser|streaming-viewer>`: Select a template.
+- `--no-install, --skip-install`: Skip dependency installation.
+- `--pm, --package-manager <npm|pnpm|yarn|bun>`: Choose a package manager.
+- `--list-templates, --templates`: Print available templates and highlights.
+- `--help, -h`: Show help.
+
+For template descriptions and highlights, see:
+https://rtlzeromemory.github.io/Rezi/getting-started/create-rezi/

@@ -42,12 +42,10 @@ This design keeps authoring ergonomic in TypeScript while moving hot rendering p
 
 ```tsx
 /** @jsxImportSource @rezi-ui/jsx */
-import { createApp } from "@rezi-ui/core";
-import { createNodeBackend } from "@rezi-ui/node";
+import { createNodeApp } from "@rezi-ui/node";
 import { Column, Row, Text, Button, Divider } from "@rezi-ui/jsx";
 
-const app = createApp<{ count: number }>({
-  backend: createNodeBackend(),
+const app = createNodeApp<{ count: number }>({
   initialState: { count: 0 },
 });
 
@@ -78,11 +76,10 @@ bun add @rezi-ui/jsx @rezi-ui/core @rezi-ui/node
 Direct VNode authoring with no React and no JSX runtime:
 
 ```ts
-import { createApp, ui } from "@rezi-ui/core";
-import { createNodeBackend } from "@rezi-ui/node";
+import { ui } from "@rezi-ui/core";
+import { createNodeApp } from "@rezi-ui/node";
 
-const app = createApp<{ count: number }>({
-  backend: createNodeBackend(),
+const app = createNodeApp<{ count: number }>({
   initialState: { count: 0 },
 });
 

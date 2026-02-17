@@ -1,53 +1,51 @@
 # create-rezi
 
-Scaffold a new Rezi terminal UI app in seconds.
+`create-rezi` is the CLI package that scaffolds new Rezi apps.
 
-## Quickstart
+## Usage
 
 ```bash
 npm create rezi my-app
-cd my-app
-npm run start
-
-# or bun
-# npm create rezi my-app -- --pm bun
-# cd my-app
-# bun run start
 ```
+
+Equivalent direct invocation:
+
+```bash
+npx create-rezi my-app
+```
+
+The CLI prompts for any missing values (project name/template) when run interactively.
 
 ## Templates
 
-- `dashboard`: Live ops dashboard with deterministic table updates.
-  Highlights: live-updating table with stable row keys, filter/sort/pin controls + incident telemetry.
-- `form-app`: Multi-step form with validation and command modes.
-  Highlights: insert/command key modes with chords, modal help and toast notifications.
-- `file-browser`: Explorer with async command palette search.
-  Highlights: async palette results with cancellation, table browser with details and preview.
-- `streaming-viewer`: High-volume stream monitor with virtualized index.
-  Highlights: virtual list over 15k streams, live ingest feed with follow/pause controls.
+Canonical template names:
 
-Choose a template interactively or pass a canonical template name:
+- `dashboard`
+- `form-app`
+- `file-browser`
+- `streaming-viewer`
+
+Use a specific template:
 
 ```bash
 npm create rezi my-app -- --template dashboard
-npm create rezi my-app -- --template form-app
-npm create rezi my-app -- --template file-browser
-npm create rezi my-app -- --template streaming-viewer
 ```
 
-List templates and highlights from the CLI:
+List templates and highlights:
 
 ```bash
 npm create rezi -- --list-templates
 ```
 
+For template descriptions and highlights, use the canonical guide: [Getting Started → Create Rezi](../getting-started/create-rezi.md).
+
 ## Options
 
-- `--template <dashboard|form-app|file-browser|streaming-viewer>`: Select a template.
-- `--no-install`: Skip dependency installation.
-- `--pm <npm|pnpm|yarn|bun>`: Choose a package manager.
-- `--list-templates`: Print available templates and highlights.
-- `--help`: Show help.
+- `--template, -t <dashboard|form-app|file-browser|streaming-viewer>`: Select a template.
+- `--no-install, --skip-install`: Skip dependency installation.
+- `--pm, --package-manager <npm|pnpm|yarn|bun>`: Choose a package manager.
+- `--list-templates, --templates`: Print available templates and highlights.
+- `--help, -h`: Show help.
 
 ## Template Smoke Check
 

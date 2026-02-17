@@ -1,23 +1,23 @@
 # Roadmap
 
-This roadmap is directional and may change; releases are driven by shipped, tested behavior.
+This roadmap is directional only. It is not a commitment to scope, ordering, or dates. Release decisions are based on shipped, tested behavior.
 
-## Near term (alpha)
+## Alpha direction (near term)
 
-- Stabilize remaining edge cases in createApp lifecycle
-- Performance optimization (frame coalescing, allocation reduction)
-- Expand example applications
+- Close remaining `createApp` lifecycle edge cases
+- Continue frame coalescing and allocation reduction work
+- Add targeted example applications
 
-## Medium term (beta)
+## Beta direction (medium term)
 
-- Widget composition API hardening (defineWidget)
-- Additional recipes and patterns documentation
-- CI benchmark regression tracking
-- Plugin/extension system
+- Harden widget composition APIs (`defineWidget`)
+- Expand recipes and patterns documentation
+- Add CI benchmark regression tracking
+- Evaluate plugin/extension architecture
 
-## Longer term (stable)
+## Stable direction (longer term)
 
-- Alternative runtime backends (Bun, Deno) via @rezi-ui/core portability
-- Additional platform features as Zireael evolves
-- Accessibility improvements
-- Community widget ecosystem
+- Explore additional runtime backends (for example Bun, Deno) via `@rezi-ui/core` portability
+- Add platform capabilities as Zireael evolves
+- Improve accessibility coverage
+- Support a community widget ecosystem
