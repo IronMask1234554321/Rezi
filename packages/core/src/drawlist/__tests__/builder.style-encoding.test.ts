@@ -19,7 +19,7 @@ function drawTextAttrs(bytes: Uint8Array): number {
   return u32(bytes, firstCommandOffset(bytes) + 36);
 }
 
-describe("drawlist style attrs encode strikethrough", () => {
+describe("drawlist style attrs encode text decorations", () => {
   test("v1 drawText encodes strikethrough as bit 5", () => {
     const b = createDrawlistBuilderV1();
     b.drawText(0, 0, "strike", { strikethrough: true });
@@ -38,6 +38,26 @@ describe("drawlist style attrs encode strikethrough", () => {
     if (!res.ok) return;
 
     assert.equal(drawTextAttrs(res.bytes), 1 << 5);
+  });
+
+  test("v1 drawText encodes overline as bit 6", () => {
+    const b = createDrawlistBuilderV1();
+    b.drawText(0, 0, "over", { overline: true });
+    const res = b.build();
+    assert.equal(res.ok, true);
+    if (!res.ok) return;
+
+    assert.equal(drawTextAttrs(res.bytes), 1 << 6);
+  });
+
+  test("v2 drawText encodes overline as bit 6", () => {
+    const b = createDrawlistBuilderV2();
+    b.drawText(0, 0, "over", { overline: true });
+    const res = b.build();
+    assert.equal(res.ok, true);
+    if (!res.ok) return;
+
+    assert.equal(drawTextAttrs(res.bytes), 1 << 6);
   });
 
   test("v1 text-run attrs keep existing bits and add strikethrough at bit 5", () => {
@@ -73,6 +93,42 @@ describe("drawlist style attrs encode strikethrough", () => {
     if (!res.ok) return;
 
     assert.equal(textRunAttrs(res.bytes, 0), 1 << 5);
+    assert.equal(textRunAttrs(res.bytes, 1), (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4));
+  });
+
+  test("v1 text-run attrs keep existing bits and add overline at bit 6", () => {
+    const b = createDrawlistBuilderV1();
+    const blobIndex = b.addTextRunBlob([
+      { text: "over", style: { overline: true } },
+      { text: "base", style: { bold: true, italic: true, underline: true, inverse: true, dim: true } },
+    ]);
+    assert.equal(blobIndex, 0);
+    if (blobIndex === null) return;
+
+    b.drawTextRun(0, 0, blobIndex);
+    const res = b.build();
+    assert.equal(res.ok, true);
+    if (!res.ok) return;
+
+    assert.equal(textRunAttrs(res.bytes, 0), 1 << 6);
+    assert.equal(textRunAttrs(res.bytes, 1), (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4));
+  });
+
+  test("v2 text-run attrs keep existing bits and add overline at bit 6", () => {
+    const b = createDrawlistBuilderV2();
+    const blobIndex = b.addTextRunBlob([
+      { text: "over", style: { overline: true } },
+      { text: "base", style: { bold: true, italic: true, underline: true, inverse: true, dim: true } },
+    ]);
+    assert.equal(blobIndex, 0);
+    if (blobIndex === null) return;
+
+    b.drawTextRun(0, 0, blobIndex);
+    const res = b.build();
+    assert.equal(res.ok, true);
+    if (!res.ok) return;
+
+    assert.equal(textRunAttrs(res.bytes, 0), 1 << 6);
     assert.equal(textRunAttrs(res.bytes, 1), (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4));
   });
 });

@@ -57,6 +57,7 @@ function textStyleEqual(
         underline?: boolean;
         inverse?: boolean;
         strikethrough?: boolean;
+        overline?: boolean;
         fg?: unknown;
         bg?: unknown;
       }
@@ -69,6 +70,7 @@ function textStyleEqual(
         underline?: boolean;
         inverse?: boolean;
         strikethrough?: boolean;
+        overline?: boolean;
         fg?: unknown;
         bg?: unknown;
       }
@@ -83,6 +85,7 @@ function textStyleEqual(
     a.underline === b.underline &&
     a.inverse === b.inverse &&
     a.strikethrough === b.strikethrough &&
+    a.overline === b.overline &&
     a.fg === b.fg &&
     a.bg === b.bg
   );

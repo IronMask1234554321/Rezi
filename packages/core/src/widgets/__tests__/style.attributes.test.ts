@@ -9,8 +9,18 @@ describe("TextStyle attributes", () => {
     assert.equal(style.strikethrough, true);
   });
 
+  test("supports overline on TextStyle", () => {
+    const style: TextStyle = { bold: true, overline: true };
+    assert.equal(style.bold, true);
+    assert.equal(style.overline, true);
+  });
+
   test("style presets include strikethrough", () => {
     assert.deepEqual(styles.strikethrough, { strikethrough: true });
+  });
+
+  test("style presets include overline", () => {
+    assert.deepEqual(styles.overline, { overline: true });
   });
 
   test("mergeStyles keeps existing attrs behavior when strikethrough is present", () => {
@@ -25,6 +35,21 @@ describe("TextStyle attributes", () => {
       italic: true,
       underline: true,
       strikethrough: false,
+    });
+  });
+
+  test("mergeStyles keeps existing attrs behavior when overline is present", () => {
+    const merged = mergeStyles(
+      { bold: true, underline: true, overline: true },
+      { dim: true, overline: false },
+      { italic: true },
+    );
+    assert.deepEqual(merged, {
+      bold: true,
+      dim: true,
+      italic: true,
+      underline: true,
+      overline: false,
     });
   });
 });

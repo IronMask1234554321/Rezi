@@ -59,3 +59,63 @@ describe("styled variant merge with strikethrough", () => {
     });
   });
 });
+
+describe("TextStyle merge with overline", () => {
+  test("nested inheritance chain preserves and overrides overline deterministically", () => {
+    const root = mergeTextStyle(DEFAULT_BASE_STYLE, { overline: true });
+    const parent = mergeTextStyle(root, { bold: true });
+    const child = mergeTextStyle(parent, { overline: false });
+    const leaf = mergeTextStyle(child, { italic: true });
+
+    assert.equal(root.overline, true);
+    assert.equal(parent.overline, true);
+    assert.equal(child.overline, false);
+    assert.equal(leaf.overline, false);
+  });
+
+  test("cache key distinguishes overline from other boolean attrs", () => {
+    const withoutOverline = mergeTextStyle(DEFAULT_BASE_STYLE, { bold: true });
+    const withOverlineA = mergeTextStyle(DEFAULT_BASE_STYLE, { bold: true, overline: true });
+    const withOverlineB = mergeTextStyle(DEFAULT_BASE_STYLE, { bold: true, overline: true });
+    const withStrike = mergeTextStyle(DEFAULT_BASE_STYLE, { bold: true, strikethrough: true });
+
+    assert.equal(withoutOverline === withOverlineA, false);
+    assert.equal(withOverlineA === withOverlineB, true);
+    assert.equal(withOverlineA === withStrike, false);
+  });
+});
+
+describe("styled variant merge with overline", () => {
+  test("base -> variant -> user style merge order supports overline application and overrides", () => {
+    const Button = styled("button", {
+      base: { bold: true, overline: true },
+      variants: {
+        intent: {
+          primary: { fg: { r: 1, g: 2, b: 3 } },
+          danger: { fg: { r: 9, g: 8, b: 7 }, overline: false },
+        },
+      },
+      defaults: { intent: "primary" },
+    });
+
+    const defaultNode = Button({ id: "default", label: "Default" });
+    assert.deepEqual((defaultNode.props as { style?: unknown }).style, {
+      bold: true,
+      overline: true,
+      fg: { r: 1, g: 2, b: 3 },
+    });
+
+    const dangerNode = Button({
+      id: "danger",
+      label: "Danger",
+      intent: "danger",
+      style: { overline: true, italic: true },
+    });
+    assert.deepEqual((dangerNode.props as { style?: unknown }).style, {
+      bold: true,
+      fg: { r: 9, g: 8, b: 7 },
+      overline: true,
+      italic: true,
+    });
+  });
+});

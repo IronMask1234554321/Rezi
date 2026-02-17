@@ -47,4 +47,5 @@ export const styles = {
   underline: { underline: true } as const,
   inverse: { inverse: true } as const,
   strikethrough: { strikethrough: true } as const,
+  overline: { overline: true } as const,
 } as const;
