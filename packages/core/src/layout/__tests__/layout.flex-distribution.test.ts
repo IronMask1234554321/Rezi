@@ -268,6 +268,66 @@ const CASES: readonly FlexCase[] = [
     ],
   },
   {
+    name: "single flex child receives all remaining space",
+    main: 20,
+    cross: 5,
+    gap: 2,
+    children: [{ main: 3 }, { flex: 1 }, { main: 5 }],
+    expectedRowChildren: [
+      { x: 0, y: 0, w: 3, h: 0 },
+      { x: 5, y: 0, w: 8, h: 0 },
+      { x: 15, y: 0, w: 5, h: 0 },
+    ],
+    expectedColumnChildren: [
+      { x: 0, y: 0, w: 0, h: 3 },
+      { x: 0, y: 5, w: 0, h: 8 },
+      { x: 0, y: 15, w: 0, h: 5 },
+    ],
+  },
+  {
+    name: "total flex is zero and oversized fixed children clamp without negatives",
+    main: 5,
+    cross: 5,
+    children: [{ main: 6, flex: 0 }, { main: 6, flex: 0 }],
+    expectedRowChildren: [
+      { x: 0, y: 0, w: 5, h: 0 },
+      { x: 5, y: 0, w: 0, h: 0 },
+    ],
+    expectedColumnChildren: [
+      { x: 0, y: 0, w: 0, h: 5 },
+      { x: 0, y: 5, w: 0, h: 0 },
+    ],
+  },
+  {
+    name: "fractional flex 0.5 vs 1.5 rounds to deterministic 2/6 split",
+    main: 8,
+    cross: 5,
+    children: [{ flex: 0.5 }, { flex: 1.5 }],
+    expectedRowChildren: [
+      { x: 0, y: 0, w: 2, h: 0 },
+      { x: 2, y: 0, w: 6, h: 0 },
+    ],
+    expectedColumnChildren: [
+      { x: 0, y: 0, w: 0, h: 2 },
+      { x: 0, y: 2, w: 0, h: 6 },
+    ],
+  },
+  {
+    name: "flex children collapse to zero when no main-axis space remains after gap",
+    main: 1,
+    cross: 5,
+    gap: 1,
+    children: [{ flex: 1 }, { flex: 1 }],
+    expectedRowChildren: [
+      { x: 0, y: 0, w: 0, h: 0 },
+      { x: 1, y: 0, w: 0, h: 0 },
+    ],
+    expectedColumnChildren: [
+      { x: 0, y: 0, w: 0, h: 0 },
+      { x: 0, y: 1, w: 0, h: 0 },
+    ],
+  },
+  {
     name: "all flex:0 children remain zero-size and only advance by gap",
     main: 10,
     cross: 5,
