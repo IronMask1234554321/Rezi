@@ -46,4 +46,5 @@ export const styles = {
   italic: { italic: true } as const,
   underline: { underline: true } as const,
   inverse: { inverse: true } as const,
+  strikethrough: { strikethrough: true } as const,
 } as const;

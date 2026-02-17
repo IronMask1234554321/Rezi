@@ -4,7 +4,7 @@ export type ResolvedTextStyle = Readonly<
   {
     fg: NonNullable<TextStyle["fg"]>;
     bg: NonNullable<TextStyle["bg"]>;
-  } & Pick<TextStyle, "bold" | "dim" | "italic" | "underline" | "inverse">
+  } & Pick<TextStyle, "bold" | "dim" | "italic" | "underline" | "inverse" | "strikethrough">
 >;
 
 export const DEFAULT_BASE_STYLE: ResolvedTextStyle = Object.freeze({
@@ -15,7 +15,7 @@ export const DEFAULT_BASE_STYLE: ResolvedTextStyle = Object.freeze({
 // Fast path cache for `mergeTextStyle(DEFAULT_BASE_STYLE, override)` when override only toggles
 // boolean attrs (no fg/bg). This is a hot path in large lists where style objects are frequently
 // recreated but only take on a few distinct shapes.
-const BASE_BOOL_STYLE_CACHE: Array<ResolvedTextStyle | null> = new Array(1024).fill(null);
+const BASE_BOOL_STYLE_CACHE: Array<ResolvedTextStyle | null> = new Array(4096).fill(null);
 
 function encTriBool(v: boolean | undefined): number {
   // 0 = inherit (undefined), 1 = false, 2 = true
@@ -34,7 +34,8 @@ export function mergeTextStyle(
     const i = encTriBool(override.italic);
     const u = encTriBool(override.underline);
     const inv = encTriBool(override.inverse);
-    const key = b | (d << 2) | (i << 4) | (u << 6) | (inv << 8);
+    const s = encTriBool(override.strikethrough);
+    const key = b | (d << 2) | (i << 4) | (u << 6) | (inv << 8) | (s << 10);
     if (key === 0) return base;
     const cached = BASE_BOOL_STYLE_CACHE[key];
     if (cached) return cached;
@@ -47,6 +48,7 @@ export function mergeTextStyle(
       italic?: boolean;
       underline?: boolean;
       inverse?: boolean;
+      strikethrough?: boolean;
     } = { fg: base.fg, bg: base.bg };
 
     if (override.bold !== undefined) merged.bold = override.bold;
@@ -54,6 +56,7 @@ export function mergeTextStyle(
     if (override.italic !== undefined) merged.italic = override.italic;
     if (override.underline !== undefined) merged.underline = override.underline;
     if (override.inverse !== undefined) merged.inverse = override.inverse;
+    if (override.strikethrough !== undefined) merged.strikethrough = override.strikethrough;
 
     BASE_BOOL_STYLE_CACHE[key] = merged;
     return merged;
@@ -65,7 +68,8 @@ export function mergeTextStyle(
     override.dim === undefined &&
     override.italic === undefined &&
     override.underline === undefined &&
-    override.inverse === undefined
+    override.inverse === undefined &&
+    override.strikethrough === undefined
   ) {
     return base;
   }
@@ -76,6 +80,7 @@ export function mergeTextStyle(
   const italic = override.italic ?? base.italic;
   const underline = override.underline ?? base.underline;
   const inverse = override.inverse ?? base.inverse;
+  const strikethrough = override.strikethrough ?? base.strikethrough;
 
   if (
     fg.r === base.fg.r &&
@@ -88,7 +93,8 @@ export function mergeTextStyle(
     dim === base.dim &&
     italic === base.italic &&
     underline === base.underline &&
-    inverse === base.inverse
+    inverse === base.inverse &&
+    strikethrough === base.strikethrough
   ) {
     return base;
   }
@@ -101,6 +107,7 @@ export function mergeTextStyle(
     italic?: boolean;
     underline?: boolean;
     inverse?: boolean;
+    strikethrough?: boolean;
   } = {
     fg,
     bg,
@@ -111,6 +118,7 @@ export function mergeTextStyle(
   if (italic !== undefined) merged.italic = italic;
   if (underline !== undefined) merged.underline = underline;
   if (inverse !== undefined) merged.inverse = inverse;
+  if (strikethrough !== undefined) merged.strikethrough = strikethrough;
   return merged;
 }
 

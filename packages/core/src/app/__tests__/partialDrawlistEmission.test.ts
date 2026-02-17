@@ -141,6 +141,7 @@ function styleKey(style: TextStyle | undefined): string {
     style.italic ? "i1" : "i0",
     style.underline ? "u1" : "u0",
     style.inverse ? "v1" : "v0",
+    style.strikethrough ? "s1" : "s0",
     `fg:${colorKey(style.fg)}`,
     `bg:${colorKey(style.bg)}`,
   ].join("|");
@@ -620,6 +621,80 @@ describe("WidgetRenderer incremental drawlist emission", () => {
     assert.equal(
       opsPartial.some((op) => op.kind === "clearTo"),
       false,
+    );
+  });
+
+  test("strikethrough-only style change in commit path matches full render", () => {
+    const viewport: Viewport = { cols: 32, rows: 6 };
+    const backend = createNoopBackend();
+
+    const viewFn = (s: Readonly<{ strike: boolean }>) =>
+      ui.column({}, [
+        ui.text("Header"),
+        ui.text("strike-target", { style: { strikethrough: s.strike } }),
+        ui.text("Footer"),
+      ]);
+
+    const partialBuilder = new RecordingBuilder();
+    const partialRenderer = new WidgetRenderer<{ strike: boolean }>({
+      backend,
+      builder: partialBuilder,
+      requestRender: () => {},
+    });
+
+    const fullBuilder = new RecordingBuilder();
+    const fullRenderer = new WidgetRenderer<{ strike: boolean }>({
+      backend,
+      builder: fullBuilder,
+      requestRender: () => {},
+    });
+
+    const planBootstrap = { commit: true, layout: true, checkLayoutStability: true } as const;
+    const planUpdate = { commit: true, layout: false, checkLayoutStability: false } as const;
+
+    const opsA = submitOps(
+      partialRenderer,
+      partialBuilder,
+      viewFn,
+      { strike: false },
+      viewport,
+      planBootstrap,
+    );
+    const framebufferA = applyOps(createFramebuffer(viewport), opsA);
+
+    const opsExpected = submitOps(
+      fullRenderer,
+      fullBuilder,
+      viewFn,
+      { strike: true },
+      viewport,
+      planBootstrap,
+    );
+    const framebufferExpected = applyOps(createFramebuffer(viewport), opsExpected);
+
+    const opsPartial = submitOps(
+      partialRenderer,
+      partialBuilder,
+      viewFn,
+      { strike: true },
+      viewport,
+      planUpdate,
+    );
+    const framebufferPartial = applyOps(framebufferA, opsPartial);
+
+    assertFramebuffersEqual(framebufferPartial, framebufferExpected);
+    assert.equal(
+      opsPartial.some((op) => op.kind === "clearTo"),
+      false,
+    );
+    assert.equal(
+      opsPartial.some(
+        (op) =>
+          op.kind === "drawText" &&
+          op.text === "strike-target" &&
+          (op.style?.strikethrough ?? false) === true,
+      ),
+      true,
     );
   });
 

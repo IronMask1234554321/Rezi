@@ -14,7 +14,7 @@ export type Rgb = Readonly<{ r: number; g: number; b: number }>;
 /**
  * Text styling options.
  *   - fg/bg: foreground/background colors
- *   - bold, dim, italic, underline, inverse: text attributes
+ *   - bold, dim, italic, underline, inverse, strikethrough: text attributes
  */
 export type TextStyle = Readonly<{
   fg?: Rgb;
@@ -24,6 +24,7 @@ export type TextStyle = Readonly<{
   italic?: boolean;
   underline?: boolean;
   inverse?: boolean;
+  strikethrough?: boolean;
 }>;
 
 /**
