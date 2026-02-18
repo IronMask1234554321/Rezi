@@ -88,6 +88,11 @@ const PARTIAL_COMMIT_PLAN: WidgetRenderPlan = Object.freeze({
   layout: false,
   checkLayoutStability: true,
 });
+const PARTIAL_COMMIT_NO_STABILITY_PLAN: WidgetRenderPlan = Object.freeze({
+  commit: true,
+  layout: false,
+  checkLayoutStability: false,
+});
 const PARTIAL_RENDER_ONLY_PLAN: WidgetRenderPlan = Object.freeze({
   commit: false,
   layout: false,
@@ -454,6 +459,14 @@ function keyedOrderView(snapshot: Readonly<OrderSnapshot>): VNode {
   );
 }
 
+function keyedColumnOrderView(snapshot: Readonly<OrderSnapshot>): VNode {
+  const values = snapshot.reverse ? [4, 3, 2, 1, 0] : [0, 1, 2, 3, 4];
+  return ui.column(
+    { p: 1, gap: 0 },
+    values.map((value) => ui.text(`item-${String(value)}`, { key: `kc-${String(value)}` })),
+  );
+}
+
 function nestedClipView(snapshot: Readonly<EditSnapshot>): VNode {
   const rows: VNode[] = [];
   for (let i = 0; i < 160; i++) {
@@ -539,6 +552,17 @@ describe("renderer partial dirty-subtree correctness", () => {
       Object.freeze({ reverse: false }),
       Object.freeze({ reverse: true }),
       viewport,
+    );
+    assertFramebuffersEqual(scenario.partialFrame, scenario.fullFrame);
+  });
+
+  test("keyed column reorder with layout-stability check disabled matches full framebuffer", () => {
+    const scenario = runCommitScenario<OrderSnapshot>(
+      keyedColumnOrderView,
+      Object.freeze({ reverse: false }),
+      Object.freeze({ reverse: true }),
+      viewport,
+      PARTIAL_COMMIT_NO_STABILITY_PLAN,
     );
     assertFramebuffersEqual(scenario.partialFrame, scenario.fullFrame);
   });

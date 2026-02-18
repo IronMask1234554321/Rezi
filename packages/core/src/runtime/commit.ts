@@ -858,7 +858,7 @@ function commitNode(
 
     const propsChanged = prev === null || !canFastReuseContainerSelf(prev.vnode, vnodeForCommit);
     const childrenChanged = prev === null || runtimeChildrenChanged(prevChildren, nextChildren);
-    const selfDirty = propsChanged || (vnodeForCommit.kind === "row" && childrenChanged);
+    const selfDirty = propsChanged || childrenChanged;
     return {
       ok: true,
       value: {
