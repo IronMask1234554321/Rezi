@@ -208,6 +208,21 @@ ui.column({}, [
 
 Falsy values (`false`, `null`, `undefined`) are filtered from children.
 
+### VNode Factory Guarantees
+
+`ui.*` factories are contract-tested for deterministic VNode creation.
+
+- Factories that expose a `key` prop forward it to the resulting VNode for reconciliation.
+- Container-style child arrays filter `null`, `false`, and `undefined` values.
+- Nested child arrays are flattened before VNode children are stored.
+- Interactive widgets validate required runtime props before layout:
+  - `button`: non-empty `id`, `label`
+  - `input`: non-empty `id`, `value`
+  - `select`: non-empty `id`, `value`, `options` array
+  - `slider`: non-empty `id`, finite numeric range with `min <= max`, `step > 0`
+  - `checkbox`: non-empty `id`, boolean `checked`
+  - `radioGroup`: non-empty `id`, `value`, non-empty `options`
+
 ### Dynamic Lists
 
 When rendering lists, provide a `key` prop for efficient reconciliation:
@@ -243,5 +258,14 @@ ui.input({
 All focusable widgets can be clicked with the mouse to receive focus. Scrollable widgets (VirtualList, CodeEditor, LogsConsole, DiffViewer) respond to the mouse scroll wheel. SplitPane dividers can be dragged to resize panels. See the [Mouse Support guide](../guide/mouse-support.md) for details.
 
 ## API Reference
+
+### Baseline Lock
+
+- Timestamp: `2026-02-18T11:26:33Z`
+- Base commit: `a441bba78ddc99ece4eb76965ce36c0aec9225fe`
+- Branch: `vnode-factory-audit`
+- Node: `v20.19.5`
+- npm: `10.8.2`
+- Baseline tests: `2488` passing
 
 For complete type definitions, see the [API Reference](../api.md).

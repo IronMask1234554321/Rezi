@@ -20,7 +20,11 @@ import type {
   Align,
   BoxProps,
   ButtonProps,
+  CheckboxProps,
   InputProps,
+  RadioGroupProps,
+  SelectProps,
+  SliderProps,
   SpacerProps,
   StackProps,
   TextProps,
@@ -98,6 +102,39 @@ export type ValidatedBoxProps = Readonly<
 export type ValidatedSpacerProps = Readonly<{ size: number; flex: number }>;
 export type ValidatedButtonProps = Readonly<{ id: string; label: string; disabled: boolean }>;
 export type ValidatedInputProps = Readonly<{ id: string; value: string; disabled: boolean }>;
+export type ValidatedSelectOption = Readonly<{ value: string; label: string; disabled: boolean }>;
+export type ValidatedSelectProps = Readonly<{
+  id: string;
+  value: string;
+  options: readonly ValidatedSelectOption[];
+  disabled: boolean;
+  placeholder?: string;
+}>;
+export type ValidatedSliderProps = Readonly<{
+  id: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  width?: number;
+  label?: string;
+  showValue: boolean;
+  disabled: boolean;
+  readOnly: boolean;
+}>;
+export type ValidatedCheckboxProps = Readonly<{
+  id: string;
+  checked: boolean;
+  label?: string;
+  disabled: boolean;
+}>;
+export type ValidatedRadioGroupProps = Readonly<{
+  id: string;
+  value: string;
+  options: readonly ValidatedSelectOption[];
+  direction: "horizontal" | "vertical";
+  disabled: boolean;
+}>;
 export type ValidatedTextProps = Readonly<{ maxWidth?: number }>;
 
 type LayoutConstraintPropBag = Readonly<{
@@ -258,6 +295,31 @@ function requireNonEmptyString(kind: string, name: string, v: unknown): LayoutRe
   if (!res.ok) return res;
   if (res.value.length === 0) return invalid(`${kind}.${name} must be a non-empty string`);
   return res;
+}
+
+function requireOptionalString(
+  kind: string,
+  name: string,
+  v: unknown,
+): LayoutResult<string | undefined> {
+  if (v === undefined) return { ok: true, value: undefined };
+  return requireString(kind, name, v);
+}
+
+function requireFiniteNumber(kind: string, name: string, v: unknown): LayoutResult<number> {
+  if (typeof v !== "number" || !Number.isFinite(v)) {
+    return invalid(`${kind}.${name} must be a finite number`);
+  }
+  return { ok: true, value: v };
+}
+
+function requireOptionalFiniteNumber(
+  kind: string,
+  name: string,
+  v: unknown,
+): LayoutResult<number | undefined> {
+  if (v === undefined) return { ok: true, value: undefined };
+  return requireFiniteNumber(kind, name, v);
 }
 
 function requireBoolean(
@@ -569,7 +631,7 @@ export function validateButtonProps(
   props: ButtonProps | unknown,
 ): LayoutResult<ValidatedButtonProps> {
   const p = (props ?? {}) as { id?: unknown; label?: unknown; disabled?: unknown };
-  const idRes = requireString("button", "id", p.id);
+  const idRes = requireNonEmptyString("button", "id", p.id);
   if (!idRes.ok) return idRes;
   const labelRes = requireString("button", "label", p.label);
   if (!labelRes.ok) return labelRes;
@@ -593,6 +655,198 @@ export function validateInputProps(props: InputProps | unknown): LayoutResult<Va
   return {
     ok: true,
     value: { id: idRes.value, value: valueRes.value, disabled: disabledRes.value },
+  };
+}
+
+function validateInteractiveOptions(
+  kind: "select" | "radioGroup",
+  options: unknown,
+  requireNonEmpty: boolean,
+): LayoutResult<readonly ValidatedSelectOption[]> {
+  if (!Array.isArray(options)) {
+    return invalid(`${kind}.options must be an array`);
+  }
+  if (requireNonEmpty && options.length === 0) {
+    return invalid(`${kind}.options must be a non-empty array`);
+  }
+  const validated: ValidatedSelectOption[] = [];
+  for (let i = 0; i < options.length; i++) {
+    const option = options[i];
+    if (typeof option !== "object" || option === null || Array.isArray(option)) {
+      return invalid(`${kind}.options[${i}] must be an object`);
+    }
+    const p = option as { value?: unknown; label?: unknown; disabled?: unknown };
+    const valueRes = requireString(`${kind}.options[${i}]`, "value", p.value);
+    if (!valueRes.ok) return valueRes;
+    const labelRes = requireString(`${kind}.options[${i}]`, "label", p.label);
+    if (!labelRes.ok) return labelRes;
+    const disabledRes = requireBoolean(`${kind}.options[${i}]`, "disabled", p.disabled, false);
+    if (!disabledRes.ok) return disabledRes;
+    validated.push({ value: valueRes.value, label: labelRes.value, disabled: disabledRes.value });
+  }
+  return { ok: true, value: validated };
+}
+
+/** Validate Select props: id/value/options required; options may be empty. */
+export function validateSelectProps(
+  props: SelectProps | unknown,
+): LayoutResult<ValidatedSelectProps> {
+  const p = (props ?? {}) as {
+    id?: unknown;
+    value?: unknown;
+    options?: unknown;
+    disabled?: unknown;
+    placeholder?: unknown;
+  };
+  const idRes = requireNonEmptyString("select", "id", p.id);
+  if (!idRes.ok) return idRes;
+  const valueRes = requireString("select", "value", p.value);
+  if (!valueRes.ok) return valueRes;
+  const optionsRes = validateInteractiveOptions("select", p.options, false);
+  if (!optionsRes.ok) return optionsRes;
+  const disabledRes = requireBoolean("select", "disabled", p.disabled, false);
+  if (!disabledRes.ok) return disabledRes;
+  const placeholderRes = requireOptionalString("select", "placeholder", p.placeholder);
+  if (!placeholderRes.ok) return placeholderRes;
+  return {
+    ok: true,
+    value: {
+      id: idRes.value,
+      value: valueRes.value,
+      options: optionsRes.value,
+      disabled: disabledRes.value,
+      ...(placeholderRes.value === undefined ? {} : { placeholder: placeholderRes.value }),
+    },
+  };
+}
+
+/** Validate Slider props: id/value required; finite range with min<=max and step>0. */
+export function validateSliderProps(
+  props: SliderProps | unknown,
+): LayoutResult<ValidatedSliderProps> {
+  const p = (props ?? {}) as {
+    id?: unknown;
+    value?: unknown;
+    min?: unknown;
+    max?: unknown;
+    step?: unknown;
+    width?: unknown;
+    label?: unknown;
+    showValue?: unknown;
+    disabled?: unknown;
+    readOnly?: unknown;
+  };
+  const idRes = requireNonEmptyString("slider", "id", p.id);
+  if (!idRes.ok) return idRes;
+  const valueRes = requireFiniteNumber("slider", "value", p.value);
+  if (!valueRes.ok) return valueRes;
+  const minRes = requireOptionalFiniteNumber("slider", "min", p.min);
+  if (!minRes.ok) return minRes;
+  const maxRes = requireOptionalFiniteNumber("slider", "max", p.max);
+  if (!maxRes.ok) return maxRes;
+  const stepRes = requireOptionalFiniteNumber("slider", "step", p.step);
+  if (!stepRes.ok) return stepRes;
+  const widthRes = requireOptionalIntNonNegative("slider", "width", p.width);
+  if (!widthRes.ok) return widthRes;
+  const labelRes = requireOptionalString("slider", "label", p.label);
+  if (!labelRes.ok) return labelRes;
+  const showValueRes = requireBoolean("slider", "showValue", p.showValue, true);
+  if (!showValueRes.ok) return showValueRes;
+  const disabledRes = requireBoolean("slider", "disabled", p.disabled, false);
+  if (!disabledRes.ok) return disabledRes;
+  const readOnlyRes = requireBoolean("slider", "readOnly", p.readOnly, false);
+  if (!readOnlyRes.ok) return readOnlyRes;
+
+  const min = minRes.value ?? 0;
+  const max = maxRes.value ?? 100;
+  if (min > max) {
+    return invalid("slider.min must be <= slider.max");
+  }
+
+  const step = stepRes.value ?? 1;
+  if (step <= 0) {
+    return invalid("slider.step must be a finite number > 0");
+  }
+
+  return {
+    ok: true,
+    value: {
+      id: idRes.value,
+      value: valueRes.value,
+      min,
+      max,
+      step,
+      ...(widthRes.value === undefined ? {} : { width: widthRes.value }),
+      ...(labelRes.value === undefined ? {} : { label: labelRes.value }),
+      showValue: showValueRes.value,
+      disabled: disabledRes.value,
+      readOnly: readOnlyRes.value,
+    },
+  };
+}
+
+/** Validate Checkbox props: id and checked required. */
+export function validateCheckboxProps(
+  props: CheckboxProps | unknown,
+): LayoutResult<ValidatedCheckboxProps> {
+  const p = (props ?? {}) as {
+    id?: unknown;
+    checked?: unknown;
+    label?: unknown;
+    disabled?: unknown;
+  };
+  const idRes = requireNonEmptyString("checkbox", "id", p.id);
+  if (!idRes.ok) return idRes;
+  if (typeof p.checked !== "boolean") {
+    return invalid("checkbox.checked must be a boolean");
+  }
+  const labelRes = requireOptionalString("checkbox", "label", p.label);
+  if (!labelRes.ok) return labelRes;
+  const disabledRes = requireBoolean("checkbox", "disabled", p.disabled, false);
+  if (!disabledRes.ok) return disabledRes;
+  return {
+    ok: true,
+    value: {
+      id: idRes.value,
+      checked: p.checked,
+      ...(labelRes.value === undefined ? {} : { label: labelRes.value }),
+      disabled: disabledRes.value,
+    },
+  };
+}
+
+/** Validate RadioGroup props: id/value/options required; options must be non-empty. */
+export function validateRadioGroupProps(
+  props: RadioGroupProps | unknown,
+): LayoutResult<ValidatedRadioGroupProps> {
+  const p = (props ?? {}) as {
+    id?: unknown;
+    value?: unknown;
+    options?: unknown;
+    direction?: unknown;
+    disabled?: unknown;
+  };
+  const idRes = requireNonEmptyString("radioGroup", "id", p.id);
+  if (!idRes.ok) return idRes;
+  const valueRes = requireString("radioGroup", "value", p.value);
+  if (!valueRes.ok) return valueRes;
+  const optionsRes = validateInteractiveOptions("radioGroup", p.options, true);
+  if (!optionsRes.ok) return optionsRes;
+  const directionValue = p.direction === undefined ? "vertical" : p.direction;
+  if (directionValue !== "horizontal" && directionValue !== "vertical") {
+    return invalid('radioGroup.direction must be one of "horizontal" | "vertical"');
+  }
+  const disabledRes = requireBoolean("radioGroup", "disabled", p.disabled, false);
+  if (!disabledRes.ok) return disabledRes;
+  return {
+    ok: true,
+    value: {
+      id: idRes.value,
+      value: valueRes.value,
+      options: optionsRes.value,
+      direction: directionValue,
+      disabled: disabledRes.value,
+    },
   };
 }
 
