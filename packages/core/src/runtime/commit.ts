@@ -654,8 +654,15 @@ function commitNode(
 
       const prevMeta = prev ? getCompositeMeta(prev.vnode) : null;
       const prevChild = prev?.children[0] ?? null;
-      let selectionsStable = false;
-      if (!state.needsRender) {
+      const skipRenderEligible =
+        !state.needsRender &&
+        prevMeta !== null &&
+        prevChild !== null &&
+        prevMeta.widgetKey === activeCompositeMeta.widgetKey &&
+        compositePropsEqual(prevMeta.props, activeCompositeMeta.props);
+
+      let canSkipCompositeRender = false;
+      if (skipRenderEligible) {
         const evalRes = evaluateAppStateSelections(
           registry.getAppStateSelections(instanceId),
           compositeRuntime.appState,
@@ -672,16 +679,10 @@ function commitNode(
             },
           };
         }
-        selectionsStable = !evalRes.changed;
+        canSkipCompositeRender = !evalRes.changed;
       }
-      const canSkipCompositeRender =
-        prevMeta !== null &&
-        prevChild !== null &&
-        prevMeta.widgetKey === activeCompositeMeta.widgetKey &&
-        compositePropsEqual(prevMeta.props, activeCompositeMeta.props) &&
-        selectionsStable;
 
-      if (canSkipCompositeRender) {
+      if (canSkipCompositeRender && prevChild !== null) {
         compositeChild = prevChild.vnode;
       } else {
         registry.beginRender(instanceId);

@@ -132,6 +132,47 @@ describe("runtime hooks - useAppState rerender gating", () => {
     assert.deepEqual(selectedValues, [1, 2]);
   });
 
+  test("prop changes do not evaluate stale selectors before rerender", () => {
+    type AppState = Readonly<{
+      a?: Readonly<{ value: number }>;
+      b?: Readonly<{ value: number }>;
+    }>;
+    type Props = Readonly<{ mode: "a" | "b"; key?: string }>;
+
+    const snapshots: readonly [AppState, AppState] = [
+      Object.freeze({ a: Object.freeze({ value: 1 }) }),
+      Object.freeze({ b: Object.freeze({ value: 2 }) }),
+    ];
+
+    let renderCount = 0;
+    const selectedValues: number[] = [];
+
+    const Widget = defineWidget<Props, AppState>((props, ctx) => {
+      renderCount++;
+      const selected = ctx.useAppState((state) => {
+        if (props.mode === "a") {
+          if (!state.a) throw new Error("missing a branch");
+          return state.a.value;
+        }
+        if (!state.b) throw new Error("missing b branch");
+        return state.b.value;
+      });
+      selectedValues.push(selected);
+      return ui.text(String(selected));
+    });
+
+    const h = createCompositeHarness<AppState>();
+    assert.doesNotThrow(() => {
+      h.commit(Widget({ mode: "a" }), snapshots[0]);
+    });
+    assert.doesNotThrow(() => {
+      h.commit(Widget({ mode: "b" }), snapshots[1]);
+    });
+
+    assert.equal(renderCount, 2);
+    assert.deepEqual(selectedValues, [1, 2]);
+  });
+
   test("widget does not rerender when unrelated app-state changes", () => {
     type AppState = Readonly<{ count: number; unrelated: number }>;
 
