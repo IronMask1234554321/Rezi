@@ -70,8 +70,6 @@ function shiftLayoutChildren(
   return children.map((child) => shiftLayoutTree(child, dx, dy));
 }
 
-type StackAlign = "start" | "center" | "end" | "stretch";
-
 type WrapLineMetrics = Readonly<{
   main: number;
   cross: number;
@@ -129,7 +127,6 @@ function measureRowWrapConstraintLine(
   cw: number,
   chLimit: number,
   gap: number,
-  align: StackAlign,
   parentRect: Rect,
   measureNode: MeasureNodeFn,
 ): LayoutResult<WrapLineMetrics> {
@@ -247,7 +244,7 @@ function measureRowWrapConstraintLine(
     const childSizeRes =
       main === 0 ? measureNode(child, 0, 0, "row") : measureNode(child, mm, chLimit, "row");
     if (!childSizeRes.ok) return childSizeRes;
-    const childH = align === "stretch" ? chLimit : childSizeRes.value.h;
+    const childH = childSizeRes.value.h;
     if (childH > lineCross) lineCross = childH;
   }
 
@@ -288,7 +285,6 @@ function measureColumnWrapConstraintLine(
   cw: number,
   ch: number,
   gap: number,
-  align: StackAlign,
   parentRect: Rect,
   measureNode: MeasureNodeFn,
 ): LayoutResult<WrapLineMetrics> {
@@ -406,7 +402,7 @@ function measureColumnWrapConstraintLine(
     const childSizeRes =
       main === 0 ? measureNode(child, 0, 0, "column") : measureNode(child, cw, mm, "column");
     if (!childSizeRes.ok) return childSizeRes;
-    const childW = align === "stretch" ? cw : childSizeRes.value.w;
+    const childW = childSizeRes.value.w;
     if (childW > lineCross) lineCross = childW;
   }
 
@@ -418,7 +414,6 @@ function planRowWrapConstraintLine(
   cw: number,
   chLimit: number,
   gap: number,
-  align: StackAlign,
   parentRect: Rect,
   measureNode: MeasureNodeFn,
 ): LayoutResult<WrapLineLayout> {
@@ -537,7 +532,7 @@ function planRowWrapConstraintLine(
     const childSizeRes =
       main === 0 ? measureNode(child, 0, 0, "row") : measureNode(child, mm, chLimit, "row");
     if (!childSizeRes.ok) return childSizeRes;
-    const childH = align === "stretch" ? chLimit : childSizeRes.value.h;
+    const childH = childSizeRes.value.h;
     crossSizes[i] = childH;
     if (childH > lineCross) lineCross = childH;
   }
@@ -566,7 +561,6 @@ function planColumnWrapConstraintLine(
   cw: number,
   ch: number,
   gap: number,
-  align: StackAlign,
   parentRect: Rect,
   measureNode: MeasureNodeFn,
 ): LayoutResult<WrapLineLayout> {
@@ -685,7 +679,7 @@ function planColumnWrapConstraintLine(
     const childSizeRes =
       main === 0 ? measureNode(child, 0, 0, "column") : measureNode(child, cw, mm, "column");
     if (!childSizeRes.ok) return childSizeRes;
-    const childW = align === "stretch" ? cw : childSizeRes.value.w;
+    const childW = childSizeRes.value.w;
     crossSizes[i] = childW;
     if (childW > lineCross) lineCross = childW;
   }
@@ -785,7 +779,6 @@ export function measureStackKinds(
                 cw,
                 chLimit,
                 gap,
-                align as StackAlign,
                 parentRect,
                 measureNode,
               );
@@ -809,7 +802,6 @@ export function measureStackKinds(
               cw,
               chLimit,
               gap,
-              align as StackAlign,
               parentRect,
               measureNode,
             );
@@ -1098,7 +1090,6 @@ export function measureStackKinds(
                 cw,
                 ch,
                 gap,
-                align as StackAlign,
                 parentRect,
                 measureNode,
               );
@@ -1122,7 +1113,6 @@ export function measureStackKinds(
               cw,
               ch,
               gap,
-              align as StackAlign,
               parentRect,
               measureNode,
             );
@@ -1410,7 +1400,6 @@ export function layoutStackKinds(
                 cw,
                 ch,
                 gap,
-                align as StackAlign,
                 parentRect,
                 measureNode,
               );
@@ -1431,7 +1420,6 @@ export function layoutStackKinds(
               cw,
               ch,
               gap,
-              align as StackAlign,
               parentRect,
               measureNode,
             );
@@ -1450,7 +1438,7 @@ export function layoutStackKinds(
             const childSizeRes = measureNode(child, cw, ch, "row");
             if (!childSizeRes.ok) return childSizeRes;
             const childMain = childSizeRes.value.w;
-            const childCross = align === "stretch" ? ch : childSizeRes.value.h;
+            const childCross = childSizeRes.value.h;
 
             const wouldOverflow = lineChildren.length > 0 && lineMain + gap + childMain > cw;
             if (wouldOverflow) {
@@ -1846,7 +1834,6 @@ export function layoutStackKinds(
                 cw,
                 ch,
                 gap,
-                align as StackAlign,
                 parentRect,
                 measureNode,
               );
@@ -1867,7 +1854,6 @@ export function layoutStackKinds(
               cw,
               ch,
               gap,
-              align as StackAlign,
               parentRect,
               measureNode,
             );
@@ -1886,7 +1872,7 @@ export function layoutStackKinds(
             const childSizeRes = measureNode(child, cw, ch, "column");
             if (!childSizeRes.ok) return childSizeRes;
             const childMain = childSizeRes.value.h;
-            const childCross = align === "stretch" ? cw : childSizeRes.value.w;
+            const childCross = childSizeRes.value.w;
 
             const wouldOverflow = lineChildren.length > 0 && lineMain + gap + childMain > ch;
             if (wouldOverflow) {

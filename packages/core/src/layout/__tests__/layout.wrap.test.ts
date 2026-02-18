@@ -329,6 +329,46 @@ describe("layout wrap (deterministic)", () => {
     ]);
   });
 
+  test("row wrap align=stretch uses per-line intrinsic cross size", () => {
+    const out = mustLayout(
+      ui.row({ width: 5, height: 10, wrap: true, gap: 1, align: "stretch" }, [
+        box({ width: 2, height: 2 }),
+        box({ width: 2, height: 1 }),
+        box({ width: 5, height: 1 }),
+      ]),
+      5,
+      10,
+      "row",
+    );
+
+    assert.deepEqual(out.rect, { x: 0, y: 0, w: 5, h: 10 });
+    assertRects(out.children, [
+      { x: 0, y: 0, w: 2, h: 2 },
+      { x: 3, y: 0, w: 2, h: 2 },
+      { x: 0, y: 3, w: 5, h: 1 },
+    ]);
+  });
+
+  test("column wrap align=stretch uses per-line intrinsic cross size", () => {
+    const out = mustLayout(
+      ui.column({ width: 10, height: 5, wrap: true, gap: 1, align: "stretch" }, [
+        box({ width: 2, height: 2 }),
+        box({ width: 1, height: 2 }),
+        box({ width: 1, height: 5 }),
+      ]),
+      10,
+      5,
+      "column",
+    );
+
+    assert.deepEqual(out.rect, { x: 0, y: 0, w: 10, h: 5 });
+    assertRects(out.children, [
+      { x: 0, y: 0, w: 2, h: 2 },
+      { x: 0, y: 3, w: 2, h: 2 },
+      { x: 3, y: 0, w: 1, h: 5 },
+    ]);
+  });
+
   test("row wrap justify=center is computed per line", () => {
     const out = mustLayout(
       ui.row({ width: 8, wrap: true, gap: 1, justify: "center" }, [
