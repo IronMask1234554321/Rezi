@@ -44,16 +44,13 @@ export function routeDropdownKey(event: ZrevEvent, ctx: DropdownRoutingCtx): Dro
     return Object.freeze({ consumed: false });
   }
 
-  // Find current selectable index
-  let currentSelectableIndex = -1;
-  for (let i = 0; i < items.length && i <= selectedIndex; i++) {
-    const item = items[i];
-    if (item && !item.divider && !item.disabled) {
-      if (i === selectedIndex) {
-        currentSelectableIndex = selectableItems.indexOf(item);
-      }
-    }
-  }
+  // Normalize selected item so non-selectable/invalid indices behave as first selectable.
+  const selectedItem =
+    selectedIndex >= 0 && selectedIndex < items.length ? (items[selectedIndex] ?? null) : null;
+  const selectedIsSelectable =
+    selectedItem !== null && !selectedItem.divider && !selectedItem.disabled;
+
+  let currentSelectableIndex = selectedIsSelectable ? selectableItems.indexOf(selectedItem) : -1;
   if (currentSelectableIndex < 0) currentSelectableIndex = 0;
 
   // Handle keys
@@ -74,17 +71,19 @@ export function routeDropdownKey(event: ZrevEvent, ctx: DropdownRoutingCtx): Dro
     }
     case ZR_KEY_ENTER:
     case ZR_KEY_SPACE: {
-      const selectedItem = items[selectedIndex];
-      if (selectedItem && !selectedItem.divider && !selectedItem.disabled) {
+      const itemToActivate = selectedIsSelectable
+        ? selectedItem
+        : (selectableItems[currentSelectableIndex] ?? null);
+      if (itemToActivate) {
         if (onSelect) {
           try {
-            onSelect(selectedItem);
+            onSelect(itemToActivate);
           } catch {
             // Swallow
           }
         }
         return Object.freeze({
-          activatedItem: selectedItem,
+          activatedItem: itemToActivate,
           shouldClose: true,
           consumed: true,
         });
