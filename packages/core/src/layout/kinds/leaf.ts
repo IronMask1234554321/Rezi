@@ -12,7 +12,11 @@ import type { Axis, Size } from "../types.js";
 import type { LayoutResult } from "../validateProps.js";
 import {
   validateButtonProps,
+  validateCheckboxProps,
   validateInputProps,
+  validateRadioGroupProps,
+  validateSelectProps,
+  validateSliderProps,
   validateSpacerProps,
   validateTextProps,
 } from "../validateProps.js";
@@ -56,29 +60,20 @@ export function measureLeaf(
       return ok({ w, h });
     }
     case "slider": {
-      const props = vnode.props as {
-        value?: number;
-        min?: number;
-        max?: number;
-        step?: number;
-        width?: number;
-        label?: string;
-        showValue?: boolean;
-      };
+      const propsRes = validateSliderProps(vnode.props);
+      if (!propsRes.ok) return propsRes;
+      const props = propsRes.value;
       const normalized = normalizeSliderState({
-        value: props.value ?? Number.NaN,
+        value: props.value,
         min: props.min,
         max: props.max,
         step: props.step,
       });
       const labelText =
-        typeof props.label === "string" && props.label.length > 0 ? `${props.label} ` : "";
-      const showValue = props.showValue !== false;
+        props.label !== undefined && props.label.length > 0 ? `${props.label} ` : "";
+      const showValue = props.showValue;
       const valueText = showValue ? ` ${formatSliderValue(normalized.value, normalized.step)}` : "";
-      const explicitTrack =
-        typeof props.width === "number" && Number.isFinite(props.width) && props.width > 0
-          ? Math.trunc(props.width)
-          : undefined;
+      const explicitTrack = props.width !== undefined && props.width > 0 ? props.width : undefined;
       const trackWidth = explicitTrack ?? DEFAULT_SLIDER_TRACK_WIDTH;
       const intrinsicW = measureTextCells(labelText) + 2 + trackWidth + measureTextCells(valueText);
       return ok({ w: Math.min(maxW, intrinsicW), h: Math.min(maxH, 1) });
@@ -290,32 +285,40 @@ export function measureLeaf(
       return ok({ w: Math.min(maxW, totalW), h: Math.min(maxH, 1) });
     }
     case "select": {
-      // Select dropdowns show selected value in a fixed-width area.
-      const textW = measureTextCells(vnode.props.placeholder ?? "Select...");
+      const propsRes = validateSelectProps(vnode.props);
+      if (!propsRes.ok) return propsRes;
+      const selected = propsRes.value.options.find(
+        (option) => option.value === propsRes.value.value,
+      );
+      const displayText = selected?.label ?? propsRes.value.placeholder ?? "Select…";
+      const textW = measureTextCells(displayText);
       return ok({ w: Math.min(maxW, textW + 4), h: Math.min(maxH, 1) });
     }
     case "checkbox": {
-      // Checkbox: [x] + optional label
-      const labelW = vnode.props.label ? measureTextCells(vnode.props.label) + 1 : 0;
+      const propsRes = validateCheckboxProps(vnode.props);
+      if (!propsRes.ok) return propsRes;
+      const labelW =
+        propsRes.value.label === undefined ? 0 : measureTextCells(propsRes.value.label) + 1;
       return ok({ w: Math.min(maxW, 3 + labelW), h: Math.min(maxH, 1) });
     }
     case "radioGroup": {
-      // Radio group: stack of options
-      const direction = vnode.props.direction ?? "vertical";
+      const propsRes = validateRadioGroupProps(vnode.props);
+      if (!propsRes.ok) return propsRes;
+      const direction = propsRes.value.direction;
       if (direction === "horizontal") {
         let totalW = 0;
-        for (const opt of vnode.props.options) {
+        for (const opt of propsRes.value.options) {
           totalW += measureTextCells(opt.label) + 5; // "(x) label "
         }
         return ok({ w: Math.min(maxW, totalW), h: Math.min(maxH, 1) });
       }
       // Vertical: max width of options, height = num options
       let maxOptW = 0;
-      for (const opt of vnode.props.options) {
+      for (const opt of propsRes.value.options) {
         const w = measureTextCells(opt.label) + 4; // "(x) label"
         if (w > maxOptW) maxOptW = w;
       }
-      return ok({ w: Math.min(maxW, maxOptW), h: Math.min(maxH, vnode.props.options.length) });
+      return ok({ w: Math.min(maxW, maxOptW), h: Math.min(maxH, propsRes.value.options.length) });
     }
     default:
       return {
@@ -425,7 +428,8 @@ export function layoutLeafKind(
       });
     }
     case "select": {
-      // Select dropdown is an interactive leaf widget.
+      const propsRes = validateSelectProps(vnode.props);
+      if (!propsRes.ok) return propsRes;
       return ok({
         vnode,
         rect: { x, y, w: rectW, h: Math.min(rectH, 1) },
@@ -433,7 +437,8 @@ export function layoutLeafKind(
       });
     }
     case "slider": {
-      // Slider is an interactive leaf widget.
+      const propsRes = validateSliderProps(vnode.props);
+      if (!propsRes.ok) return propsRes;
       return ok({
         vnode,
         rect: { x, y, w: rectW, h: Math.min(rectH, 1) },
@@ -441,7 +446,8 @@ export function layoutLeafKind(
       });
     }
     case "checkbox": {
-      // Checkbox is an interactive leaf widget.
+      const propsRes = validateCheckboxProps(vnode.props);
+      if (!propsRes.ok) return propsRes;
       return ok({
         vnode,
         rect: { x, y, w: rectW, h: Math.min(rectH, 1) },
@@ -449,10 +455,9 @@ export function layoutLeafKind(
       });
     }
     case "radioGroup": {
-      // Radio group layout depends on direction.
-      const direction = vnode.props.direction ?? "vertical";
-      const optionCount = Array.isArray(vnode.props.options) ? vnode.props.options.length : 0;
-      const naturalH = direction === "vertical" ? optionCount : 1;
+      const propsRes = validateRadioGroupProps(vnode.props);
+      if (!propsRes.ok) return propsRes;
+      const naturalH = propsRes.value.direction === "vertical" ? propsRes.value.options.length : 1;
       return ok({
         vnode,
         rect: { x, y, w: rectW, h: Math.min(rectH, naturalH) },
