@@ -53,6 +53,15 @@ type BorderOverride = {
   strong?: unknown;
 };
 
+type ThemeDefinitionSpacingOverride = {
+  xs?: unknown;
+  sm?: unknown;
+  md?: unknown;
+  lg?: unknown;
+  xl?: unknown;
+  "2xl"?: unknown;
+};
+
 type LegacyColorOverrideSource = {
   bg?: unknown;
   fg?: unknown;
@@ -93,6 +102,34 @@ function readSpacingOverride(raw: unknown): Theme["spacing"] | undefined {
     spacing.push(item);
   }
   return Object.freeze(spacing);
+}
+
+function isSpacingToken(value: unknown): value is number {
+  return (
+    typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value >= 0
+  );
+}
+
+function readThemeDefinitionSpacing(raw: unknown): Theme["spacing"] | undefined {
+  if (!isObject(raw)) return undefined;
+  const spacing = raw as ThemeDefinitionSpacingOverride;
+  const xs = spacing.xs;
+  const sm = spacing.sm;
+  const md = spacing.md;
+  const lg = spacing.lg;
+  const xl = spacing.xl;
+  const x2xl = spacing["2xl"];
+  if (
+    !isSpacingToken(xs) ||
+    !isSpacingToken(sm) ||
+    !isSpacingToken(md) ||
+    !isSpacingToken(lg) ||
+    !isSpacingToken(xl) ||
+    !isSpacingToken(x2xl)
+  ) {
+    return undefined;
+  }
+  return Object.freeze([0, xs, sm, md, lg, xl, x2xl]);
 }
 
 function spacingEquals(a: Theme["spacing"], b: Theme["spacing"]): boolean {
@@ -231,6 +268,7 @@ export function coerceToLegacyTheme(theme: Theme | ThemeDefinition): Theme {
   if (cached) return cached;
 
   const c = theme.colors;
+  const spacing = readThemeDefinitionSpacing(theme.spacing) ?? defaultTheme.spacing;
 
   const colors: Theme["colors"] = Object.freeze({
     // Legacy keys used by resolveColor(theme, key)
@@ -269,8 +307,7 @@ export function coerceToLegacyTheme(theme: Theme | ThemeDefinition): Theme {
     "border.strong": c.border.strong,
   });
 
-  // ThemeDefinition has no spacing scale; reuse the default spacing for determinism.
-  const legacyTheme = Object.freeze({ colors, spacing: defaultTheme.spacing });
+  const legacyTheme = Object.freeze({ colors, spacing });
   legacyThemeDefinitionCache.set(theme, legacyTheme);
   return legacyTheme;
 }
@@ -279,8 +316,10 @@ export function mergeThemeOverride(parentTheme: Theme, override: unknown): Theme
   if (!isObject(override)) return parentTheme;
 
   if (isThemeDefinition(override as Theme | ThemeDefinition)) {
-    const colors = coerceToLegacyTheme(override as ThemeDefinition).colors;
-    return mergeLegacyTheme(parentTheme, colors, undefined);
+    const definition = override as ThemeDefinition;
+    const colors = coerceToLegacyTheme(definition).colors;
+    const spacing = readThemeDefinitionSpacing(definition.spacing);
+    return mergeLegacyTheme(parentTheme, colors, spacing);
   }
 
   const candidate = override as { colors?: unknown; spacing?: unknown };
