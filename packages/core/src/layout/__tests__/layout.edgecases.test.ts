@@ -95,6 +95,120 @@ describe("layout edge cases", () => {
     );
   });
 
+  test("row overflow metadata clamps scrollX and shifts children", () => {
+    const tree: VNode = {
+      kind: "row",
+      props: { width: 5, overflow: "scroll", scrollX: 99 },
+      children: Object.freeze<readonly VNode[]>([
+        {
+          kind: "box",
+          props: { border: "none", mr: -4 },
+          children: Object.freeze<readonly VNode[]>([
+            { kind: "text", text: "123456789", props: {} },
+          ]),
+        },
+      ]),
+    };
+
+    const laidOut = mustLayout(tree, 5, 2);
+    assert.deepEqual(laidOut.meta, {
+      scrollX: 4,
+      scrollY: 0,
+      contentWidth: 9,
+      contentHeight: 1,
+      viewportWidth: 5,
+      viewportHeight: 1,
+    });
+    assert.deepEqual(laidOut.children[0]?.rect, { x: -4, y: 0, w: 9, h: 1 });
+  });
+
+  test("column overflow metadata clamps scrollY and shifts children", () => {
+    const tree: VNode = {
+      kind: "column",
+      props: { height: 3, overflow: "scroll", scrollY: 99 },
+      children: Object.freeze<readonly VNode[]>([
+        {
+          kind: "box",
+          props: { border: "none", mb: -1 },
+          children: Object.freeze<readonly VNode[]>([
+            { kind: "text", text: "a", props: {} },
+            { kind: "text", text: "b", props: {} },
+            { kind: "text", text: "c", props: {} },
+            { kind: "text", text: "d", props: {} },
+          ]),
+        },
+      ]),
+    };
+
+    const laidOut = mustLayout(tree, 6, 3);
+    assert.deepEqual(laidOut.meta, {
+      scrollX: 0,
+      scrollY: 1,
+      contentWidth: 1,
+      contentHeight: 4,
+      viewportWidth: 1,
+      viewportHeight: 3,
+    });
+    assert.deepEqual(laidOut.children[0]?.rect, { x: 0, y: -1, w: 1, h: 4 });
+  });
+
+  test("box overflow metadata clamps both axes and shifts children", () => {
+    const tree: VNode = {
+      kind: "box",
+      props: { border: "none", width: 5, height: 3, overflow: "scroll", scrollX: 99, scrollY: 99 },
+      children: Object.freeze<readonly VNode[]>([
+        {
+          kind: "box",
+          props: { border: "none", mr: -4, mb: -1 },
+          children: Object.freeze<readonly VNode[]>([
+            { kind: "text", text: "123456789", props: {} },
+            { kind: "text", text: "line2", props: {} },
+            { kind: "text", text: "line3", props: {} },
+            { kind: "text", text: "line4", props: {} },
+          ]),
+        },
+      ]),
+    };
+
+    const laidOut = mustLayout(tree, 5, 3);
+    assert.deepEqual(laidOut.meta, {
+      scrollX: 4,
+      scrollY: 1,
+      contentWidth: 9,
+      contentHeight: 4,
+      viewportWidth: 5,
+      viewportHeight: 3,
+    });
+    assert.deepEqual(laidOut.children[0]?.rect, { x: -4, y: -1, w: 9, h: 4 });
+  });
+
+  test("scroll clamp uses content-origin extent when children start after origin", () => {
+    const tree: VNode = {
+      kind: "row",
+      props: { width: 5, overflow: "scroll", scrollX: 99 },
+      children: Object.freeze<readonly VNode[]>([
+        {
+          kind: "box",
+          props: { border: "none", ml: 2, mr: -8 },
+          children: Object.freeze<readonly VNode[]>([
+            { kind: "text", text: "123456789", props: {} },
+          ]),
+        },
+      ]),
+    };
+
+    const laidOut = mustLayout(tree, 5, 2);
+    assert.deepEqual(laidOut.meta, {
+      scrollX: 6,
+      scrollY: 0,
+      contentWidth: 11,
+      contentHeight: 1,
+      viewportWidth: 5,
+      viewportHeight: 1,
+    });
+    assert.deepEqual(laidOut.children[0]?.rect, { x: -4, y: 0, w: 9, h: 1 });
+  });
+
   test("button fractional px is handled deterministically", () => {
     const button: VNode = {
       kind: "button",

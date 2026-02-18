@@ -1,5 +1,5 @@
 import type { VNode } from "../../index.js";
-import { resolveLayoutConstraints } from "../constraints.js";
+import { measureContentBounds, resolveLayoutConstraints, resolveOverflow } from "../constraints.js";
 import { clampNonNegative, clampWithin, isPercentString, toFiniteMax } from "../engine/bounds.js";
 import {
   type FlexItem,
@@ -45,6 +45,29 @@ function countNonEmptyChildren(children: readonly (VNode | undefined)[]): number
     count++;
   }
   return count;
+}
+
+function shiftLayoutTree(node: LayoutTree, dx: number, dy: number): LayoutTree {
+  if (dx === 0 && dy === 0) return node;
+  const shiftedChildren =
+    node.children.length === 0
+      ? node.children
+      : Object.freeze(node.children.map((child) => shiftLayoutTree(child, dx, dy)));
+  return {
+    vnode: node.vnode,
+    rect: { x: node.rect.x + dx, y: node.rect.y + dy, w: node.rect.w, h: node.rect.h },
+    ...(node.meta === undefined ? {} : { meta: node.meta }),
+    children: shiftedChildren,
+  };
+}
+
+function shiftLayoutChildren(
+  children: readonly LayoutTree[],
+  dx: number,
+  dy: number,
+): LayoutTree[] {
+  if (dx === 0 && dy === 0) return children as LayoutTree[];
+  return children.map((child) => shiftLayoutTree(child, dx, dy));
 }
 
 export function measureStackKinds(
@@ -742,10 +765,19 @@ export function layoutStackKinds(
         }
       }
 
+      const { contentWidth, contentHeight } = measureContentBounds(children, cx, cy);
+      const overflow = resolveOverflow(propsRes.value, cw, ch, contentWidth, contentHeight);
+      const shiftedChildren = shiftLayoutChildren(
+        children,
+        -overflow.metadata.scrollX,
+        -overflow.metadata.scrollY,
+      );
+
       return ok({
         vnode,
         rect: { x: stackX, y: stackY, w: stackW, h: stackH },
-        children: Object.freeze(children),
+        children: Object.freeze(shiftedChildren),
+        meta: overflow.metadata,
       });
     }
     case "column": {
@@ -1008,10 +1040,19 @@ export function layoutStackKinds(
         }
       }
 
+      const { contentWidth, contentHeight } = measureContentBounds(children, cx, cy);
+      const overflow = resolveOverflow(propsRes.value, cw, ch, contentWidth, contentHeight);
+      const shiftedChildren = shiftLayoutChildren(
+        children,
+        -overflow.metadata.scrollX,
+        -overflow.metadata.scrollY,
+      );
+
       return ok({
         vnode,
         rect: { x: stackX, y: stackY, w: stackW, h: stackH },
-        children: Object.freeze(children),
+        children: Object.freeze(shiftedChildren),
+        meta: overflow.metadata,
       });
     }
     default:
