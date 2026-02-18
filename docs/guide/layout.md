@@ -339,22 +339,36 @@ ui.row({ gap: 1 }, [
 ]);
 ```
 
-## Overflow
+## Overflow and scroll
 
-Rezi clips rendering to each widget’s allocated rect. Overflow is handled per-widget:
+For `row`, `column`, and `box`, `overflow` supports:
 
-- `ui.text` supports `textOverflow: "clip" | "ellipsis" | "middle"` (and `maxWidth`)
-- Containers clip their children to the padded/bordered content area
+- `"visible"` (default)
+- `"hidden"`
+- `"scroll"`
 
-Example: ellipsis truncation
+Layout overflow metadata uses these fields (all non-negative cells):
 
-```typescript
-import { ui } from "@rezi-ui/core";
+- `scrollX`, `scrollY` - active scroll offset (clamped to available range)
+- `contentWidth`, `contentHeight` - measured content footprint
+- `viewportWidth`, `viewportHeight` - scrollable viewport size
 
-ui.box({ width: 20, border: "single", p: 1 }, [
-  ui.text("This is a long line that will truncate", { textOverflow: "ellipsis" }),
-]);
-```
+Clipping semantics (current behavior):
+
+- Rendering clips children to the container content rect (after border/padding).
+- `"scroll"` additionally clips to a reduced scroll viewport and applies `scrollX`/`scrollY` offsets.
+- Hit-testing keeps legacy `"visible"` overlap behavior (container layout-rect clip), while `"hidden"` and `"scroll"` use stricter content/viewport clipping.
+
+Scrollbar occupancy in `"scroll"` mode:
+
+- Vertical scrollbar consumes 1 column on the right.
+- Horizontal scrollbar consumes 1 row at the bottom.
+- When both are shown, they share the bottom-right corner cell.
+
+Collection migration behavior (current):
+
+- `VirtualList`, `Table`, and `Tree` still maintain runtime scroll state.
+- Their effective runtime scroll values are mirrored into layout metadata (`scrollX`, `scrollY`, `contentWidth`, `contentHeight`, `viewportWidth`, `viewportHeight`) during rendering.
 
 ## Overlap hit-testing
 
