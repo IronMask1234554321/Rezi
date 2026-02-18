@@ -164,7 +164,7 @@ describe("virtualList.edge - helper math and dynamic data changes", () => {
     assert.equal(typeof up.nextScrollTop, "number");
 
     const down = routeVirtualListKey(keyEvent(ZR_KEY_DOWN), ctx);
-    assert.equal(down.nextSelectedIndex, undefined);
+    assert.equal(down.nextSelectedIndex, 1);
   });
 
   test("routeVirtualListKey clamps stale selectedIndex for action keys", () => {

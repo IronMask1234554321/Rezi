@@ -1,5 +1,5 @@
 import { assert, describe, test } from "@rezi-ui/testkit";
-import type { UseFormOptions } from "../types.js";
+import type { UseFormOptions, ValidationResult } from "../types.js";
 import { createDebouncedAsyncValidator, runAsyncValidation } from "../validation.js";
 import { createFormHarness, flushMicrotasks } from "./harness.js";
 
@@ -73,7 +73,7 @@ describe("form.async-validation - utility behavior", () => {
     t.mock.timers.enable({ apis: ["setTimeout"] });
 
     const calls: string[] = [];
-    let received: Partial<Record<keyof Values, string>> = {};
+    let received: ValidationResult<Values> = {};
     const validator = createDebouncedAsyncValidator<Values>(
       async (values) => {
         calls.push(values.username);
@@ -121,9 +121,9 @@ describe("form.async-validation - utility behavior", () => {
   test("createDebouncedAsyncValidator ignores stale in-flight results", async (t) => {
     t.mock.timers.enable({ apis: ["setTimeout"] });
 
-    const first = createDeferred<Partial<Record<keyof Values, string>>>();
-    const second = createDeferred<Partial<Record<keyof Values, string>>>();
-    const results: Partial<Record<keyof Values, string>>[] = [];
+    const first = createDeferred<ValidationResult<Values>>();
+    const second = createDeferred<ValidationResult<Values>>();
+    const results: ValidationResult<Values>[] = [];
 
     let call = 0;
     const validator = createDebouncedAsyncValidator<Values>(

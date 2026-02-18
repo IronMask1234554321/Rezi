@@ -46,6 +46,12 @@ export function routeVirtualListKey<T>(
 
   if (itemCount === 0) return Object.freeze({});
   const clampedSelectedIndex = Math.max(0, Math.min(itemCount - 1, selectedIndex));
+  const repairStaleSelection = (): VirtualListRoutingResult => {
+    if (selectedIndex !== clampedSelectedIndex) {
+      return Object.freeze({ nextSelectedIndex: clampedSelectedIndex });
+    }
+    return Object.freeze({});
+  };
 
   // Helper to compute scroll position for a given selection
   const scrollToIndex = (index: number): number => {
@@ -88,7 +94,7 @@ export function routeVirtualListKey<T>(
     if (nextIndex < 0) {
       nextIndex = wrapAround ? itemCount - 1 : 0;
     }
-    if (nextIndex === clampedSelectedIndex) return Object.freeze({});
+    if (nextIndex === clampedSelectedIndex) return repairStaleSelection();
 
     const newScrollTop = scrollToIndex(nextIndex);
     if (newScrollTop !== scrollTop) {
@@ -103,7 +109,7 @@ export function routeVirtualListKey<T>(
     if (nextIndex >= itemCount) {
       nextIndex = wrapAround ? 0 : itemCount - 1;
     }
-    if (nextIndex === clampedSelectedIndex) return Object.freeze({});
+    if (nextIndex === clampedSelectedIndex) return repairStaleSelection();
 
     const newScrollTop = scrollToIndex(nextIndex);
     if (newScrollTop !== scrollTop) {
@@ -116,7 +122,7 @@ export function routeVirtualListKey<T>(
   if (event.key === ZR_KEY_PAGE_UP) {
     const pageSize = computePageSize();
     const nextIndex = Math.max(0, clampedSelectedIndex - pageSize);
-    if (nextIndex === clampedSelectedIndex) return Object.freeze({});
+    if (nextIndex === clampedSelectedIndex) return repairStaleSelection();
 
     const newScrollTop = scrollToIndex(nextIndex);
     if (newScrollTop !== scrollTop) {
@@ -129,7 +135,7 @@ export function routeVirtualListKey<T>(
   if (event.key === ZR_KEY_PAGE_DOWN) {
     const pageSize = computePageSize();
     const nextIndex = Math.min(itemCount - 1, clampedSelectedIndex + pageSize);
-    if (nextIndex === clampedSelectedIndex) return Object.freeze({});
+    if (nextIndex === clampedSelectedIndex) return repairStaleSelection();
 
     const newScrollTop = scrollToIndex(nextIndex);
     if (newScrollTop !== scrollTop) {
@@ -140,7 +146,7 @@ export function routeVirtualListKey<T>(
 
   // Home - jump to first item
   if (event.key === ZR_KEY_HOME) {
-    if (clampedSelectedIndex === 0) return Object.freeze({});
+    if (clampedSelectedIndex === 0) return repairStaleSelection();
 
     return Object.freeze({
       nextSelectedIndex: 0,
@@ -151,7 +157,7 @@ export function routeVirtualListKey<T>(
   // End - jump to last item
   if (event.key === ZR_KEY_END) {
     const lastIndex = itemCount - 1;
-    if (clampedSelectedIndex === lastIndex) return Object.freeze({});
+    if (clampedSelectedIndex === lastIndex) return repairStaleSelection();
 
     const totalHeight = getTotalHeight(items, itemHeight);
     const nextScrollTop = clampScrollTop(totalHeight, totalHeight, viewportHeight);
