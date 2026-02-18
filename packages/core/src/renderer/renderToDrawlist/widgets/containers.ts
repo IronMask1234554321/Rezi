@@ -65,6 +65,18 @@ function rectIntersects(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
+function usesVisibleOverflow(node: RuntimeInstance): boolean {
+  const kind = node.vnode.kind;
+  if (kind !== "row" && kind !== "column" && kind !== "grid" && kind !== "box") {
+    return false;
+  }
+  if (node.children.length === 0) {
+    return false;
+  }
+  const props = node.vnode.props as { overflow?: unknown };
+  return props.overflow !== "hidden" && props.overflow !== "scroll";
+}
+
 function findStackChildRange(
   runtimeChildren: readonly RuntimeInstance[],
   children: readonly LayoutTree[],
@@ -129,26 +141,39 @@ function pushChildrenWithLayout(
   let rangeEnd = childCount - 1;
   if (damageRect) {
     if (stackDirection) {
-      const range = findStackChildRange(
-        node.children,
-        layoutNode.children,
-        childCount,
-        stackDirection,
-        damageRect,
-      );
-      if (!range) return;
-      rangeStart = range.start;
-      rangeEnd = range.end;
+      let hasVisibleOverflowChild = false;
+      for (let i = 0; i < childCount; i++) {
+        const child = node.children[i];
+        if (child && usesVisibleOverflow(child)) {
+          hasVisibleOverflowChild = true;
+          break;
+        }
+      }
+      if (!hasVisibleOverflowChild) {
+        const range = findStackChildRange(
+          node.children,
+          layoutNode.children,
+          childCount,
+          stackDirection,
+          damageRect,
+        );
+        if (!range) return;
+        rangeStart = range.start;
+        rangeEnd = range.end;
+      }
     }
   }
 
   for (let i = rangeEnd; i >= rangeStart; i--) {
     const c = node.children[i];
     const lc = layoutNode.children[i];
+    const childCanOverflow = c ? usesVisibleOverflow(c) : false;
     if (
       c &&
       lc &&
-      (!damageRect || rectIntersects(getRuntimeNodeDamageRect(c, lc.rect), damageRect))
+      (!damageRect ||
+        childCanOverflow ||
+        rectIntersects(getRuntimeNodeDamageRect(c, lc.rect), damageRect))
     ) {
       nodeStack.push(c);
       styleStack.push(style);

@@ -482,6 +482,43 @@ describe("renderer damage rect behavior", () => {
     assert.equal(plainOps.length, 0);
   });
 
+  test("visible-overflow ancestors do not drop shadow-only incremental damage outside parent rect", () => {
+    const visibleAncestor = buildScene(
+      ui.row({ width: 4, height: 2, overflow: "visible" }, [
+        ui.box({
+          width: 4,
+          height: 2,
+          border: "none",
+          shadow: true,
+          style: { bg: { r: 20, g: 20, b: 20 } },
+        }),
+      ]),
+      viewport,
+    );
+    const hiddenAncestor = buildScene(
+      ui.row({ width: 4, height: 2, overflow: "hidden" }, [
+        ui.box({
+          width: 4,
+          height: 2,
+          border: "none",
+          shadow: true,
+          style: { bg: { r: 20, g: 20, b: 20 } },
+        }),
+      ]),
+      viewport,
+    );
+
+    const shadowOnlyDamage = { x: 4, y: 1, w: 1, h: 1 };
+    const visibleOps = renderScene(visibleAncestor, null, { damageRect: shadowOnlyDamage });
+    const hiddenOps = renderScene(hiddenAncestor, null, { damageRect: shadowOnlyDamage });
+
+    assert.equal(
+      drawTextOps(visibleOps).some((op) => op.text.includes("▒")),
+      true,
+    );
+    assert.equal(drawTextOps(hiddenOps).length, 0);
+  });
+
   test("text update with encapsulating damage rect matches full render", () => {
     const beforeScene = buildScene(makeTextStack(["alpha", "bravo", "charlie"]), viewport);
     const afterScene = buildScene(makeTextStack(["alpha", "BRAVO!", "charlie"]), viewport);
