@@ -24,7 +24,12 @@ function keyUp(key: number): ZrevEvent {
   return { kind: "key", timeMs: 0, key, mods: 0, action: "up" };
 }
 
-function zone(id: string, focusableIds: readonly string[], wrapAround: boolean): FocusZone {
+function zone(
+  id: string,
+  focusableIds: readonly string[],
+  wrapAround: boolean,
+  parentZoneId?: string,
+): FocusZone {
   return {
     id,
     tabIndex: 0,
@@ -32,6 +37,7 @@ function zone(id: string, focusableIds: readonly string[], wrapAround: boolean):
     columns: 1,
     wrapAround,
     focusableIds,
+    ...(parentZoneId ? { parentZoneId } : {}),
     lastFocusedId: null,
   };
 }
@@ -325,5 +331,32 @@ describe("tabs keyboard routing", () => {
     });
 
     assert.equal(res, null);
+  });
+
+  test("escape from nested zone inside tab content returns focus to tab bar", () => {
+    const nestedId = "nested-zone";
+    const res = routeTabsKey(keyDown(1), {
+      focusedId: "nested-btn",
+      activeZoneId: nestedId,
+      zones: new Map([
+        [barId, zone(barId, [t0, t1, t2], true)],
+        [contentId, zone(contentId, ["content-btn"], false)],
+        [nestedId, zone(nestedId, ["nested-btn"], false, contentId)],
+      ]),
+      lastFocusedByZone: new Map([[barId, t1]]),
+      enabledById: new Map([
+        [t0, true],
+        [t1, true],
+        [t2, true],
+        ["content-btn", true],
+        ["nested-btn", true],
+      ]),
+      pressableIds: new Set([t0, t1, t2, "content-btn", "nested-btn"]),
+    });
+
+    assert.deepEqual(res, {
+      nextFocusedId: t1,
+      nextZoneId: barId,
+    });
   });
 });

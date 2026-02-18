@@ -1,7 +1,9 @@
 import type { ZrevEvent } from "../../events.js";
 import {
   getPaginationControlId,
+  getPaginationPageId,
   getPaginationZoneId,
+  movePaginationPage,
   parsePaginationId,
 } from "../../widgets/pagination.js";
 import { computeZoneMovement } from "../focus.js";
@@ -15,6 +17,25 @@ const ZR_KEY_RIGHT = 23;
 
 function isEnabled(enabledById: EnabledById, id: string): boolean {
   return enabledById.get(id) === true;
+}
+
+function canPressId(
+  enabledById: EnabledById,
+  id: string,
+  pressableIds?: ReadonlySet<string>,
+): boolean {
+  return isEnabled(enabledById, id) && (pressableIds === undefined || pressableIds.has(id));
+}
+
+function inferTotalPagesFromZone(zone: FocusZone): number | null {
+  let maxPage = 0;
+  for (const id of zone.focusableIds) {
+    const parsed = parsePaginationId(id);
+    if (parsed?.kind === "page" && parsed.page > maxPage) {
+      maxPage = parsed.page;
+    }
+  }
+  return maxPage > 0 ? maxPage : null;
 }
 
 function findZoneForId(zones: ReadonlyMap<string, FocusZone>, id: string): string | null {
@@ -54,6 +75,42 @@ export function routePaginationKey(
   if (!zone) return Object.freeze({});
 
   if (event.key === ZR_KEY_LEFT || event.key === ZR_KEY_RIGHT) {
+    const direction = event.key === ZR_KEY_LEFT ? "prev" : "next";
+
+    if (parsed.kind === "page") {
+      const totalPages = inferTotalPagesFromZone(zone) ?? parsed.page;
+      const targetPage = movePaginationPage(parsed.page, totalPages, direction);
+      if (targetPage === parsed.page) return Object.freeze({});
+
+      const targetPageId = getPaginationPageId(parsed.paginationId, targetPage);
+      if (
+        zone.focusableIds.includes(targetPageId) &&
+        canPressId(ctx.enabledById, targetPageId, ctx.pressableIds)
+      ) {
+        const action: RoutedAction = Object.freeze({ id: targetPageId, action: "press" });
+        return Object.freeze({
+          nextFocusedId: targetPageId,
+          nextZoneId: zoneId,
+          action,
+        });
+      }
+
+      const stepControlId = getPaginationControlId(parsed.paginationId, direction);
+      if (
+        zone.focusableIds.includes(stepControlId) &&
+        canPressId(ctx.enabledById, stepControlId, ctx.pressableIds)
+      ) {
+        const action: RoutedAction = Object.freeze({ id: stepControlId, action: "press" });
+        return Object.freeze({
+          nextFocusedId: ctx.focusedId,
+          nextZoneId: zoneId,
+          action,
+        });
+      }
+
+      return Object.freeze({});
+    }
+
     const nextFocusedId = computeZoneMovement(
       zone,
       ctx.focusedId,
@@ -65,9 +122,7 @@ export function routePaginationKey(
       return Object.freeze({ nextFocusedId, nextZoneId: zoneId });
     }
 
-    const canPress =
-      isEnabled(ctx.enabledById, nextFocusedId) &&
-      (ctx.pressableIds === undefined || ctx.pressableIds.has(nextFocusedId));
+    const canPress = canPressId(ctx.enabledById, nextFocusedId, ctx.pressableIds);
 
     const action: RoutedAction | undefined = canPress
       ? Object.freeze({ id: nextFocusedId, action: "press" })

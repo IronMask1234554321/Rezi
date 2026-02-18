@@ -23,6 +23,27 @@ function findZoneForId(zones: ReadonlyMap<string, FocusZone>, id: string): strin
   return null;
 }
 
+function resolveTabsIdFromZone(
+  zones: ReadonlyMap<string, FocusZone>,
+  startZoneId: string,
+): string | null {
+  const visited = new Set<string>();
+  let cursor: string | null = startZoneId;
+
+  while (cursor !== null) {
+    if (visited.has(cursor)) return null;
+    visited.add(cursor);
+
+    const tabsId = parseTabsContentZoneId(cursor);
+    if (tabsId !== null) return tabsId;
+
+    const parentId: string | null = zones.get(cursor)?.parentZoneId ?? null;
+    cursor = parentId;
+  }
+
+  return null;
+}
+
 export type TabsRoutingCtx = Readonly<{
   focusedId: string | null;
   activeZoneId: string | null;
@@ -81,7 +102,7 @@ export function routeTabsKey(event: ZrevEvent, ctx: TabsRoutingCtx): RoutingResu
     const zoneId = ctx.activeZoneId ?? findZoneForId(ctx.zones, focusedId);
     if (zoneId === null) return null;
 
-    const tabsId = parseTabsContentZoneId(zoneId);
+    const tabsId = resolveTabsIdFromZone(ctx.zones, zoneId);
     if (tabsId === null) return null;
 
     const barZoneId = getTabsBarZoneId(tabsId);

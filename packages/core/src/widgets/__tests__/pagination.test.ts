@@ -151,6 +151,12 @@ describe("pagination keyboard routing", () => {
   const page1 = getPaginationPageId("pages", 1);
   const page2 = getPaginationPageId("pages", 2);
   const page3 = getPaginationPageId("pages", 3);
+  const page9 = getPaginationPageId("pages", 9);
+  const page10 = getPaginationPageId("pages", 10);
+  const page11 = getPaginationPageId("pages", 11);
+  const page20 = getPaginationPageId("pages", 20);
+  const prev = getPaginationControlId("pages", "prev");
+  const next = getPaginationControlId("pages", "next");
   const first = getPaginationControlId("pages", "first");
   const last = getPaginationControlId("pages", "last");
 
@@ -241,5 +247,57 @@ describe("pagination keyboard routing", () => {
       pressableIds: new Set([page1, page2, page3]),
     });
     assert.deepEqual(res, {});
+  });
+
+  test("right arrow on sparse page buttons uses next control instead of jumping pages", () => {
+    const res = routePaginationKey(keyDown(23), {
+      focusedId: page1,
+      activeZoneId: zoneId,
+      zones: new Map([
+        [zoneId, zone(zoneId, [prev, page1, page9, page10, page11, page20, next], false)],
+      ]),
+      enabledById: new Map([
+        [prev, true],
+        [page1, true],
+        [page9, true],
+        [page10, true],
+        [page11, true],
+        [page20, true],
+        [next, true],
+      ]),
+      pressableIds: new Set([prev, page1, page9, page10, page11, page20, next]),
+    });
+
+    assert.deepEqual(res, {
+      nextFocusedId: page1,
+      nextZoneId: zoneId,
+      action: { id: next, action: "press" },
+    });
+  });
+
+  test("left arrow on sparse page buttons uses prev control instead of jumping pages", () => {
+    const res = routePaginationKey(keyDown(22), {
+      focusedId: page20,
+      activeZoneId: zoneId,
+      zones: new Map([
+        [zoneId, zone(zoneId, [prev, page1, page9, page10, page11, page20, next], false)],
+      ]),
+      enabledById: new Map([
+        [prev, true],
+        [page1, true],
+        [page9, true],
+        [page10, true],
+        [page11, true],
+        [page20, true],
+        [next, true],
+      ]),
+      pressableIds: new Set([prev, page1, page9, page10, page11, page20, next]),
+    });
+
+    assert.deepEqual(res, {
+      nextFocusedId: page20,
+      nextZoneId: zoneId,
+      action: { id: prev, action: "press" },
+    });
   });
 });
