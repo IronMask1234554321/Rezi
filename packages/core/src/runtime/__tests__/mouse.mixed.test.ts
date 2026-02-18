@@ -1,6 +1,9 @@
 import { assert, describe, test } from "@rezi-ui/testkit";
+import { encodeZrevBatchV1, flushMicrotasks, makeBackendBatch } from "../../app/__tests__/helpers.js";
+import { StubBackend } from "../../app/__tests__/stubBackend.js";
+import { createApp } from "../../app/createApp.js";
 import type { ZrevEvent } from "../../events.js";
-import type { VNode } from "../../index.js";
+import { ui, type VNode } from "../../index.js";
 import { ZR_KEY_ENTER, ZR_KEY_TAB, ZR_MOD_CTRL, ZR_MOD_SHIFT } from "../../keybindings/keyCodes.js";
 import { createManagerState, registerBindings, routeKeyEvent } from "../../keybindings/manager.js";
 import type { KeyContext } from "../../keybindings/types.js";
@@ -58,6 +61,23 @@ function mouseEvent(
     wheelX: opts.wheelX ?? 0,
     wheelY: opts.wheelY ?? 0,
   };
+}
+
+async function pushEvents(
+  backend: StubBackend,
+  events: NonNullable<Parameters<typeof encodeZrevBatchV1>[0]["events"]>,
+): Promise<void> {
+  backend.pushBatch(
+    makeBackendBatch({
+      bytes: encodeZrevBatchV1({ events }),
+    }),
+  );
+  await flushMicrotasks(20);
+}
+
+async function settleNextFrame(backend: StubBackend): Promise<void> {
+  backend.resolveNextFrame();
+  await flushMicrotasks(20);
 }
 
 function buttonNode(id: string): VNode {
@@ -337,44 +357,31 @@ describe("mouse mixed routing integration", () => {
     assert.equal(enter.actionId, "b");
   });
 
-  test("click during active chord does not auto-reset chord (current expected behavior)", () => {
-    const scene = buildTwoButtonScene();
+  test("click during active chord resets pending chord before next key", async () => {
+    const backend = new StubBackend();
+    let chordHits = 0;
 
-    const hits: string[] = [];
-    let keybindingState = createManagerState<ChordContext>();
-    keybindingState = registerBindings(keybindingState, {
+    const app = createApp({ backend, initialState: 0 });
+    app.keys({
       "g g": () => {
-        hits.push("gg");
+        chordHits++;
       },
-    }).state;
+    });
+    app.view(() => ui.text("Mixed input chord reset test"));
 
-    const firstKey = routeKeyEvent(keybindingState, keyDownEvent(KEY_G, 0, 10), chordContext("a"));
-    keybindingState = firstKey.nextState;
-    assert.equal(firstKey.consumed, true);
-    assert.equal(keybindingState.chordState.pendingKeys.length, 1);
+    await app.start();
+    await pushEvents(backend, [{ kind: "resize", timeMs: 1, cols: 40, rows: 10 }]);
+    await settleNextFrame(backend);
 
-    let state = createRoutingState("a");
-    const click = routeMouseStep(
-      state,
-      mouseEvent(7, 0, MOUSE_KIND_DOWN),
-      scene.root,
-      scene.layout,
-      scene.enabledById,
-      scene.pressableIds,
-    );
-    state = click.state;
-    assert.equal(state.focusState.focusedId, "b");
-    assert.equal(keybindingState.chordState.pendingKeys.length, 1);
+    await pushEvents(backend, [{ kind: "key", timeMs: 2, key: KEY_G, action: "down" }]);
+    await pushEvents(backend, [
+      { kind: "mouse", timeMs: 3, x: 0, y: 0, mouseKind: MOUSE_KIND_DOWN, buttons: 1 },
+      { kind: "mouse", timeMs: 4, x: 0, y: 0, mouseKind: MOUSE_KIND_UP, buttons: 0 },
+    ]);
+    await pushEvents(backend, [{ kind: "key", timeMs: 5, key: KEY_G, action: "down" }]);
 
-    const secondKey = routeKeyEvent(
-      keybindingState,
-      keyDownEvent(KEY_G, 0, 20),
-      chordContext(state.focusState.focusedId),
-    );
-    keybindingState = secondKey.nextState;
-    assert.equal(secondKey.consumed, true);
-    assert.deepEqual(hits, ["gg"]);
-    assert.equal(keybindingState.chordState.pendingKeys.length, 0);
+    assert.equal(chordHits, 0);
+    await app.stop();
   });
 
   test("tab-focus then click same widget does not corrupt focus state", () => {
