@@ -74,6 +74,8 @@ function runtimeNode(
     instanceId,
     vnode,
     children: Object.freeze([...children]),
+    dirty: false,
+    selfDirty: false,
   };
 }
 
@@ -128,9 +130,11 @@ function createCountingRuntimeFactory(): CountingRuntimeFactory {
       children: readonly RuntimeInstance[] = [],
     ): RuntimeInstance => {
       const frozenChildren = Object.freeze([...children]);
-      const node = { instanceId, vnode } as {
+      const node = { instanceId, vnode, dirty: false, selfDirty: false } as {
         instanceId: InstanceId;
         vnode: VNode;
+        dirty: boolean;
+        selfDirty: boolean;
         children?: readonly RuntimeInstance[];
       };
       Object.defineProperty(node, "children", {

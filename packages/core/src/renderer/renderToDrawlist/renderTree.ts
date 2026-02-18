@@ -30,7 +30,10 @@ import { renderOverlayWidget } from "./widgets/overlays.js";
 
 type RenderNodeTask = RuntimeInstance | null;
 type ClipRect = Readonly<Rect>;
-export type RenderTreeOptions = Readonly<{ damageRect?: Rect | undefined }>;
+export type RenderTreeOptions = Readonly<{
+  damageRect?: Rect | undefined;
+  skipCleanSubtrees?: boolean | undefined;
+}>;
 
 export type ResolvedCursor = Readonly<{
   x: number;
@@ -73,6 +76,7 @@ export function renderTree(
 ): ResolvedCursor | null {
   let resolvedCursor: ResolvedCursor | null = null;
   const damageRect = opts?.damageRect;
+  const skipCleanSubtrees = opts?.skipCleanSubtrees ?? damageRect !== undefined;
 
   const nodeStack: RenderNodeTask[] = [tree];
   const styleStack: ResolvedTextStyle[] = [inheritedStyle];
@@ -97,6 +101,7 @@ export function renderTree(
     const node = nodeOrPop;
     const vnode = node.vnode;
     const rect: Rect = layoutNode.rect;
+    if (skipCleanSubtrees && !node.dirty) continue;
     if (damageRect && !rectIntersects(getRuntimeNodeDamageRect(node, rect), damageRect)) continue;
 
     const currentTheme = themeByNode.get(node) ?? theme;
@@ -143,6 +148,8 @@ export function renderTree(
           layoutStack,
           clipStack,
           damageRect,
+          skipCleanSubtrees,
+          node.selfDirty,
         );
         break;
       }

@@ -284,6 +284,10 @@ function unionRect(a: Rect, b: Rect): Rect {
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
+function rectEquals(a: Rect, b: Rect): boolean {
+  return a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h;
+}
+
 function isV2Builder(builder: DrawlistBuilderV1 | DrawlistBuilderV2): builder is DrawlistBuilderV2 {
   return typeof (builder as DrawlistBuilderV2).setCursor === "function";
 }
@@ -2395,6 +2399,81 @@ export class WidgetRenderer<S> {
     return true;
   }
 
+  private propagateDirtyFromPredicate(
+    runtimeRoot: RuntimeInstance,
+    isNodeDirty: (node: RuntimeInstance) => boolean,
+  ): void {
+    this._pooledRuntimeStack.length = 0;
+    this._pooledPrevRuntimeStack.length = 0;
+    this._pooledRuntimeStack.push(runtimeRoot);
+
+    while (this._pooledRuntimeStack.length > 0) {
+      const node = this._pooledRuntimeStack.pop();
+      if (!node) continue;
+      this._pooledPrevRuntimeStack.push(node);
+      for (let i = node.children.length - 1; i >= 0; i--) {
+        const child = node.children[i];
+        if (child) this._pooledRuntimeStack.push(child);
+      }
+    }
+
+    for (let i = this._pooledPrevRuntimeStack.length - 1; i >= 0; i--) {
+      const node = this._pooledPrevRuntimeStack[i];
+      if (!node) continue;
+      const markedSelfDirty = isNodeDirty(node);
+      if (markedSelfDirty) node.selfDirty = true;
+      let dirty = node.dirty || markedSelfDirty;
+      for (const child of node.children) {
+        if (child.dirty) {
+          dirty = true;
+          break;
+        }
+      }
+      node.dirty = dirty;
+    }
+    this._pooledPrevRuntimeStack.length = 0;
+  }
+
+  private markLayoutDirtyNodes(runtimeRoot: RuntimeInstance): void {
+    this.propagateDirtyFromPredicate(runtimeRoot, (node) => {
+      const nextRect = this._pooledRectByInstanceId.get(node.instanceId);
+      if (!nextRect) return false;
+      const prevRect = this._prevFrameRectByInstanceId.get(node.instanceId);
+      return !prevRect || !rectEquals(nextRect, prevRect);
+    });
+  }
+
+  private markTransientDirtyNodes(
+    runtimeRoot: RuntimeInstance,
+    prevFocusedId: string | null,
+    nextFocusedId: string | null,
+    includeSpinners: boolean,
+  ): void {
+    if (prevFocusedId === nextFocusedId && !includeSpinners) return;
+    this.propagateDirtyFromPredicate(runtimeRoot, (node) => {
+      if (includeSpinners && node.vnode.kind === "spinner") return true;
+      if (prevFocusedId === null && nextFocusedId === null) return false;
+      const id = (node.vnode as { props?: { id?: unknown } }).props?.id;
+      if (typeof id !== "string" || id.length === 0) return false;
+      return id === prevFocusedId || id === nextFocusedId;
+    });
+  }
+
+  private clearRuntimeDirtyNodes(runtimeRoot: RuntimeInstance): void {
+    this._pooledRuntimeStack.length = 0;
+    this._pooledRuntimeStack.push(runtimeRoot);
+    while (this._pooledRuntimeStack.length > 0) {
+      const node = this._pooledRuntimeStack.pop();
+      if (!node) continue;
+      node.dirty = false;
+      node.selfDirty = false;
+      for (let i = node.children.length - 1; i >= 0; i--) {
+        const child = node.children[i];
+        if (child) this._pooledRuntimeStack.push(child);
+      }
+    }
+  }
+
   private collectSubtreeDamageAndRouting(
     root: RuntimeInstance,
     outInstanceIds: InstanceId[],
@@ -2969,6 +3048,7 @@ export class WidgetRenderer<S> {
         if (PERF_DETAIL_ENABLED) perfMarkEnd("layout_indexes", layoutIndexesToken);
         this.rectById = this._pooledRectById;
         this.splitPaneChildRectsById = this._pooledSplitPaneChildRectsById;
+        this.markLayoutDirtyNodes(this.committedRoot);
       }
 
       if (!this.layoutTree) {
@@ -3683,6 +3763,14 @@ export class WidgetRenderer<S> {
       let runtimeDamageRectCount = 0;
       let runtimeDamageArea = 0;
       if (this.shouldAttemptIncrementalRender(doLayout, viewport, theme)) {
+        if (!doCommit) {
+          this.markTransientDirtyNodes(
+            this.committedRoot,
+            this._lastRenderedFocusedId,
+            this.focusState.focusedId,
+            true,
+          );
+        }
         this._pooledDamageRects.length = 0;
         let missingDamageRect = false;
 
@@ -3827,6 +3915,7 @@ export class WidgetRenderer<S> {
           detail: `${built.error.code}: ${built.error.detail}`,
         };
       }
+      this.clearRuntimeDirtyNodes(this.committedRoot);
       if (captureRuntimeBreadcrumbs) {
         this.updateRuntimeBreadcrumbSnapshot({
           tick,
