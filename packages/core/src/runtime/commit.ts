@@ -35,11 +35,13 @@ import { type ReconcileFatal, reconcileChildren } from "./reconcile.js";
  * Committed runtime instance with stable ID and children.
  * Mirrors VNode structure but with lifecycle tracking.
  */
-export type RuntimeInstance = Readonly<{
+export type RuntimeInstance = {
   instanceId: InstanceId;
   vnode: VNode;
   children: readonly RuntimeInstance[];
-}>;
+  dirty: boolean;
+  selfDirty: boolean;
+};
 
 /** Shared frozen empty array for leaf RuntimeInstance children. Avoids per-node allocation. */
 const EMPTY_CHILDREN: readonly RuntimeInstance[] = Object.freeze([]);
@@ -350,6 +352,24 @@ function canFastReuseContainerSelf(prev: VNode, next: VNode): boolean {
   }
 }
 
+function runtimeChildrenChanged(
+  prevChildren: readonly RuntimeInstance[],
+  nextChildren: readonly RuntimeInstance[],
+): boolean {
+  if (prevChildren.length !== nextChildren.length) return true;
+  for (let i = 0; i < prevChildren.length; i++) {
+    if (prevChildren[i] !== nextChildren[i]) return true;
+  }
+  return false;
+}
+
+function hasDirtyChild(children: readonly RuntimeInstance[]): boolean {
+  for (const child of children) {
+    if (child.dirty) return true;
+  }
+  return false;
+}
+
 /** Fatal errors from tree commitment. */
 export type CommitFatal =
   | ReconcileFatal
@@ -528,6 +548,8 @@ function commitNode(
   // don't pay per-node validation overhead.
   if (prev && prev.vnode.kind === vnode.kind && leafVNodeEqual(prev.vnode, vnode)) {
     if (ctx.collectLifecycleInstanceIds) ctx.lists.reused.push(instanceId);
+    prev.dirty = false;
+    prev.selfDirty = false;
     return { ok: true, value: { root: prev } };
   }
 
@@ -726,6 +748,16 @@ function commitNode(
       res.value.newInstanceIds.length === 0 &&
       res.value.unmountedInstanceIds.length === 0 &&
       res.value.nextChildren.length === prevChildren.length;
+    let childOrderStable = true;
+    if (canTryFastReuse) {
+      for (let i = 0; i < res.value.nextChildren.length; i++) {
+        const child = res.value.nextChildren[i];
+        if (!child || child.prevIndex !== i) {
+          childOrderStable = false;
+          break;
+        }
+      }
+    }
 
     // Avoid allocating nextChildren/committedChildVNodes for the common case where
     // everything is reused (e.g., list updates where only a couple rows change).
@@ -779,9 +811,12 @@ function commitNode(
       if (
         allChildrenSame &&
         prev !== null &&
+        childOrderStable &&
         canFastReuseContainerSelf(prev.vnode, vnodeForCommit)
       ) {
         // All children are identical references → reuse parent entirely.
+        prev.dirty = false;
+        prev.selfDirty = false;
         return { ok: true, value: { root: prev } };
       }
     } else {
@@ -807,11 +842,23 @@ function commitNode(
     }
 
     if (!nextChildren || !committedChildVNodes) {
-      // canTryFastReuse=true and there was at least one mismatch, so arrays must exist.
-      nextChildren = prevChildren;
-      committedChildVNodes = prevChildren.map((c) => c.vnode);
+      // All committed children matched existing instances, but we still need to
+      // materialize the next order (e.g., keyed reorders) when parent reuse is disallowed.
+      const reorderedChildren: RuntimeInstance[] = [];
+      const reorderedVNodes: VNode[] = [];
+      for (const child of res.value.nextChildren) {
+        const reused = child.prevIndex !== null ? byPrevIndex[child.prevIndex] : null;
+        if (!reused) continue;
+        reorderedChildren.push(reused);
+        reorderedVNodes.push(reused.vnode);
+      }
+      nextChildren = reorderedChildren;
+      committedChildVNodes = reorderedVNodes;
     }
 
+    const propsChanged = prev === null || !canFastReuseContainerSelf(prev.vnode, vnodeForCommit);
+    const childrenChanged = prev === null || runtimeChildrenChanged(prevChildren, nextChildren);
+    const selfDirty = propsChanged || (vnodeForCommit.kind === "row" && childrenChanged);
     return {
       ok: true,
       value: {
@@ -819,6 +866,8 @@ function commitNode(
           instanceId,
           vnode: rewriteCommittedVNode(vnodeForCommit, committedChildVNodes),
           children: nextChildren,
+          dirty: selfDirty || childrenChanged || hasDirtyChild(nextChildren),
+          selfDirty,
         },
       },
     };
@@ -827,7 +876,7 @@ function commitNode(
   return {
     ok: true,
     value: {
-      root: { instanceId, vnode, children: EMPTY_CHILDREN },
+      root: { instanceId, vnode, children: EMPTY_CHILDREN, dirty: true, selfDirty: true },
     },
   };
 }

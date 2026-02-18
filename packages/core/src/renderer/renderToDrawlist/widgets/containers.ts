@@ -120,6 +120,8 @@ function pushChildrenWithLayout(
   clipStack: (ClipRect | undefined)[],
   clip: ClipRect | undefined,
   damageRect: Rect | undefined,
+  skipCleanSubtrees: boolean,
+  forceSubtreeRender: boolean,
   stackDirection: "row" | "column" | undefined = undefined,
 ): void {
   const childCount = Math.min(node.children.length, layoutNode.children.length);
@@ -148,8 +150,13 @@ function pushChildrenWithLayout(
     if (
       c &&
       lc &&
+      (!skipCleanSubtrees || forceSubtreeRender || c.dirty) &&
       (!damageRect || rectIntersects(getRuntimeNodeDamageRect(c, lc.rect), damageRect))
     ) {
+      if (forceSubtreeRender) {
+        c.dirty = true;
+        c.selfDirty = true;
+      }
       nodeStack.push(c);
       styleStack.push(style);
       layoutStack.push(lc);
@@ -451,8 +458,11 @@ export function renderContainerWidget(
   layoutStack: LayoutTree[],
   clipStack: (ClipRect | undefined)[],
   damageRect: Rect | undefined,
+  skipCleanSubtrees: boolean,
+  forceSubtreeRender: boolean,
 ): void {
   const vnode = node.vnode;
+  const forceChildrenRender = forceSubtreeRender || node.selfDirty;
 
   switch (vnode.kind) {
     case "row":
@@ -507,6 +517,8 @@ export function renderContainerWidget(
         clipStack,
         childClip,
         damageRect,
+        skipCleanSubtrees,
+        forceChildrenRender,
         vnode.kind === "row" || vnode.kind === "column" ? vnode.kind : undefined,
       );
       break;
@@ -594,6 +606,8 @@ export function renderContainerWidget(
         clipStack,
         childClip,
         damageRect,
+        skipCleanSubtrees,
+        forceChildrenRender,
       );
       break;
     }
@@ -654,6 +668,8 @@ export function renderContainerWidget(
         clipStack,
         childClip,
         damageRect,
+        skipCleanSubtrees,
+        forceChildrenRender,
       );
       break;
     }
@@ -670,6 +686,8 @@ export function renderContainerWidget(
         clipStack,
         currentClip,
         damageRect,
+        skipCleanSubtrees,
+        forceChildrenRender,
       );
       break;
     }
@@ -686,6 +704,8 @@ export function renderContainerWidget(
         clipStack,
         currentClip,
         damageRect,
+        skipCleanSubtrees,
+        forceChildrenRender,
       );
       break;
     }
@@ -743,6 +763,8 @@ export function renderContainerWidget(
         clipStack,
         childClip,
         damageRect,
+        skipCleanSubtrees,
+        forceChildrenRender,
       );
       break;
     }
@@ -770,6 +792,8 @@ export function renderContainerWidget(
         clipStack,
         childClip,
         damageRect,
+        skipCleanSubtrees,
+        forceChildrenRender,
       );
 
       // Render dividers between panels
@@ -827,6 +851,8 @@ export function renderContainerWidget(
         clipStack,
         childClip,
         damageRect,
+        skipCleanSubtrees,
+        forceChildrenRender,
       );
       break;
     }
@@ -849,6 +875,8 @@ export function renderContainerWidget(
         clipStack,
         childClip,
         damageRect,
+        skipCleanSubtrees,
+        forceChildrenRender,
       );
       break;
     }
