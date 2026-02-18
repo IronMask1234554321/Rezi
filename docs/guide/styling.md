@@ -6,6 +6,27 @@ Rezi styling is designed to be:
 - **deterministic**: the same inputs produce the same frames
 - **composable**: styles inherit through containers
 
+## Text attributes
+
+`TextStyle` supports these boolean text attributes:
+
+- `bold`
+- `dim`
+- `italic`
+- `underline`
+- `inverse`
+- `strikethrough`
+- `overline`
+- `blink`
+
+New attribute SGR target mappings:
+
+- `strikethrough` -> SGR `9`
+- `overline` -> SGR `53`
+- `blink` -> SGR `5`
+
+These codes are the terminal mapping used by the backend emitter. Drawlist encoding carries all three attrs, and backend emission now supports `strikethrough`, `overline`, and `blink` end-to-end (terminal rendering still depends on terminal support).
+
 ## Inline styles
 
 Most visual widgets accept a `style` prop:
@@ -57,6 +78,7 @@ Style is merged from parent → child:
 
 - containers pass their resolved style to children
 - leaf widgets merge their own `style` on top
+- boolean attrs use tri-state semantics: `undefined` inherits, `false` disables, `true` enables
 
 Example:
 
@@ -87,5 +109,6 @@ ui.text(state.connected ? "Online" : "Offline", {
 - [Theme](../styling/theme.md) - Theme structure and built-ins
 - [Icons](../styling/icons.md) - Icon registry and fallback rules
 - [Focus styles](../styling/focus-styles.md) - Focus and disabled visuals
+- [Text style internals](text-style-internals.md) - Drawlist bit layout and merge/cache internals
 
 Next: [Performance](performance.md).
