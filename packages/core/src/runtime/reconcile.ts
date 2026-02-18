@@ -50,45 +50,27 @@ export type ReconcileChildrenResult =
 type PrevChild = Readonly<{ instanceId: InstanceId; vnode: VNode }>;
 
 function getVNodeKey(v: VNode): string | undefined {
-  switch (v.kind) {
-    case "text":
-      return v.props.key;
-    case "box":
-    case "row":
-    case "column":
-      return v.props.key;
-    case "spacer":
-      return v.props.key;
-    case "button":
-      return v.props.key;
-    case "input":
-      return v.props.key;
-    case "focusZone":
-    case "focusTrap":
-      return v.props.key;
-    case "virtualList":
-      return v.props.key;
-    case "layers":
-      return v.props.key;
-    case "modal":
-      return v.props.key;
-    case "dropdown":
-      return v.props.key;
-    case "layer":
-      return v.props.key;
-    case "table":
-      return v.props.key;
-    case "tree":
-      return v.props.key;
-    case "field":
-      return v.props.key;
-    case "select":
-      return v.props.key;
-    case "checkbox":
-      return v.props.key;
-    case "radioGroup":
-      return v.props.key;
+  const key = (v as { props?: { key?: unknown } }).props?.key;
+  return typeof key === "string" ? key : undefined;
+}
+
+function getCompositeWidgetKey(v: VNode): string | undefined {
+  const widgetKey = (v as { __composite?: { widgetKey?: unknown } }).__composite?.widgetKey;
+  return typeof widgetKey === "string" ? widgetKey : undefined;
+}
+
+function canReuseVNode(prev: VNode, next: VNode): boolean {
+  if (prev.kind !== next.kind) return false;
+
+  const prevWidgetKey = getCompositeWidgetKey(prev);
+  const nextWidgetKey = getCompositeWidgetKey(next);
+  if (prevWidgetKey !== undefined || nextWidgetKey !== undefined) {
+    return (
+      prevWidgetKey !== undefined && nextWidgetKey !== undefined && prevWidgetKey === nextWidgetKey
+    );
   }
+
+  return true;
 }
 
 /** Compute the slot ID for a child: keyed if key present, indexed otherwise. */
@@ -140,35 +122,35 @@ function reconcileUnkeyedChildren(
   const nextLen = nextVChildren.length;
   const sharedLength = Math.min(prevLen, nextLen);
 
-  // Pre-allocate with known sizes to avoid array growth.
-  const nextChildren: ReconciledChild[] = new Array(nextLen);
-  let nextChildrenCount = 0;
-  const reusedInstanceIds: InstanceId[] = new Array(sharedLength);
-  let reusedCount = 0;
-  const hasNewChildren = nextLen > prevLen;
-  const newInstanceIds: InstanceId[] = hasNewChildren ? new Array(nextLen - prevLen) : [];
-  let newCount = 0;
+  const nextChildren: ReconciledChild[] = [];
+  const reusedInstanceIds: InstanceId[] = [];
+  const newInstanceIds: InstanceId[] = [];
+  const unmountedInstanceIds: InstanceId[] = [];
 
   for (let i = 0; i < sharedLength; i++) {
     const prev = prevChildren[i];
     const vnode = nextVChildren[i];
-    if (!vnode) continue;
+    if (!vnode) {
+      if (prev) unmountedInstanceIds.push(prev.instanceId);
+      continue;
+    }
     const slotId: SlotId = `i:${i}`;
-    if (prev) {
+    if (prev && canReuseVNode(prev.vnode, vnode)) {
       const instanceId = prev.instanceId;
-      reusedInstanceIds[reusedCount++] = instanceId;
-      nextChildren[nextChildrenCount++] = {
+      reusedInstanceIds.push(instanceId);
+      nextChildren.push({
         slotId,
         vnode,
         instanceId,
         kind: "reused",
         prevIndex: i,
-      };
+      });
       continue;
     }
+    if (prev) unmountedInstanceIds.push(prev.instanceId);
     const instanceId = allocator.allocate();
-    newInstanceIds[newCount++] = instanceId;
-    nextChildren[nextChildrenCount++] = { slotId, vnode, instanceId, kind: "new", prevIndex: null };
+    newInstanceIds.push(instanceId);
+    nextChildren.push({ slotId, vnode, instanceId, kind: "new", prevIndex: null });
   }
 
   for (let i = sharedLength; i < nextLen; i++) {
@@ -176,21 +158,13 @@ function reconcileUnkeyedChildren(
     if (!vnode) continue;
     const slotId: SlotId = `i:${i}`;
     const instanceId = allocator.allocate();
-    newInstanceIds[newCount++] = instanceId;
-    nextChildren[nextChildrenCount++] = { slotId, vnode, instanceId, kind: "new", prevIndex: null };
+    newInstanceIds.push(instanceId);
+    nextChildren.push({ slotId, vnode, instanceId, kind: "new", prevIndex: null });
   }
 
-  // Trim pre-allocated arrays to actual size.
-  nextChildren.length = nextChildrenCount;
-  reusedInstanceIds.length = reusedCount;
-  newInstanceIds.length = newCount;
-
-  const unmountedInstanceIds: InstanceId[] = [];
-  if (prevLen > nextLen) {
-    for (let i = sharedLength; i < prevLen; i++) {
-      const prev = prevChildren[i];
-      if (prev) unmountedInstanceIds.push(prev.instanceId);
-    }
+  for (let i = sharedLength; i < prevLen; i++) {
+    const prev = prevChildren[i];
+    if (prev) unmountedInstanceIds.push(prev.instanceId);
   }
 
   return {
@@ -278,7 +252,12 @@ export function reconcileChildren(
 
     const prevIndex = prevBySlotId.get(slotId);
     const prevChild = prevIndex !== undefined ? prevChildren[prevIndex] : undefined;
-    if (prevIndex !== undefined && prevChild !== undefined && usedPrev[prevIndex] === false) {
+    if (
+      prevIndex !== undefined &&
+      prevChild !== undefined &&
+      usedPrev[prevIndex] === false &&
+      canReuseVNode(prevChild.vnode, vnode)
+    ) {
       usedPrev[prevIndex] = true;
       const instanceId = prevChild.instanceId;
       reusedInstanceIds.push(instanceId);
