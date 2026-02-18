@@ -290,11 +290,7 @@ export function measureLeaf(
       const selected = propsRes.value.options.find(
         (option) => option.value === propsRes.value.value,
       );
-      const displayText =
-        selected?.label ??
-        (propsRes.value.value.length > 0
-          ? propsRes.value.value
-          : (propsRes.value.placeholder ?? "Select..."));
+      const displayText = selected?.label ?? propsRes.value.placeholder ?? "Select…";
       const textW = measureTextCells(displayText);
       return ok({ w: Math.min(maxW, textW + 4), h: Math.min(maxH, 1) });
     }

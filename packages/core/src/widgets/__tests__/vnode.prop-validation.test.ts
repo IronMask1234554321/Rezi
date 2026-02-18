@@ -141,6 +141,35 @@ describe("vnode interactive prop validation - select", () => {
     );
   });
 
+  test("select measurement uses placeholder width when value is stale", () => {
+    const stale = measure(
+      ui.select({
+        id: "s",
+        value: "stale-value",
+        options: [{ value: "active", label: "Active" }],
+        placeholder: "Pick one",
+      }),
+      80,
+      24,
+      "column",
+    );
+    const placeholder = measure(
+      ui.select({
+        id: "s",
+        value: "",
+        options: [{ value: "active", label: "Active" }],
+        placeholder: "Pick one",
+      }),
+      80,
+      24,
+      "column",
+    );
+    assert.equal(stale.ok, true);
+    assert.equal(placeholder.ok, true);
+    if (!stale.ok || !placeholder.ok) return;
+    assert.deepEqual(stale.value, placeholder.value);
+  });
+
   test("select options must be array", () => {
     expectLayoutFatal(
       { kind: "select", props: { id: "s", value: "", options: "bad" } } as unknown as VNode,
