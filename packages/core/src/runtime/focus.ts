@@ -512,21 +512,19 @@ export function finalizeFocusWithPreCollectedMetadata(
     if (trap.active && !previousTrapStackSet.has(trapId)) {
       trapStack.push(trapId);
       const trapFocusables = trap.focusableIds;
-      if (trapFocusables.length > 0) {
-        const initialFocus = trap.initialFocus;
-        // initialFocus must resolve to an id contained by this trap.
-        if (
-          initialFocus !== null &&
-          trapFocusables.includes(initialFocus) &&
-          focusSet.has(initialFocus)
-        ) {
-          nextFocusedId = initialFocus;
-        } else {
-          // Invalid/missing initialFocus falls back to the first trap focusable.
-          const firstInTrap = trapFocusables[0];
-          if (firstInTrap !== undefined && focusSet.has(firstInTrap)) {
-            nextFocusedId = firstInTrap;
-          }
+      const initialFocus = trap.initialFocus;
+      const canApplyInitialFocus =
+        initialFocus !== null &&
+        focusSet.has(initialFocus) &&
+        (trapFocusables.length === 0 || trapFocusables.includes(initialFocus));
+
+      if (canApplyInitialFocus && initialFocus !== null) {
+        nextFocusedId = initialFocus;
+      } else if (trapFocusables.length > 0) {
+        // Invalid/missing initialFocus falls back to the first trap focusable.
+        const firstInTrap = trapFocusables[0];
+        if (firstInTrap !== undefined && focusSet.has(firstInTrap)) {
+          nextFocusedId = firstInTrap;
         }
       }
     }

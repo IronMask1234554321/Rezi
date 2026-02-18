@@ -171,6 +171,26 @@ describe("focus traps - finalizeFocusWithPreCollectedMetadata", () => {
     assert.equal(next.focusedId, "outside");
   });
 
+  test("empty trap focusables still honor valid initialFocus", () => {
+    const next = finalizeWith(
+      managerState({ focusedId: "outside" }),
+      ["outside", "nested-id"],
+      new Map<string, CollectedTrap>([
+        [
+          "modal",
+          trap({
+            id: "modal",
+            active: true,
+            initialFocus: "nested-id",
+            focusableIds: [],
+          }),
+        ],
+      ]),
+    );
+
+    assert.equal(next.focusedId, "nested-id");
+  });
+
   test("deactivation restores returnFocusTo when valid", () => {
     const prev = managerState({ focusedId: "inside", trapStack: Object.freeze(["modal"]) });
 
@@ -355,6 +375,34 @@ describe("focus traps - finalizeFocusForCommittedTreeWithZones integration", () 
       commitTree(tree),
     );
     assert.equal(next.focusedId, "in-1");
+    assert.deepEqual(next.trapStack, ["modal"]);
+  });
+
+  test("empty trap focusables can still focus a valid nested initialFocus id", () => {
+    const tree: VNode = {
+      kind: "column",
+      props: {},
+      children: [
+        { kind: "button", props: { id: "outside", label: "Outside" } },
+        {
+          kind: "focusTrap",
+          props: { id: "modal", active: true, initialFocus: "nested-id" },
+          children: [
+            {
+              kind: "focusZone",
+              props: { id: "nested-zone", navigation: "linear" },
+              children: [{ kind: "button", props: { id: "nested-id", label: "Nested" } }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const next = finalizeFocusForCommittedTreeWithZones(
+      createFocusManagerState(),
+      commitTree(tree),
+    );
+    assert.equal(next.focusedId, "nested-id");
     assert.deepEqual(next.trapStack, ["modal"]);
   });
 
