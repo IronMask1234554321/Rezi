@@ -319,6 +319,9 @@ export function useForm<T extends Record<string, unknown>, State = void>(
 
   // Ref to safely pass values from setState callback to async validation
   const pendingAsyncValuesRef = ctx.useRef<T | null>(null);
+  const submittingRef = ctx.useRef(false);
+  const validateRef = ctx.useRef(options.validate);
+  validateRef.current = options.validate;
 
   // Stable key tracking for array fields
   const fieldArrayKeysRef = ctx.useRef<Partial<Record<keyof T, string[]>>>({});
@@ -368,7 +371,7 @@ export function useForm<T extends Record<string, unknown>, State = void>(
     values: T,
     source: Pick<FormState<T>, "disabled" | "fieldDisabled"> = state,
   ): ValidationResult<T> =>
-    filterDisabledValidationErrors(runSyncValidation(values, options.validate), source);
+    filterDisabledValidationErrors(runSyncValidation(values, validateRef.current), source);
 
   const runAsyncValidationFiltered = async (
     values: T,
@@ -995,6 +998,7 @@ export function useForm<T extends Record<string, unknown>, State = void>(
    * Reset form to initial state.
    */
   const reset = (): void => {
+    submittingRef.current = false;
     asyncValidatorRef.current?.cancel();
     fieldArrayKeysRef.current = {};
     setState(createInitialState(options));
@@ -1005,7 +1009,7 @@ export function useForm<T extends Record<string, unknown>, State = void>(
    */
   const handleSubmit = (): void => {
     // Don't submit if disabled or already submitting
-    if (state.disabled || state.isSubmitting) {
+    if (state.disabled || state.isSubmitting || submittingRef.current) {
       return;
     }
 
@@ -1014,6 +1018,7 @@ export function useForm<T extends Record<string, unknown>, State = void>(
       nextStep();
       return;
     }
+    submittingRef.current = true;
 
     // Mark all fields as touched
     const allTouched: Partial<Record<keyof T, FieldBooleanValue>> = {};
@@ -1036,6 +1041,7 @@ export function useForm<T extends Record<string, unknown>, State = void>(
 
     // If sync validation fails, don't submit
     if (!isValidationClean(syncErrors)) {
+      submittingRef.current = false;
       return;
     }
 
@@ -1080,6 +1086,8 @@ export function useForm<T extends Record<string, unknown>, State = void>(
           ...prev,
           isSubmitting: false,
         }));
+      } finally {
+        submittingRef.current = false;
       }
     };
 

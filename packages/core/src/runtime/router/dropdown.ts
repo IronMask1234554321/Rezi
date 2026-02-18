@@ -26,8 +26,14 @@ export function routeDropdownKey(event: ZrevEvent, ctx: DropdownRoutingCtx): Dro
   if (event.action !== "down") return Object.freeze({ consumed: false });
 
   const { items, selectedIndex, onSelect, onClose } = ctx;
-  const selectableItems = items.filter((item) => !item.divider && !item.disabled);
-  const selectableCount = selectableItems.length;
+  const selectableIndices: number[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item && !item.divider && !item.disabled) {
+      selectableIndices.push(i);
+    }
+  }
+  const selectableCount = selectableIndices.length;
 
   if (selectableCount === 0) {
     // No selectable items - only handle escape
@@ -44,13 +50,8 @@ export function routeDropdownKey(event: ZrevEvent, ctx: DropdownRoutingCtx): Dro
     return Object.freeze({ consumed: false });
   }
 
-  // Normalize selected item so non-selectable/invalid indices behave as first selectable.
-  const selectedItem =
-    selectedIndex >= 0 && selectedIndex < items.length ? (items[selectedIndex] ?? null) : null;
-  const selectedIsSelectable =
-    selectedItem !== null && !selectedItem.divider && !selectedItem.disabled;
-
-  let currentSelectableIndex = selectedIsSelectable ? selectableItems.indexOf(selectedItem) : -1;
+  const selectedIsSelectable = selectableIndices.includes(selectedIndex);
+  let currentSelectableIndex = selectedIsSelectable ? selectableIndices.indexOf(selectedIndex) : -1;
   if (currentSelectableIndex < 0) currentSelectableIndex = 0;
 
   // Handle keys
@@ -58,22 +59,24 @@ export function routeDropdownKey(event: ZrevEvent, ctx: DropdownRoutingCtx): Dro
     case ZR_KEY_UP: {
       let nextIndex = currentSelectableIndex - 1;
       if (nextIndex < 0) nextIndex = selectableCount - 1;
-      const nextItem = selectableItems[nextIndex];
-      const actualIndex = nextItem ? items.indexOf(nextItem) : selectedIndex;
+      const actualIndex = selectableIndices[nextIndex] ?? selectedIndex;
       return Object.freeze({ nextSelectedIndex: actualIndex, consumed: true });
     }
     case ZR_KEY_DOWN: {
       let nextIndex = currentSelectableIndex + 1;
       if (nextIndex >= selectableCount) nextIndex = 0;
-      const nextItem = selectableItems[nextIndex];
-      const actualIndex = nextItem ? items.indexOf(nextItem) : selectedIndex;
+      const actualIndex = selectableIndices[nextIndex] ?? selectedIndex;
       return Object.freeze({ nextSelectedIndex: actualIndex, consumed: true });
     }
     case ZR_KEY_ENTER:
     case ZR_KEY_SPACE: {
-      const itemToActivate = selectedIsSelectable
-        ? selectedItem
-        : (selectableItems[currentSelectableIndex] ?? null);
+      const itemIndexToActivate = selectedIsSelectable
+        ? selectedIndex
+        : (selectableIndices[currentSelectableIndex] ?? -1);
+      const itemToActivate =
+        itemIndexToActivate >= 0 && itemIndexToActivate < items.length
+          ? (items[itemIndexToActivate] ?? null)
+          : null;
       if (itemToActivate) {
         if (onSelect) {
           try {

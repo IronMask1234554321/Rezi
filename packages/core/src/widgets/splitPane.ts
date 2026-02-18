@@ -305,19 +305,26 @@ export function expandPanel(
     return sizes;
   }
 
-  newSizes[index] = targetSize;
+  let taken = 0;
 
   // Take space from adjacent panels
   if (index > 0) {
     const neighborSize = newSizes[index - 1] ?? 0;
-    const take = Math.min(delta, neighborSize);
+    const take = Math.min(delta - taken, neighborSize);
     newSizes[index - 1] = neighborSize - take;
+    taken += take;
   } else if (index < sizes.length - 1) {
     const neighborSize = newSizes[index + 1] ?? 0;
-    const take = Math.min(delta, neighborSize);
+    const take = Math.min(delta - taken, neighborSize);
     newSizes[index + 1] = neighborSize - take;
+    taken += take;
   }
 
+  if (taken <= 0) {
+    return sizes;
+  }
+
+  newSizes[index] = currentSize + taken;
   return Object.freeze(newSizes);
 }
 

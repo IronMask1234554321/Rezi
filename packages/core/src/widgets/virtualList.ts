@@ -128,6 +128,8 @@ export function computeVisibleRange<T>(
   overscan: number,
 ): VisibleRangeResult {
   const n = items.length;
+  const safeViewportHeight = Math.max(0, viewportHeight);
+  const safeOverscan = Math.max(0, overscan);
 
   if (n === 0) {
     return Object.freeze({
@@ -139,23 +141,24 @@ export function computeVisibleRange<T>(
 
   // Fixed height: O(1) calculation without building full offset array
   if (typeof itemHeight === "number") {
-    const totalHeight = n * itemHeight;
-    const clampedScrollTop = clampScrollTop(scrollTop, totalHeight, viewportHeight);
+    const safeItemHeight = itemHeight > 0 ? itemHeight : 1;
+    const totalHeight = n * safeItemHeight;
+    const clampedScrollTop = clampScrollTop(scrollTop, totalHeight, safeViewportHeight);
 
     // Direct calculation: startIndex = floor(scrollTop / h), endIndex = ceil((scrollTop + viewport) / h)
-    const rawStart = Math.floor(clampedScrollTop / itemHeight);
-    const rawEnd = Math.ceil((clampedScrollTop + viewportHeight) / itemHeight);
+    const rawStart = Math.floor(clampedScrollTop / safeItemHeight);
+    const rawEnd = Math.ceil((clampedScrollTop + safeViewportHeight) / safeItemHeight);
 
     // Apply overscan and clamp to valid bounds
-    const startIndex = Math.max(0, rawStart - overscan);
-    const endIndex = Math.min(n, rawEnd + overscan);
+    const startIndex = Math.max(0, rawStart - safeOverscan);
+    const endIndex = Math.min(n, rawEnd + safeOverscan);
 
     // Build offset array only for the range needed (plus buffer for rendering)
     // For consistency with variable height API, we still return full offsets
     // but compute them lazily via multiplication
     const offsets = new Array<number>(n + 1);
     for (let i = 0; i <= n; i++) {
-      offsets[i] = i * itemHeight;
+      offsets[i] = i * safeItemHeight;
     }
 
     return Object.freeze({
@@ -168,17 +171,17 @@ export function computeVisibleRange<T>(
   // Variable height: O(n) offset building + binary search
   const offsets = buildOffsets(items, itemHeight);
   const totalHeight = offsets[n] ?? 0;
-  const clampedScrollTop = clampScrollTop(scrollTop, totalHeight, viewportHeight);
+  const clampedScrollTop = clampScrollTop(scrollTop, totalHeight, safeViewportHeight);
 
   // Find first visible item (where item's bottom edge > scrollTop)
   const rawStart = binarySearchStart(offsets, clampedScrollTop);
 
   // Find last visible item (where item's top edge < scrollTop + viewportHeight)
-  const rawEnd = binarySearchEnd(offsets, clampedScrollTop + viewportHeight);
+  const rawEnd = binarySearchEnd(offsets, clampedScrollTop + safeViewportHeight);
 
   // Apply overscan and clamp to valid bounds
-  const startIndex = Math.max(0, rawStart - overscan);
-  const endIndex = Math.min(n, rawEnd + overscan);
+  const startIndex = Math.max(0, rawStart - safeOverscan);
+  const endIndex = Math.min(n, rawEnd + safeOverscan);
 
   return Object.freeze({
     startIndex,
@@ -205,7 +208,8 @@ export function getItemOffset<T>(
   }
 
   if (typeof itemHeight === "number") {
-    return index * itemHeight;
+    const safeItemHeight = itemHeight > 0 ? itemHeight : 1;
+    return index * safeItemHeight;
   }
 
   // Variable height: sum heights up to index
@@ -237,7 +241,7 @@ export function getItemHeight<T>(
   }
 
   if (typeof itemHeight === "number") {
-    return itemHeight;
+    return itemHeight > 0 ? itemHeight : 1;
   }
 
   const item = items[index];
@@ -261,7 +265,8 @@ export function getTotalHeight<T>(items: readonly T[], itemHeight: ItemHeightSpe
   }
 
   if (typeof itemHeight === "number") {
-    return items.length * itemHeight;
+    const safeItemHeight = itemHeight > 0 ? itemHeight : 1;
+    return items.length * safeItemHeight;
   }
 
   let total = 0;
