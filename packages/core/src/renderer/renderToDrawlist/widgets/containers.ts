@@ -485,7 +485,7 @@ export function renderContainerWidget(
       const contentRect: ClipRect = { x: cx, y: cy, w: cw, h: ch };
       const overflowMode = readOverflowMode(props.overflow);
 
-      let childClip: ClipRect = contentRect;
+      let childClip: ClipRect | undefined = overflowMode === "visible" ? currentClip : contentRect;
       if (overflowMode === "scroll") {
         const meta = readOverflowMetadata(layoutNode, contentRect);
         const viewportWithScrollbars = resolveScrollViewport(contentRect, meta);
@@ -493,7 +493,7 @@ export function renderContainerWidget(
         childClip = viewportWithScrollbars.viewportRect;
       }
 
-      if (!clipEquals(currentClip, childClip)) {
+      if (childClip && !clipEquals(currentClip, childClip)) {
         builder.pushClip(childClip.x, childClip.y, childClip.w, childClip.h);
         nodeStack.push(null);
       }
@@ -571,7 +571,7 @@ export function renderContainerWidget(
       const ch = clampNonNegative(rect.h - bt - bb - spacing.top - spacing.bottom);
       const contentRect: ClipRect = { x: cx, y: cy, w: cw, h: ch };
       const overflowMode = readOverflowMode(props.overflow);
-      let childClip: ClipRect = contentRect;
+      let childClip: ClipRect | undefined = overflowMode === "visible" ? currentClip : contentRect;
 
       if (overflowMode === "scroll") {
         const meta = readOverflowMetadata(layoutNode, contentRect);
@@ -580,7 +580,7 @@ export function renderContainerWidget(
         childClip = viewportWithScrollbars.viewportRect;
       }
 
-      if (!clipEquals(currentClip, childClip)) {
+      if (childClip && !clipEquals(currentClip, childClip)) {
         builder.pushClip(childClip.x, childClip.y, childClip.w, childClip.h);
         nodeStack.push(null);
       }
