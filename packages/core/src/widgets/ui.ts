@@ -65,12 +65,21 @@ import type {
   VirtualListProps,
 } from "./types.js";
 
-type UiChild = VNode | false | null | undefined;
+type UiChild = VNode | false | null | undefined | readonly UiChild[];
+
+function isUiChildren(value: unknown): value is readonly UiChild[] {
+  return Array.isArray(value);
+}
 
 function filterChildren(children: readonly UiChild[]): readonly VNode[] {
   const out: VNode[] = [];
-  for (const c of children) {
-    if (c !== false && c !== null && c !== undefined) out.push(c);
+  for (const child of children) {
+    if (child === false || child === null || child === undefined) continue;
+    if (isUiChildren(child)) {
+      out.push(...filterChildren(child));
+      continue;
+    }
+    out.push(child as VNode);
   }
   return out;
 }
@@ -113,26 +122,54 @@ function grid(props: GridProps, ...children: UiChild[]): VNode {
   return { kind: "grid", props, children: filterChildren(children) };
 }
 
+function vstack(props: ColumnProps, children?: readonly UiChild[]): VNode;
 function vstack(gap: number, children: readonly UiChild[]): VNode;
 function vstack(children: readonly UiChild[]): VNode;
-function vstack(gapOrChildren: number | readonly UiChild[], children?: readonly UiChild[]): VNode {
-  if (typeof gapOrChildren === "number") {
+function vstack(
+  gapOrPropsOrChildren: number | ColumnProps | readonly UiChild[],
+  children: readonly UiChild[] = [],
+): VNode {
+  if (typeof gapOrPropsOrChildren === "number") {
     return {
       kind: "column",
-      props: { gap: gapOrChildren },
+      props: { gap: gapOrPropsOrChildren },
       children: filterChildren(children ?? []),
     };
   }
-  return { kind: "column", props: { gap: 1 }, children: filterChildren(gapOrChildren) };
+  if (isUiChildren(gapOrPropsOrChildren)) {
+    return { kind: "column", props: { gap: 1 }, children: filterChildren(gapOrPropsOrChildren) };
+  }
+  const props = gapOrPropsOrChildren;
+  return {
+    kind: "column",
+    props: props.gap === undefined ? { gap: 1, ...props } : props,
+    children: filterChildren(children),
+  };
 }
 
+function hstack(props: RowProps, children?: readonly UiChild[]): VNode;
 function hstack(gap: number, children: readonly UiChild[]): VNode;
 function hstack(children: readonly UiChild[]): VNode;
-function hstack(gapOrChildren: number | readonly UiChild[], children?: readonly UiChild[]): VNode {
-  if (typeof gapOrChildren === "number") {
-    return { kind: "row", props: { gap: gapOrChildren }, children: filterChildren(children ?? []) };
+function hstack(
+  gapOrPropsOrChildren: number | RowProps | readonly UiChild[],
+  children: readonly UiChild[] = [],
+): VNode {
+  if (typeof gapOrPropsOrChildren === "number") {
+    return {
+      kind: "row",
+      props: { gap: gapOrPropsOrChildren },
+      children: filterChildren(children ?? []),
+    };
   }
-  return { kind: "row", props: { gap: 1 }, children: filterChildren(gapOrChildren) };
+  if (isUiChildren(gapOrPropsOrChildren)) {
+    return { kind: "row", props: { gap: 1 }, children: filterChildren(gapOrPropsOrChildren) };
+  }
+  const props = gapOrPropsOrChildren;
+  return {
+    kind: "row",
+    props: props.gap === undefined ? { gap: 1, ...props } : props,
+    children: filterChildren(children),
+  };
 }
 
 function spacer(props: SpacerProps = {}): VNode {
@@ -221,8 +258,8 @@ function skeleton(width: number, props: Omit<SkeletonProps, "width"> = {}): VNod
  * ])
  * ```
  */
-function richText(spans: readonly RichTextSpan[]): VNode {
-  return { kind: "richText", props: { spans } };
+function richText(spans: readonly RichTextSpan[], props: Omit<RichTextProps, "spans"> = {}): VNode {
+  return { kind: "richText", props: { spans, ...props } };
 }
 
 /**
@@ -479,6 +516,30 @@ function virtualList<T>(props: VirtualListProps<T>): VNode {
 }
 
 /**
+ * Create a layers container for stacking overlays.
+ * Later children render on top (higher z-order).
+ *
+ * @example
+ * ```ts
+ * ui.layers([
+ *   MainContent(),
+ *   state.showModal && ui.modal({ ... }),
+ * ])
+ * ```
+ */
+function layers(children: readonly UiChild[]): VNode;
+function layers(props: LayersProps, children?: readonly UiChild[]): VNode;
+function layers(
+  propsOrChildren: LayersProps | readonly UiChild[],
+  children: readonly UiChild[] = [],
+): VNode {
+  if (isUiChildren(propsOrChildren)) {
+    return { kind: "layers", props: {}, children: filterChildren(propsOrChildren) };
+  }
+  return { kind: "layers", props: propsOrChildren, children: filterChildren(children) };
+}
+
+/**
  * Widget factory functions for building VNode trees.
  *
  * @example
@@ -520,22 +581,7 @@ export const ui = {
   focusZone,
   focusTrap,
   virtualList,
-
-  /**
-   * Create a layers container for stacking overlays.
-   * Later children render on top (higher z-order).
-   *
-   * @example
-   * ```ts
-   * ui.layers([
-   *   MainContent(),
-   *   state.showModal && ui.modal({ ... }),
-   * ])
-   * ```
-   */
-  layers(children: readonly UiChild[]): VNode {
-    return { kind: "layers", props: {}, children: filterChildren(children) };
-  },
+  layers,
 
   /**
    * Create a modal overlay.
