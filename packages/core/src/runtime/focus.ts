@@ -200,12 +200,14 @@ export function computeGridMovement(
   direction: FocusDirection,
   wrapAround: boolean,
 ): number | null {
-  if (total === 0) return null;
-  if (index < 0 || index >= total) return null;
+  const safeColumns = Math.max(1, Math.trunc(columns));
+  const safeTotal = Math.max(0, Math.trunc(total));
+  if (safeTotal === 0) return null;
+  if (index < 0 || index >= safeTotal) return null;
 
-  const row = Math.floor(index / columns);
-  const col = index % columns;
-  const totalRows = Math.ceil(total / columns);
+  const row = Math.floor(index / safeColumns);
+  const col = index % safeColumns;
+  const totalRows = Math.ceil(safeTotal / safeColumns);
 
   let nextIndex: number;
 
@@ -214,10 +216,10 @@ export function computeGridMovement(
       if (row === 0) {
         if (!wrapAround) return null;
         // Wrap to last row, same column (or last item if incomplete row)
-        const lastRowStart = (totalRows - 1) * columns;
-        nextIndex = Math.min(lastRowStart + col, total - 1);
+        const lastRowStart = (totalRows - 1) * safeColumns;
+        nextIndex = Math.min(lastRowStart + col, safeTotal - 1);
       } else {
-        nextIndex = index - columns;
+        nextIndex = index - safeColumns;
       }
       break;
     }
@@ -228,9 +230,9 @@ export function computeGridMovement(
         // Wrap to first row, same column
         nextIndex = col;
       } else {
-        nextIndex = Math.min(index + columns, total - 1);
+        nextIndex = Math.min(index + safeColumns, safeTotal - 1);
         // If we'd land past the last item, go to last item
-        if (nextIndex >= total) nextIndex = total - 1;
+        if (nextIndex >= safeTotal) nextIndex = safeTotal - 1;
       }
       break;
     }
@@ -239,7 +241,7 @@ export function computeGridMovement(
         if (!wrapAround) return null;
         // Wrap to end of previous row, or last row if on first row
         if (row === 0) {
-          nextIndex = total - 1;
+          nextIndex = safeTotal - 1;
         } else {
           nextIndex = index - 1;
         }
@@ -249,10 +251,10 @@ export function computeGridMovement(
       break;
     }
     case "right": {
-      if (index === total - 1) {
+      if (index === safeTotal - 1) {
         if (!wrapAround) return null;
         nextIndex = 0;
-      } else if (col === columns - 1) {
+      } else if (col === safeColumns - 1) {
         if (!wrapAround) return null;
         // Wrap to start of next row
         nextIndex = index + 1;
@@ -262,7 +264,7 @@ export function computeGridMovement(
       break;
     }
     case "next": {
-      if (index === total - 1) {
+      if (index === safeTotal - 1) {
         if (!wrapAround) return null;
         nextIndex = 0;
       } else {
@@ -273,7 +275,7 @@ export function computeGridMovement(
     case "prev": {
       if (index === 0) {
         if (!wrapAround) return null;
-        nextIndex = total - 1;
+        nextIndex = safeTotal - 1;
       } else {
         nextIndex = index - 1;
       }

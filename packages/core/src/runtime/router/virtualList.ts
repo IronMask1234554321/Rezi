@@ -45,6 +45,7 @@ export function routeVirtualListKey<T>(
   const itemCount = items.length;
 
   if (itemCount === 0) return Object.freeze({});
+  const clampedSelectedIndex = Math.max(0, Math.min(itemCount - 1, selectedIndex));
 
   // Helper to compute scroll position for a given selection
   const scrollToIndex = (index: number): number => {
@@ -58,7 +59,9 @@ export function routeVirtualListKey<T>(
   // Compute items per page for PageUp/PageDown
   const computePageSize = (): number => {
     if (typeof itemHeight === "number") {
-      return Math.max(1, Math.floor(viewportHeight / itemHeight));
+      const safeItemHeight = itemHeight > 0 ? itemHeight : 1;
+      const safeViewportHeight = Math.max(0, viewportHeight);
+      return Math.max(1, Math.floor(safeViewportHeight / safeItemHeight));
     }
     // Variable heights: estimate based on visible items in current viewport
     // Use the actual visible range from state if available, otherwise estimate
@@ -81,11 +84,11 @@ export function routeVirtualListKey<T>(
 
   // Move selection up
   if (event.key === ZR_KEY_UP) {
-    let nextIndex = selectedIndex - 1;
+    let nextIndex = clampedSelectedIndex - 1;
     if (nextIndex < 0) {
       nextIndex = wrapAround ? itemCount - 1 : 0;
     }
-    if (nextIndex === selectedIndex) return Object.freeze({});
+    if (nextIndex === clampedSelectedIndex) return Object.freeze({});
 
     const newScrollTop = scrollToIndex(nextIndex);
     if (newScrollTop !== scrollTop) {
@@ -96,11 +99,11 @@ export function routeVirtualListKey<T>(
 
   // Move selection down
   if (event.key === ZR_KEY_DOWN) {
-    let nextIndex = selectedIndex + 1;
+    let nextIndex = clampedSelectedIndex + 1;
     if (nextIndex >= itemCount) {
       nextIndex = wrapAround ? 0 : itemCount - 1;
     }
-    if (nextIndex === selectedIndex) return Object.freeze({});
+    if (nextIndex === clampedSelectedIndex) return Object.freeze({});
 
     const newScrollTop = scrollToIndex(nextIndex);
     if (newScrollTop !== scrollTop) {
@@ -112,8 +115,8 @@ export function routeVirtualListKey<T>(
   // Page up
   if (event.key === ZR_KEY_PAGE_UP) {
     const pageSize = computePageSize();
-    const nextIndex = Math.max(0, selectedIndex - pageSize);
-    if (nextIndex === selectedIndex) return Object.freeze({});
+    const nextIndex = Math.max(0, clampedSelectedIndex - pageSize);
+    if (nextIndex === clampedSelectedIndex) return Object.freeze({});
 
     const newScrollTop = scrollToIndex(nextIndex);
     if (newScrollTop !== scrollTop) {
@@ -125,8 +128,8 @@ export function routeVirtualListKey<T>(
   // Page down
   if (event.key === ZR_KEY_PAGE_DOWN) {
     const pageSize = computePageSize();
-    const nextIndex = Math.min(itemCount - 1, selectedIndex + pageSize);
-    if (nextIndex === selectedIndex) return Object.freeze({});
+    const nextIndex = Math.min(itemCount - 1, clampedSelectedIndex + pageSize);
+    if (nextIndex === clampedSelectedIndex) return Object.freeze({});
 
     const newScrollTop = scrollToIndex(nextIndex);
     if (newScrollTop !== scrollTop) {
@@ -137,7 +140,7 @@ export function routeVirtualListKey<T>(
 
   // Home - jump to first item
   if (event.key === ZR_KEY_HOME) {
-    if (selectedIndex === 0) return Object.freeze({});
+    if (clampedSelectedIndex === 0) return Object.freeze({});
 
     return Object.freeze({
       nextSelectedIndex: 0,
@@ -148,7 +151,7 @@ export function routeVirtualListKey<T>(
   // End - jump to last item
   if (event.key === ZR_KEY_END) {
     const lastIndex = itemCount - 1;
-    if (selectedIndex === lastIndex) return Object.freeze({});
+    if (clampedSelectedIndex === lastIndex) return Object.freeze({});
 
     const totalHeight = getTotalHeight(items, itemHeight);
     const nextScrollTop = clampScrollTop(totalHeight, totalHeight, viewportHeight);
@@ -161,7 +164,7 @@ export function routeVirtualListKey<T>(
   // Enter/Space - emit select action
   if (event.key === ZR_KEY_ENTER || event.key === ZR_KEY_SPACE) {
     return Object.freeze({
-      action: { id: virtualListId, action: "select" as const, index: selectedIndex },
+      action: { id: virtualListId, action: "select" as const, index: clampedSelectedIndex },
     });
   }
 

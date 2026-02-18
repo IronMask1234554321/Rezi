@@ -1,4 +1,5 @@
 import type { VNode } from "../../index.js";
+import { TOAST_HEIGHT } from "../../widgets/toast.js";
 import { clampNonNegative, clampWithin } from "../engine/bounds.js";
 import { isVNode } from "../engine/guards.js";
 import { ok } from "../engine/result.js";
@@ -154,7 +155,7 @@ export function measureOverlays(
       const props = vnode.props as { maxVisible?: unknown };
       const maxVisible = readNonNegativeInt(props.maxVisible, 5);
       const toastWidth = Math.min(maxW, 40);
-      const toastHeight = Math.min(maxH, maxVisible * 3);
+      const toastHeight = Math.min(maxH, maxVisible * TOAST_HEIGHT);
       return ok({ w: toastWidth, h: toastHeight });
     }
     default:
@@ -397,7 +398,7 @@ export function layoutOverlays(
       const props = vnode.props as { maxVisible?: unknown; position?: unknown };
       const maxVisible = readNonNegativeInt(props.maxVisible, 5);
       const toastWidth = Math.min(rectW, 40);
-      const toastHeight = Math.min(rectH, maxVisible * 3);
+      const toastHeight = Math.min(rectH, maxVisible * TOAST_HEIGHT);
       const position = readToastPosition(props.position);
       const maxX = x + Math.max(0, maxW - toastWidth);
       const maxY = y + Math.max(0, maxH - toastHeight);

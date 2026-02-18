@@ -120,6 +120,7 @@ export function useForm<T extends Record<string, unknown>, State = void>(
 
   // Ref to safely pass values from setState callback to async validation
   const pendingAsyncValuesRef = ctx.useRef<T | null>(null);
+  const submittingRef = ctx.useRef(false);
 
   // Initialize or update async validator when options change
   ctx.useEffect(() => {
@@ -143,7 +144,7 @@ export function useForm<T extends Record<string, unknown>, State = void>(
       };
     }
     return undefined;
-  }, [options.validateAsync, options.validateAsyncDebounce]);
+  }, [options.validate, options.validateAsync, options.validateAsyncDebounce]);
 
   // Compute derived state
   const isValid = isValidationClean(state.errors);
@@ -277,6 +278,7 @@ export function useForm<T extends Record<string, unknown>, State = void>(
    * Reset form to initial state.
    */
   const reset = (): void => {
+    submittingRef.current = false;
     asyncValidatorRef.current?.cancel();
     setState(createInitialState(options));
   };
@@ -286,9 +288,10 @@ export function useForm<T extends Record<string, unknown>, State = void>(
    */
   const handleSubmit = (): void => {
     // Don't submit if already submitting
-    if (state.isSubmitting) {
+    if (state.isSubmitting || submittingRef.current) {
       return;
     }
+    submittingRef.current = true;
 
     // Mark all fields as touched
     const allTouched: Partial<Record<keyof T, boolean>> = {};
@@ -310,6 +313,7 @@ export function useForm<T extends Record<string, unknown>, State = void>(
 
     // If sync validation fails, don't submit
     if (!isValidationClean(syncErrors)) {
+      submittingRef.current = false;
       return;
     }
 
@@ -354,6 +358,8 @@ export function useForm<T extends Record<string, unknown>, State = void>(
           ...prev,
           isSubmitting: false,
         }));
+      } finally {
+        submittingRef.current = false;
       }
     };
 

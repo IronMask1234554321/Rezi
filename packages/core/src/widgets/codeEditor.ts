@@ -307,48 +307,53 @@ export function moveCursor(
   cursor: CursorPosition,
   direction: "up" | "down" | "left" | "right" | "home" | "end" | "docStart" | "docEnd",
 ): CursorPosition {
-  const { line, column } = cursor;
-  const currentLine = lines[line] ?? "";
+  if (lines.length === 0) {
+    return { line: 0, column: 0 };
+  }
+
+  const safeLine = Math.max(0, Math.min(cursor.line, lines.length - 1));
+  const currentLine = lines[safeLine] ?? "";
+  const safeColumn = Math.max(0, Math.min(cursor.column, currentLine.length));
 
   switch (direction) {
     case "up":
-      if (line > 0) {
-        const prevLine = lines[line - 1] ?? "";
-        return { line: line - 1, column: Math.min(column, prevLine.length) };
+      if (safeLine > 0) {
+        const prevLine = lines[safeLine - 1] ?? "";
+        return { line: safeLine - 1, column: Math.min(safeColumn, prevLine.length) };
       }
       return { line: 0, column: 0 };
 
     case "down":
-      if (line < lines.length - 1) {
-        const nextLine = lines[line + 1] ?? "";
-        return { line: line + 1, column: Math.min(column, nextLine.length) };
+      if (safeLine < lines.length - 1) {
+        const nextLine = lines[safeLine + 1] ?? "";
+        return { line: safeLine + 1, column: Math.min(safeColumn, nextLine.length) };
       }
       return { line: lines.length - 1, column: (lines[lines.length - 1] ?? "").length };
 
     case "left":
-      if (column > 0) {
-        return { line, column: column - 1 };
+      if (safeColumn > 0) {
+        return { line: safeLine, column: safeColumn - 1 };
       }
-      if (line > 0) {
-        const prevLine = lines[line - 1] ?? "";
-        return { line: line - 1, column: prevLine.length };
+      if (safeLine > 0) {
+        const prevLine = lines[safeLine - 1] ?? "";
+        return { line: safeLine - 1, column: prevLine.length };
       }
-      return cursor;
+      return { line: 0, column: 0 };
 
     case "right":
-      if (column < currentLine.length) {
-        return { line, column: column + 1 };
+      if (safeColumn < currentLine.length) {
+        return { line: safeLine, column: safeColumn + 1 };
       }
-      if (line < lines.length - 1) {
-        return { line: line + 1, column: 0 };
+      if (safeLine < lines.length - 1) {
+        return { line: safeLine + 1, column: 0 };
       }
-      return cursor;
+      return { line: safeLine, column: currentLine.length };
 
     case "home":
-      return { line, column: 0 };
+      return { line: safeLine, column: 0 };
 
     case "end":
-      return { line, column: currentLine.length };
+      return { line: safeLine, column: currentLine.length };
 
     case "docStart":
       return { line: 0, column: 0 };
@@ -373,11 +378,17 @@ export function moveCursorByWord(
   cursor: CursorPosition,
   direction: "left" | "right",
 ): CursorPosition {
-  const currentLine = lines[cursor.line] ?? "";
+  if (lines.length === 0) {
+    return { line: 0, column: 0 };
+  }
+
+  const safeLine = Math.max(0, Math.min(cursor.line, lines.length - 1));
+  const currentLine = lines[safeLine] ?? "";
+  const safeColumn = Math.max(0, Math.min(cursor.column, currentLine.length));
 
   if (direction === "right") {
     // Move to end of current word, then skip whitespace
-    let col = cursor.column;
+    let col = safeColumn;
     // Skip current word characters
     while (col < currentLine.length && /\w/.test(currentLine[col] ?? "")) {
       col++;
@@ -386,14 +397,14 @@ export function moveCursorByWord(
     while (col < currentLine.length && /\s/.test(currentLine[col] ?? "")) {
       col++;
     }
-    if (col >= currentLine.length && cursor.line < lines.length - 1) {
-      return { line: cursor.line + 1, column: 0 };
+    if (col >= currentLine.length && safeLine < lines.length - 1) {
+      return { line: safeLine + 1, column: 0 };
     }
-    return { line: cursor.line, column: col };
+    return { line: safeLine, column: col };
   }
 
   // direction === "left"
-  let col = cursor.column;
+  let col = safeColumn;
   // Skip whitespace
   while (col > 0 && /\s/.test(currentLine[col - 1] ?? "")) {
     col--;
@@ -402,11 +413,11 @@ export function moveCursorByWord(
   while (col > 0 && /\w/.test(currentLine[col - 1] ?? "")) {
     col--;
   }
-  if (col === 0 && cursor.line > 0) {
-    const prevLine = lines[cursor.line - 1] ?? "";
-    return { line: cursor.line - 1, column: prevLine.length };
+  if (col === 0 && safeLine > 0) {
+    const prevLine = lines[safeLine - 1] ?? "";
+    return { line: safeLine - 1, column: prevLine.length };
   }
-  return { line: cursor.line, column: col };
+  return { line: safeLine, column: col };
 }
 
 /**
@@ -475,17 +486,20 @@ export function ensureCursorVisible(
   cursor: CursorPosition,
   viewportHeight: number,
 ): number {
+  const safeViewportHeight = Math.max(1, viewportHeight);
+  const safeScrollTop = Math.max(0, scrollTop);
+
   // Cursor above viewport
-  if (cursor.line < scrollTop) {
-    return cursor.line;
+  if (cursor.line < safeScrollTop) {
+    return Math.max(0, cursor.line);
   }
 
   // Cursor below viewport
-  if (cursor.line >= scrollTop + viewportHeight) {
-    return cursor.line - viewportHeight + 1;
+  if (cursor.line >= safeScrollTop + safeViewportHeight) {
+    return cursor.line - safeViewportHeight + 1;
   }
 
-  return scrollTop;
+  return safeScrollTop;
 }
 
 /** Undo stack manager. */
