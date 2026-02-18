@@ -18,6 +18,32 @@ export type ResolvedConstraints = Readonly<{
   aspectRatio: number | null;
 }>;
 
+export type OverflowMode = "visible" | "hidden" | "scroll";
+
+export type LayoutOverflowMetadata = Readonly<{
+  scrollX: number;
+  scrollY: number;
+  contentWidth: number;
+  contentHeight: number;
+  viewportWidth: number;
+  viewportHeight: number;
+}>;
+
+export type ResolvedOverflow = Readonly<{
+  overflow: OverflowMode;
+  metadata: LayoutOverflowMetadata;
+}>;
+
+type OverflowPropBag = Readonly<{
+  overflow?: unknown;
+  scrollX?: unknown;
+  scrollY?: unknown;
+}>;
+
+type RectNode = Readonly<{ rect: Rect }>;
+
+const I32_MAX = 2147483647;
+
 /**
  * Resolve a single size constraint to a concrete cell count relative to `parentSize`.
  *
@@ -71,5 +97,84 @@ export function resolveLayoutConstraints(
     maxHeight: orInf(props.maxHeight),
     flex: props.flex === undefined ? 0 : props.flex,
     aspectRatio,
+  };
+}
+
+function normalizeOverflow(v: unknown): OverflowMode {
+  if (v === "hidden" || v === "scroll") return v;
+  return "visible";
+}
+
+function normalizeI32NonNegative(v: unknown): number {
+  if (typeof v !== "number" || !Number.isFinite(v)) return 0;
+  const n = Math.trunc(v);
+  if (n <= 0) return 0;
+  return n > I32_MAX ? I32_MAX : n;
+}
+
+/**
+ * Measure content bounds from laid-out direct children.
+ *
+ * The returned size excludes container padding/border and represents only
+ * the child content footprint.
+ */
+export function measureContentBounds(children: readonly RectNode[]): Readonly<{
+  contentWidth: number;
+  contentHeight: number;
+}> {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  for (const child of children) {
+    const { rect } = child;
+    if (rect.w <= 0 && rect.h <= 0) continue;
+    minX = Math.min(minX, rect.x);
+    minY = Math.min(minY, rect.y);
+    maxX = Math.max(maxX, rect.x + rect.w);
+    maxY = Math.max(maxY, rect.y + rect.h);
+  }
+
+  if (!Number.isFinite(minX) || !Number.isFinite(minY)) {
+    return { contentWidth: 0, contentHeight: 0 };
+  }
+
+  return {
+    contentWidth: normalizeI32NonNegative(maxX - minX),
+    contentHeight: normalizeI32NonNegative(maxY - minY),
+  };
+}
+
+/**
+ * Resolve overflow mode and clamp requested scroll offsets to valid ranges.
+ */
+export function resolveOverflow(
+  props: OverflowPropBag | null | undefined,
+  viewportWidth: number,
+  viewportHeight: number,
+  contentWidth: number,
+  contentHeight: number,
+): ResolvedOverflow {
+  const overflow = normalizeOverflow(props?.overflow);
+  const viewportW = normalizeI32NonNegative(viewportWidth);
+  const viewportH = normalizeI32NonNegative(viewportHeight);
+  const contentW = normalizeI32NonNegative(contentWidth);
+  const contentH = normalizeI32NonNegative(contentHeight);
+  const requestedScrollX = normalizeI32NonNegative(props?.scrollX);
+  const requestedScrollY = normalizeI32NonNegative(props?.scrollY);
+  const maxScrollX = Math.max(0, contentW - viewportW);
+  const maxScrollY = Math.max(0, contentH - viewportH);
+
+  return {
+    overflow,
+    metadata: {
+      scrollX: Math.min(requestedScrollX, maxScrollX),
+      scrollY: Math.min(requestedScrollY, maxScrollY),
+      contentWidth: contentW,
+      contentHeight: contentH,
+      viewportWidth: viewportW,
+      viewportHeight: viewportH,
+    },
   };
 }

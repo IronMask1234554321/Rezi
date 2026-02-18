@@ -25,6 +25,7 @@ import type { TextStyle } from "./style.js";
 
 /** Cross-axis alignment for stack layouts. */
 export type Align = "start" | "center" | "end" | "stretch";
+export type Overflow = "visible" | "hidden" | "scroll";
 
 /**
  * Spacing props for padding and margin.
@@ -141,6 +142,12 @@ export type BoxProps = Readonly<
      * When `bg` is provided, the renderer fills the box rect.
      */
     style?: TextStyle;
+    /** Child overflow behavior. Defaults to "visible". */
+    overflow?: Overflow;
+    /** Horizontal scroll offset in cells. Clamped by layout metadata bounds. */
+    scrollX?: number;
+    /** Vertical scroll offset in cells. Clamped by layout metadata bounds. */
+    scrollY?: number;
     /** Optional scoped theme override for this container subtree. */
     theme?: ScopedThemeOverride;
   } & SpacingProps &
@@ -170,6 +177,12 @@ export type StackProps = Readonly<
      * When `bg` is provided, the renderer fills the stack rect.
      */
     style?: TextStyle;
+    /** Child overflow behavior. Defaults to "visible". */
+    overflow?: Overflow;
+    /** Horizontal scroll offset in cells. Clamped by layout metadata bounds. */
+    scrollX?: number;
+    /** Vertical scroll offset in cells. Clamped by layout metadata bounds. */
+    scrollY?: number;
     /** Optional scoped theme override for this container subtree. */
     theme?: ScopedThemeOverride;
   } & SpacingProps &

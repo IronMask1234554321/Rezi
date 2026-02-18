@@ -75,6 +75,9 @@ export type ValidatedStackProps = Readonly<
     gap: number;
     align: Align;
     justify: "start" | "end" | "center" | "between" | "around" | "evenly";
+    overflow: "visible" | "hidden" | "scroll";
+    scrollX: number;
+    scrollY: number;
   } & ValidatedSpacingProps &
     ValidatedLayoutConstraints
 >;
@@ -86,6 +89,9 @@ export type ValidatedBoxProps = Readonly<
     borderRight: boolean;
     borderBottom: boolean;
     borderLeft: boolean;
+    overflow: "visible" | "hidden" | "scroll";
+    scrollX: number;
+    scrollY: number;
   } & ValidatedSpacingProps &
     ValidatedLayoutConstraints
 >;
@@ -126,6 +132,9 @@ type StackPropBag = Readonly<
     mr?: unknown;
     mb?: unknown;
     ml?: unknown;
+    overflow?: unknown;
+    scrollX?: unknown;
+    scrollY?: unknown;
   } & LayoutConstraintPropBag
 >;
 
@@ -151,6 +160,9 @@ type BoxPropBag = Readonly<
     mr?: unknown;
     mb?: unknown;
     ml?: unknown;
+    overflow?: unknown;
+    scrollX?: unknown;
+    scrollY?: unknown;
   } & LayoutConstraintPropBag
 >;
 
@@ -259,6 +271,19 @@ function requireBoolean(
     return invalid(`${kind}.${name} must be a boolean`);
   }
   return { ok: true, value };
+}
+
+function requireOverflow(
+  kind: string,
+  name: string,
+  v: unknown,
+  def: "visible" | "hidden" | "scroll",
+): LayoutResult<"visible" | "hidden" | "scroll"> {
+  const value = v === undefined ? def : v;
+  if (value === "visible" || value === "hidden" || value === "scroll") {
+    return { ok: true, value };
+  }
+  return invalid(`${kind}.${name} must be one of "visible" | "hidden" | "scroll"`);
 }
 
 function parsePercent(kind: string, name: string, raw: string): LayoutResult<`${number}%`> {
@@ -437,6 +462,12 @@ export function validateStackProps(
 
   const lcRes = validateLayoutConstraints(kind, p);
   if (!lcRes.ok) return lcRes;
+  const overflowRes = requireOverflow(kind, "overflow", p.overflow, "visible");
+  if (!overflowRes.ok) return overflowRes;
+  const scrollXRes = requireIntNonNegative(kind, "scrollX", p.scrollX, 0);
+  if (!scrollXRes.ok) return scrollXRes;
+  const scrollYRes = requireIntNonNegative(kind, "scrollY", p.scrollY, 0);
+  if (!scrollYRes.ok) return scrollYRes;
 
   const spRes = validateSpacingProps(kind, p as unknown as Record<string, unknown>);
   if (!spRes.ok) return spRes;
@@ -448,6 +479,9 @@ export function validateStackProps(
       gap: gapRes.value,
       align: alignValue,
       justify: justifyValue,
+      overflow: overflowRes.value,
+      scrollX: scrollXRes.value,
+      scrollY: scrollYRes.value,
       ...spRes.value,
       ...lcRes.value,
     },
@@ -488,6 +522,12 @@ export function validateBoxProps(props: BoxProps | unknown): LayoutResult<Valida
 
   const lcRes = validateLayoutConstraints("box", p);
   if (!lcRes.ok) return lcRes;
+  const overflowRes = requireOverflow("box", "overflow", p.overflow, "visible");
+  if (!overflowRes.ok) return overflowRes;
+  const scrollXRes = requireIntNonNegative("box", "scrollX", p.scrollX, 0);
+  if (!scrollXRes.ok) return scrollXRes;
+  const scrollYRes = requireIntNonNegative("box", "scrollY", p.scrollY, 0);
+  if (!scrollYRes.ok) return scrollYRes;
 
   const spRes = validateSpacingProps("box", p as unknown as Record<string, unknown>);
   if (!spRes.ok) return spRes;
@@ -501,6 +541,9 @@ export function validateBoxProps(props: BoxProps | unknown): LayoutResult<Valida
       borderRight: rightRes.value,
       borderBottom: bottomRes.value,
       borderLeft: leftRes.value,
+      overflow: overflowRes.value,
+      scrollX: scrollXRes.value,
+      scrollY: scrollYRes.value,
       ...spRes.value,
       ...lcRes.value,
     },

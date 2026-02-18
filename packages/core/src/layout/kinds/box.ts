@@ -1,5 +1,5 @@
 import type { VNode } from "../../index.js";
-import { resolveLayoutConstraints } from "../constraints.js";
+import { measureContentBounds, resolveLayoutConstraints, resolveOverflow } from "../constraints.js";
 import { clampNonNegative, clampWithin, toFiniteMax } from "../engine/bounds.js";
 import { ok } from "../engine/result.js";
 import type { LayoutTree } from "../engine/types.js";
@@ -23,6 +23,25 @@ type LayoutNodeFn = (
   forcedW?: number | null,
   forcedH?: number | null,
 ) => LayoutResult<LayoutTree>;
+
+function shiftLayoutTree(node: LayoutTree, dx: number, dy: number): LayoutTree {
+  if (dx === 0 && dy === 0) return node;
+  const shiftedChildren =
+    node.children.length === 0
+      ? node.children
+      : Object.freeze(node.children.map((child) => shiftLayoutTree(child, dx, dy)));
+  return {
+    vnode: node.vnode,
+    rect: { x: node.rect.x + dx, y: node.rect.y + dy, w: node.rect.w, h: node.rect.h },
+    ...(node.meta === undefined ? {} : { meta: node.meta }),
+    children: shiftedChildren,
+  };
+}
+
+function shiftLayoutChildren(children: readonly LayoutTree[], dx: number, dy: number): LayoutTree[] {
+  if (dx === 0 && dy === 0) return children as LayoutTree[];
+  return children.map((child) => shiftLayoutTree(child, dx, dy));
+}
 
 export function measureBoxKinds(
   vnode: VNode,
@@ -155,10 +174,19 @@ export function layoutBoxKinds(
         children.push(...innerRes.value.children);
       }
 
+      const { contentWidth, contentHeight } = measureContentBounds(children);
+      const overflow = resolveOverflow(propsRes.value, cw, ch, contentWidth, contentHeight);
+      const shiftedChildren = shiftLayoutChildren(
+        children,
+        -overflow.metadata.scrollX,
+        -overflow.metadata.scrollY,
+      );
+
       return ok({
         vnode,
         rect: { x: boxX, y: boxY, w: boxW, h: boxH },
-        children: Object.freeze(children),
+        children: Object.freeze(shiftedChildren),
+        meta: overflow.metadata,
       });
     }
     case "field": {
