@@ -184,7 +184,9 @@ describe("layout overflow:hidden (deterministic)", () => {
       const root = ui.row({ overflow: "hidden" }, [midA]);
       const tree = layoutNode(root, { x: 0, y: 0, w: 10, h: 4 }, [
         layoutNode(midA, { x: 2, y: 0, w: 8, h: 4 }, [
-          layoutNode(midB, { x: 5, y: 0, w: 6, h: 4 }, [layoutNode(leaf, { x: 9, y: 2, w: 4, h: 1 })]),
+          layoutNode(midB, { x: 5, y: 0, w: 6, h: 4 }, [
+            layoutNode(leaf, { x: 9, y: 2, w: 4, h: 1 }),
+          ]),
         ]),
       ]);
 
@@ -198,7 +200,9 @@ describe("layout overflow:hidden (deterministic)", () => {
       const root = ui.row({ overflow: "hidden" }, [midA]);
       const tree = layoutNode(root, { x: 0, y: 0, w: 10, h: 4 }, [
         layoutNode(midA, { x: 2, y: 0, w: 8, h: 4 }, [
-          layoutNode(midB, { x: 5, y: 0, w: 6, h: 4 }, [layoutNode(leaf, { x: 9, y: 2, w: 4, h: 1 })]),
+          layoutNode(midB, { x: 5, y: 0, w: 6, h: 4 }, [
+            layoutNode(leaf, { x: 9, y: 2, w: 4, h: 1 }),
+          ]),
         ]),
       ]);
 
@@ -217,7 +221,9 @@ describe("layout overflow:hidden (deterministic)", () => {
     });
 
     test("hidden column with height=0 is never hit-testable", () => {
-      const root = ui.column({ overflow: "hidden", height: 0 }, [ui.button("zero-col", "zero-col")]);
+      const root = ui.column({ overflow: "hidden", height: 0 }, [
+        ui.button("zero-col", "zero-col"),
+      ]);
       const tree = mustLayout(root, 8, 0, "column");
 
       assert.equal(tree.rect.h, 0);
@@ -244,7 +250,9 @@ describe("layout overflow:hidden (deterministic)", () => {
       const root = ui.row({ p: 1, overflow: "hidden" }, [column]);
       const tree = layoutNode(root, { x: 0, y: 0, w: 12, h: 5 }, [
         layoutNode(column, { x: 1, y: 1, w: 10, h: 4 }, [
-          layoutNode(box, { x: 2, y: 2, w: 8, h: 3 }, [layoutNode(leaf, { x: 3, y: 3, w: 8, h: 1 })]),
+          layoutNode(box, { x: 2, y: 2, w: 8, h: 3 }, [
+            layoutNode(leaf, { x: 3, y: 3, w: 8, h: 1 }),
+          ]),
         ]),
       ]);
 
@@ -258,7 +266,9 @@ describe("layout overflow:hidden (deterministic)", () => {
       const root = ui.row({ p: 1, overflow: "hidden" }, [column]);
       const tree = layoutNode(root, { x: 0, y: 0, w: 12, h: 5 }, [
         layoutNode(column, { x: 1, y: 1, w: 10, h: 4 }, [
-          layoutNode(box, { x: 2, y: 2, w: 8, h: 3 }, [layoutNode(leaf, { x: 3, y: 3, w: 8, h: 1 })]),
+          layoutNode(box, { x: 2, y: 2, w: 8, h: 3 }, [
+            layoutNode(leaf, { x: 3, y: 3, w: 8, h: 1 }),
+          ]),
         ]),
       ]);
 
@@ -272,7 +282,9 @@ describe("layout overflow:hidden (deterministic)", () => {
       const root = ui.row({ p: 1, overflow: "hidden" }, [column]);
       const tree = layoutNode(root, { x: 0, y: 0, w: 12, h: 5 }, [
         layoutNode(column, { x: 1, y: 1, w: 10, h: 4 }, [
-          layoutNode(box, { x: 2, y: 2, w: 8, h: 3 }, [layoutNode(leaf, { x: 3, y: 3, w: 8, h: 1 })]),
+          layoutNode(box, { x: 2, y: 2, w: 8, h: 3 }, [
+            layoutNode(leaf, { x: 3, y: 3, w: 8, h: 1 }),
+          ]),
         ]),
       ]);
 
@@ -286,7 +298,9 @@ describe("layout overflow:hidden (deterministic)", () => {
       const root = ui.row({ p: 1, overflow: "hidden" }, [column]);
       const tree = layoutNode(root, { x: 0, y: 0, w: 8, h: 3 }, [
         layoutNode(column, { x: 0, y: 1, w: 8, h: 2 }, [
-          layoutNode(box, { x: 0, y: 1, w: 8, h: 2 }, [layoutNode(leaf, { x: 0, y: 1, w: 4, h: 1 })]),
+          layoutNode(box, { x: 0, y: 1, w: 8, h: 2 }, [
+            layoutNode(leaf, { x: 0, y: 1, w: 4, h: 1 }),
+          ]),
         ]),
       ]);
 

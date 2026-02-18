@@ -1,10 +1,10 @@
 import type { DrawlistBuilderV1 } from "../../../index.js";
+import type { LayoutTree } from "../../../layout/layout.js";
 import {
   measureTextCells,
   truncateMiddle,
   truncateWithEllipsis,
 } from "../../../layout/textMeasure.js";
-import type { LayoutTree } from "../../../layout/layout.js";
 import type { Rect } from "../../../layout/types.js";
 import type { RuntimeInstance } from "../../../runtime/commit.js";
 import type { FocusState } from "../../../runtime/focus.js";
@@ -185,8 +185,7 @@ function setLayoutScrollMetadata(
     viewportWidth:
       patch.viewportWidth ?? (typeof prev?.viewportWidth === "number" ? prev.viewportWidth : 0),
     viewportHeight:
-      patch.viewportHeight ??
-      (typeof prev?.viewportHeight === "number" ? prev.viewportHeight : 0),
+      patch.viewportHeight ?? (typeof prev?.viewportHeight === "number" ? prev.viewportHeight : 0),
   });
   (layoutNode as { meta?: unknown }).meta = next;
 }

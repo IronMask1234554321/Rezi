@@ -38,7 +38,11 @@ function shiftLayoutTree(node: LayoutTree, dx: number, dy: number): LayoutTree {
   };
 }
 
-function shiftLayoutChildren(children: readonly LayoutTree[], dx: number, dy: number): LayoutTree[] {
+function shiftLayoutChildren(
+  children: readonly LayoutTree[],
+  dx: number,
+  dy: number,
+): LayoutTree[] {
   if (dx === 0 && dy === 0) return children as LayoutTree[];
   return children.map((child) => shiftLayoutTree(child, dx, dy));
 }

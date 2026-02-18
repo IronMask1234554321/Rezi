@@ -1,7 +1,5 @@
 import { assert, describe, test } from "@rezi-ui/testkit";
 import { type VNode, createDrawlistBuilderV1 } from "../../index.js";
-import { layout } from "../layout.js";
-import type { LayoutTree } from "../layout.js";
 import { renderToDrawlist } from "../../renderer/renderToDrawlist.js";
 import { commitVNodeTree } from "../../runtime/commit.js";
 import { createInstanceIdAllocator } from "../../runtime/instance.js";
@@ -14,6 +12,8 @@ import {
   createVirtualListStateStore,
 } from "../../runtime/localState.js";
 import { ui } from "../../widgets/ui.js";
+import { layout } from "../layout.js";
+import type { LayoutTree } from "../layout.js";
 
 type OverflowMeta = Readonly<{
   scrollX: number;
@@ -59,14 +59,7 @@ function renderAndGetLayoutTree(
     assert.fail("commit failed");
   }
 
-  const laidOut = layout(
-    committed.value.root.vnode,
-    0,
-    0,
-    viewport.cols,
-    viewport.rows,
-    "column",
-  );
+  const laidOut = layout(committed.value.root.vnode, 0, 0, viewport.cols, viewport.rows, "column");
   assert.equal(laidOut.ok, true, "layout should succeed");
   if (!laidOut.ok) {
     assert.fail("layout failed");
@@ -111,7 +104,12 @@ function wideTallChildBox(): VNode {
   return {
     kind: "box",
     props: { border: "none", mr: -4, mb: -1 },
-    children: Object.freeze([textNode("123456789"), textNode("line2"), textNode("line3"), textNode("line4")]),
+    children: Object.freeze([
+      textNode("123456789"),
+      textNode("line2"),
+      textNode("line3"),
+      textNode("line4"),
+    ]),
   };
 }
 

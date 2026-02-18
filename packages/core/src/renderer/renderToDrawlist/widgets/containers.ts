@@ -3,7 +3,11 @@ import type { LayoutTree } from "../../../layout/layout.js";
 import type { Rect } from "../../../layout/types.js";
 import type { RuntimeInstance } from "../../../runtime/commit.js";
 import type { Theme } from "../../../theme/theme.js";
-import { SCROLLBAR_CONFIGS, renderHorizontalScrollbar, renderVerticalScrollbar } from "../../scrollbar.js";
+import {
+  SCROLLBAR_CONFIGS,
+  renderHorizontalScrollbar,
+  renderVerticalScrollbar,
+} from "../../scrollbar.js";
 import { createShadowConfig, renderShadow } from "../../shadow.js";
 import { asTextStyle } from "../../styles.js";
 import { readBoxBorder, readTitleAlign, renderBoxBorder } from "../boxBorder.js";
@@ -391,7 +395,9 @@ function drawScrollbars(
     const maxScrollY = Math.max(0, viewport.contentHeight - viewport.viewportRect.h);
     const position = maxScrollY > 0 ? viewport.scrollY / maxScrollY : 0;
     const viewportRatio =
-      viewport.contentHeight > 0 ? Math.min(1, viewport.viewportRect.h / viewport.contentHeight) : 1;
+      viewport.contentHeight > 0
+        ? Math.min(1, viewport.viewportRect.h / viewport.contentHeight)
+        : 1;
     const glyphs = renderVerticalScrollbar(
       viewport.viewportRect.h,
       { position, viewportRatio },

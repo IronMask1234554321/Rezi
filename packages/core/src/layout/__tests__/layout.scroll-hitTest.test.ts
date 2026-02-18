@@ -17,7 +17,10 @@ function buttonNode(id: string): VNode {
   return { kind: "button", props: { id, label: id } } as unknown as VNode;
 }
 
-function scrollRow(children: readonly VNode[], props: Readonly<Record<string, unknown>> = {}): VNode {
+function scrollRow(
+  children: readonly VNode[],
+  props: Readonly<Record<string, unknown>> = {},
+): VNode {
   return {
     kind: "row",
     props: { overflow: "scroll", ...props },
@@ -36,7 +39,10 @@ function scrollColumn(
   } as unknown as VNode;
 }
 
-function scrollBox(children: readonly VNode[], props: Readonly<Record<string, unknown>> = {}): VNode {
+function scrollBox(
+  children: readonly VNode[],
+  props: Readonly<Record<string, unknown>> = {},
+): VNode {
   return {
     kind: "box",
     props: { overflow: "scroll", ...props },

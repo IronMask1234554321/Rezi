@@ -103,7 +103,9 @@ describe("layout edge cases", () => {
         {
           kind: "box",
           props: { border: "none", mr: -4 },
-          children: Object.freeze<readonly VNode[]>([{ kind: "text", text: "123456789", props: {} }]),
+          children: Object.freeze<readonly VNode[]>([
+            { kind: "text", text: "123456789", props: {} },
+          ]),
         },
       ]),
     };
