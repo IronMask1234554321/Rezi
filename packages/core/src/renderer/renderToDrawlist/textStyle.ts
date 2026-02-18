@@ -68,8 +68,9 @@ export function mergeTextStyle(
     if (override.overline !== undefined) merged.overline = override.overline;
     if (override.blink !== undefined) merged.blink = override.blink;
 
-    BASE_BOOL_STYLE_CACHE[key] = merged;
-    return merged;
+    const frozenMerged = Object.freeze(merged);
+    BASE_BOOL_STYLE_CACHE[key] = frozenMerged;
+    return frozenMerged;
   }
   if (
     override.fg === undefined &&

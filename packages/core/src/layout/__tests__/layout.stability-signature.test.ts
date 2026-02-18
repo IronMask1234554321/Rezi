@@ -72,6 +72,8 @@ function runtimeNode(
     instanceId,
     vnode,
     children: Object.freeze([...children]),
+    dirty: false,
+    selfDirty: false,
   };
 }
 

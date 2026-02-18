@@ -320,6 +320,14 @@ Conservative fallback:
 - When signatures are stable, the expensive `layout(...)` pass is skipped; the skip decision and reuse of the prior layout tree are O(1).
 - After a commit with skipped layout, damage-rect indexes are refreshed by walking runtime nodes.
 
+### Runtime dirty flags and clean-subtree skipping
+
+- Runtime nodes carry a per-node `dirty` flag used by incremental rendering.
+- Commit marks nodes dirty when props change, when child composition/order changes, and when any child is dirty (propagates to root).
+- Layout indexing marks nodes dirty when their layout rect changes versus the previous rendered frame.
+- Incremental `renderTree(...)` skips clean subtrees during DFS, but preserves clip stack correctness for dirty ancestors (balanced `pushClip`/`popClip`).
+- After a successful frame build, dirty flags are cleared for the committed runtime tree.
+
 ### Clarified invariants and edge cases
 
 - The first signature pass against an empty previous map reports changed (bootstrap relayout).
