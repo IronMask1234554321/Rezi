@@ -42,7 +42,7 @@ A production-style terminal control console built entirely with Rezi.
 
 Visual Matrix Stress Test 
 
-![Rezi demo](Assets/REZI-BENCH.gif)
+![Rezi demo](Assets/REZIBENCHMARK.gif)
 
 ---
 
