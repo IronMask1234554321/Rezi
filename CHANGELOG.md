@@ -31,6 +31,29 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 
 - Internal prototyping artifacts and debug traces from repository
 
+## [0.1.0-alpha.17] - 2026-02-19
+
+### Added
+
+- `create-rezi` now ships a dedicated `stress-test` benchmark template with visual stress lanes and measured runtime diagnostics (`#101`).
+- `@rezi-ui/bench` now includes OpenTUI framework coverage and expanded terminal benchmark scenarios (`#99`).
+
+### Changed
+
+- Documentation was overhauled and aligned with current runtime/create-rezi behavior, including Bun-first invocation coverage (`#96`, `#97`).
+- `@rezi-ui/jsx` reached broad API parity with expanded docs/tests (`#98`).
+- Benchmark reporting in README/docs was refreshed with representative scenarios and ratatui-native baseline data (`#100`, `#102`).
+
+### Merged Pull Requests
+
+- [#96](https://github.com/RtlZeroMemory/Rezi/pull/96) docs: merge comprehensive overhaul and align with alpha.16 behavior
+- [#97](https://github.com/RtlZeroMemory/Rezi/pull/97) docs: make Bun first-class in docs and create-rezi
+- [#98](https://github.com/RtlZeroMemory/Rezi/pull/98) feat(jsx): complete core API parity and docs coverage
+- [#99](https://github.com/RtlZeroMemory/Rezi/pull/99) bench: revamp terminal benchmarks, add OpenTUI coverage, refresh README data
+- [#100](https://github.com/RtlZeroMemory/Rezi/pull/100) docs(readme): add ratatui native baseline table
+- [#101](https://github.com/RtlZeroMemory/Rezi/pull/101) feat(create-rezi): add visual benchmark stress-test template
+- [#102](https://github.com/RtlZeroMemory/Rezi/pull/102) docs(readme): condense benchmark table to representative scenarios
+
 ## [0.1.0-alpha.16] - 2026-02-19
 
 ### Added
