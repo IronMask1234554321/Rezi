@@ -25,9 +25,9 @@ Rezi is a TypeScript terminal UI framework for Node.js and Bun. You write declar
 
 The result: TypeScript ergonomics with rendering performance in the same class as native TUIs.
 
-![Rezi overview](Assets/REZI_MAIN.png)
+Dashboard demo
 
-![Rezi core demo](Assets/REZICORE.gif)
+![Rezi core demo](Assets/REZI-CONSOLE.gif)
 
 ---
 
