@@ -184,14 +184,7 @@ npm install @rezi-ui/jsx @rezi-ui/core @rezi-ui/node
 
 ## Features
 
-### Widgets
-49 built-in widgets:
-- Layout primitives (box, row, column, text)
-- Forms (input, button, checkbox, select, slider)
-- Data display (table, tree, virtual list)
-- Overlays (modal, dropdown, toast, command palette)
-- Advanced (code editor, diff viewer, file picker)
-- Charts (gauge, sparkline, bar chart)
+**54 built-in widgets** — primitives (box, row, column, text, grid), form inputs (input, button, checkbox, select, slider), data display (table, virtual list, tree), navigation (tabs, accordion, breadcrumb, pagination), overlays (modal, dropdown, toast, command palette), advanced (code editor, diff viewer, file picker, logs console), and charts (gauge, sparkline, bar chart).
 
 ### Focus & Input
 - Automatic tab navigation
@@ -278,16 +271,24 @@ Both are versioned binary formats validated at the boundary.
 
 ## Requirements
 
-- **Node.js 18+** (18.18+ recommended) or **Bun 1.3+**
-- Linux x64/arm64
-- macOS x64/arm64
-- Windows x64
-- 256-color or true-color terminal recommended
+- **Runtime**: Node.js 18+ (18.18+ recommended) or Bun 1.3+
+- **Platforms**: Linux x64/arm64, macOS x64/arm64, Windows x64/arm64
+- **Terminal**: 256-color or true-color support recommended
 
-Prebuilt native binaries are published for supported platforms.  
-If unavailable, the package compiles from source (requires a C toolchain).
+Prebuilt native binaries are published for all supported platforms above. The
+package does not compile from source at install time; for unsupported targets,
+build from a repository checkout with `npm run build:native`.
 
----
+## Documentation
+
+| Resource | Link |
+|---|---|
+| Docs home | [rtlzeromemory.github.io/Rezi](https://rtlzeromemory.github.io/Rezi/) |
+| Getting started | [Install](https://rtlzeromemory.github.io/Rezi/getting-started/install/) · [Quickstart](https://rtlzeromemory.github.io/Rezi/getting-started/quickstart/) · [JSX](https://rtlzeromemory.github.io/Rezi/getting-started/jsx/) |
+| Guides | [Concepts](https://rtlzeromemory.github.io/Rezi/guide/concepts/) · [Layout](https://rtlzeromemory.github.io/Rezi/guide/layout/) · [Input & Focus](https://rtlzeromemory.github.io/Rezi/guide/input-and-focus/) · [Styling](https://rtlzeromemory.github.io/Rezi/guide/styling/) |
+| Widget catalog | [54 widgets](https://rtlzeromemory.github.io/Rezi/widgets/) |
+| API reference | [TypeDoc](https://rtlzeromemory.github.io/Rezi/api/) |
+| Architecture | [Overview](https://rtlzeromemory.github.io/Rezi/architecture/) · [Protocol](https://rtlzeromemory.github.io/Rezi/protocol/) |
 
 ## Contributing
 
