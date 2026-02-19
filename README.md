@@ -40,6 +40,10 @@ A production-style terminal control console built entirely with Rezi.
 
 ![Rezi demo](Assets/REZICONSOLE3.gif)
 
+Visual Matrix Stress Test 
+
+![Rezi demo](Assets/REZI-BENCH.gif)
+
 ---
 
 ## What is Rezi?
