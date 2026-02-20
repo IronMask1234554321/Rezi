@@ -46,8 +46,6 @@ const COMPACT_LAYOUT_ROWS = 28;
 const HISTORY_MAX_ITEMS_COMPACT = 5;
 const HISTORY_MAX_ITEMS_DEFAULT = 9;
 
-const TOP_LEVEL_ROUTES: readonly TopLevelRouteId[] = Object.freeze(["home", "logs", "settings"]);
-
 const THEME_BY_NAME: Record<ThemeName, ThemeDefinition> = {
   nord: nordTheme,
   dark: darkTheme,
@@ -163,18 +161,6 @@ function isThemeName(value: string): value is ThemeName {
 
 function isEnvironment(value: string): value is EnvironmentName {
   return value === "development" || value === "staging" || value === "production";
-}
-
-function toTopLevelRouteLabel(routeId: TopLevelRouteId): string {
-  if (routeId === "home") return "Home";
-  if (routeId === "logs") return "Logs";
-  return "Settings";
-}
-
-function toTopLevelRouteShortcut(routeId: TopLevelRouteId): string {
-  if (routeId === "home") return "f1";
-  if (routeId === "logs") return "f2";
-  return "f3";
 }
 
 function routeLabelFromId(routeId: string): string {
@@ -370,23 +356,45 @@ function renderShell(
       { border: "rounded", px: PANEL_PADDING_X, py: PANEL_PADDING_Y, style: styles.stripStyle },
       [
         ui.column({ gap: 1 }, [
-          ui.row(
-            { gap: 1, wrap: true, items: "center" },
-            TOP_LEVEL_ROUTES.flatMap((routeId) => [
-              ui.button({
-                id: `nav-${routeId}`,
-                label:
-                  currentRouteId === routeId
-                    ? `[${toTopLevelRouteLabel(routeId)}]`
-                    : toTopLevelRouteLabel(routeId),
-                onPress: () => navigateTopLevel(context.router, routeId),
-              }),
-              ui.kbd(toTopLevelRouteShortcut(routeId)),
-            ]),
-          ),
+          ui.routerTabs(context.router, topLevelRoutes, {
+            id: "app-route-tabs",
+            variant: "pills",
+          }),
+          ...(compact
+            ? []
+            : [
+                ui.routerBreadcrumb(context.router, routes, {
+                  id: "app-route-breadcrumb",
+                  separator: " > ",
+                }),
+              ]),
           ui.text(`History (${String(history.count)}): ${history.summary}`, {
             style: styles.metaStyle,
           }),
+          ui.row({ gap: 1, wrap: true }, [
+            ui.kbd("f1"),
+            ui.text("Home", { style: styles.quietStyle }),
+            ui.kbd("f2"),
+            ui.text("Logs", { style: styles.quietStyle }),
+            ui.kbd("f3"),
+            ui.text("Settings", { style: styles.quietStyle }),
+          ]),
+          ui.row({ gap: 1, wrap: true }, [
+            ui.kbd("alt+1"),
+            ui.text("Home", { style: styles.quietStyle }),
+            ui.kbd("alt+2"),
+            ui.text("Logs", { style: styles.quietStyle }),
+            ui.kbd("alt+3"),
+            ui.text("Settings", { style: styles.quietStyle }),
+          ]),
+          ...(currentRouteId === "detail"
+            ? [
+                ui.row({ gap: 1, wrap: true }, [
+                  ui.kbd("esc"),
+                  ui.text("Back from detail", { style: styles.quietStyle }),
+                ]),
+              ]
+            : []),
           ...(stacked
             ? [
                 ui.text("Adaptive layout: stacked panels enabled", {
@@ -892,6 +900,10 @@ const routes: readonly RouteDefinition<AppState>[] = Object.freeze([
     screen: renderDetail,
   },
 ]);
+
+const topLevelRoutes: readonly RouteDefinition<AppState>[] = Object.freeze(
+  routes.filter((route) => route.id !== "detail"),
+);
 
 app = createApp({
   backend: createNodeBackend({
