@@ -35,6 +35,9 @@ function makeBundle(): ReproBundleV1 {
         supportsScrollRegion: true,
         supportsCursorShape: true,
         supportsOutputWaitWritable: false,
+        supportsUnderlineStyles: false,
+        supportsColoredUnderlines: false,
+        supportsHyperlinks: false,
         sgrAttrsSupported: 255,
       },
       backendCaps: {
@@ -109,6 +112,35 @@ describe("repro schema/versioning", () => {
     assert.equal(res.value.capsSnapshot.backendCaps.cursorProtocolVersion, 2);
     assert.equal(res.value.eventCapture.batches.length, 2);
     assert.equal(res.value.eventCapture.truncation.reason, "max-events");
+  });
+
+  test("accepts legacy v1 terminalCaps without new graphics fields", () => {
+    const base = makeBundle();
+    const candidate = {
+      ...base,
+      capsSnapshot: {
+        ...base.capsSnapshot,
+        terminalCaps: {
+          colorMode: base.capsSnapshot.terminalCaps?.colorMode ?? 0,
+          supportsMouse: base.capsSnapshot.terminalCaps?.supportsMouse ?? false,
+          supportsBracketedPaste: base.capsSnapshot.terminalCaps?.supportsBracketedPaste ?? false,
+          supportsFocusEvents: base.capsSnapshot.terminalCaps?.supportsFocusEvents ?? false,
+          supportsOsc52: base.capsSnapshot.terminalCaps?.supportsOsc52 ?? false,
+          supportsSyncUpdate: base.capsSnapshot.terminalCaps?.supportsSyncUpdate ?? false,
+          supportsScrollRegion: base.capsSnapshot.terminalCaps?.supportsScrollRegion ?? false,
+          supportsCursorShape: base.capsSnapshot.terminalCaps?.supportsCursorShape ?? false,
+          supportsOutputWaitWritable:
+            base.capsSnapshot.terminalCaps?.supportsOutputWaitWritable ?? false,
+          sgrAttrsSupported: base.capsSnapshot.terminalCaps?.sgrAttrsSupported ?? 0,
+        },
+      },
+    };
+    const res = validateReproBundle(candidate);
+    assert.equal(res.ok, true);
+    if (!res.ok || !res.value.capsSnapshot.terminalCaps) return;
+    assert.equal(res.value.capsSnapshot.terminalCaps.supportsUnderlineStyles, false);
+    assert.equal(res.value.capsSnapshot.terminalCaps.supportsColoredUnderlines, false);
+    assert.equal(res.value.capsSnapshot.terminalCaps.supportsHyperlinks, false);
   });
 
   test("rejects unsupported schema version", () => {
@@ -228,6 +260,9 @@ describe("repro schema/versioning", () => {
           sgrAttrsSupported: 255,
           supportsOsc52: false,
           supportsOutputWaitWritable: false,
+          supportsUnderlineStyles: false,
+          supportsColoredUnderlines: false,
+          supportsHyperlinks: false,
           supportsBracketedPaste: true,
           supportsScrollRegion: true,
           supportsSyncUpdate: true,

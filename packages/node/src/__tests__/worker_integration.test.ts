@@ -801,6 +801,9 @@ test("backend: getCaps returns defaults before start and worker caps after start
     supportsScrollRegion: true,
     supportsCursorShape: true,
     supportsOutputWaitWritable: true,
+    supportsUnderlineStyles: false,
+    supportsColoredUnderlines: false,
+    supportsHyperlinks: false,
     sgrAttrsSupported: 0xffffffff,
   });
 

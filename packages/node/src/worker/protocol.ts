@@ -235,6 +235,9 @@ export type WorkerToMainCapsMessage = Readonly<{
   supportsScrollRegion: boolean;
   supportsCursorShape: boolean;
   supportsOutputWaitWritable: boolean;
+  supportsUnderlineStyles: boolean;
+  supportsColoredUnderlines: boolean;
+  supportsHyperlinks: boolean;
   sgrAttrsSupported: number;
 }>;
 

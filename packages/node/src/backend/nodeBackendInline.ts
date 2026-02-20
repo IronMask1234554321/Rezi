@@ -20,13 +20,14 @@ import type {
 } from "@rezi-ui/core";
 import {
   BACKEND_DRAWLIST_V2_MARKER,
+  BACKEND_DRAWLIST_VERSION_MARKER,
   BACKEND_FPS_CAP_MARKER,
   BACKEND_MAX_EVENT_BYTES_MARKER,
   DEFAULT_TERMINAL_CAPS,
 } from "@rezi-ui/core";
 import {
-  ZR_DRAWLIST_VERSION_V1,
   ZR_DRAWLIST_VERSION_V2,
+  ZR_DRAWLIST_VERSION_V5,
   ZR_ENGINE_ABI_MAJOR,
   ZR_ENGINE_ABI_MINOR,
   ZR_ENGINE_ABI_PATCH,
@@ -59,6 +60,9 @@ type NativeCaps = Readonly<{
   supportsScrollRegion: boolean;
   supportsCursorShape: boolean;
   supportsOutputWaitWritable: boolean;
+  supportsUnderlineStyles?: boolean;
+  supportsColoredUnderlines?: boolean;
+  supportsHyperlinks?: boolean;
   sgrAttrsSupported: number;
 }>;
 
@@ -165,6 +169,34 @@ function parsePositiveInt(n: unknown): number | null {
   return n;
 }
 
+function parseDrawlistVersion(v: unknown): 1 | 2 | 3 | 4 | 5 | null {
+  if (v === undefined) return null;
+  if (v === 1 || v === 2 || v === 3 || v === 4 || v === 5) return v;
+  throw new ZrUiError(
+    "ZRUI_INVALID_PROPS",
+    `createNodeBackend config mismatch: drawlistVersion must be one of 1, 2, 3, 4, 5 (got ${String(v)}).`,
+  );
+}
+
+function resolveRequestedDrawlistVersion(
+  config: Readonly<{ useDrawlistV2?: boolean; drawlistVersion?: 1 | 2 | 3 | 4 | 5 }>,
+): 1 | 2 | 3 | 4 | 5 {
+  const explicitDrawlistVersion = parseDrawlistVersion(config.drawlistVersion);
+  const useDrawlistV2 = config.useDrawlistV2 === true;
+
+  if (explicitDrawlistVersion !== null) {
+    if (useDrawlistV2 && explicitDrawlistVersion < ZR_DRAWLIST_VERSION_V2) {
+      throw new ZrUiError(
+        "ZRUI_INVALID_PROPS",
+        "createNodeBackend config mismatch: useDrawlistV2=true requires drawlistVersion >= 2.",
+      );
+    }
+    return explicitDrawlistVersion;
+  }
+
+  return useDrawlistV2 ? ZR_DRAWLIST_VERSION_V2 : ZR_DRAWLIST_VERSION_V5;
+}
+
 function readNativeTargetFpsValues(
   cfg: Readonly<Record<string, unknown>>,
 ): Readonly<{ camel: number | null; snake: number | null }> {
@@ -262,7 +294,7 @@ export function createNodeBackendInlineInternal(opts: NodeBackendInternalOpts = 
   const cfg = opts.config ?? {};
   const fpsCap = parsePositiveIntOr(cfg.fpsCap, 60);
   const maxEventBytes = parsePositiveIntOr(cfg.maxEventBytes, 1 << 20);
-  const useDrawlistV2 = cfg.useDrawlistV2 === true;
+  const requestedDrawlistVersion = resolveRequestedDrawlistVersion(cfg);
   const nativeConfig: Readonly<Record<string, unknown>> =
     typeof cfg.nativeConfig === "object" &&
     cfg.nativeConfig !== null &&
@@ -278,7 +310,7 @@ export function createNodeBackendInlineInternal(opts: NodeBackendInternalOpts = 
     requestedEngineAbiMajor: ZR_ENGINE_ABI_MAJOR,
     requestedEngineAbiMinor: ZR_ENGINE_ABI_MINOR,
     requestedEngineAbiPatch: ZR_ENGINE_ABI_PATCH,
-    requestedDrawlistVersion: useDrawlistV2 ? ZR_DRAWLIST_VERSION_V2 : ZR_DRAWLIST_VERSION_V1,
+    requestedDrawlistVersion: requestedDrawlistVersion,
     requestedEventBatchVersion: ZR_EVENT_BATCH_VERSION_V1,
   };
   let initConfigResolved: Record<string, unknown> | null = null;
@@ -763,6 +795,9 @@ export function createNodeBackendInlineInternal(opts: NodeBackendInternalOpts = 
         supportsScrollRegion: caps.supportsScrollRegion,
         supportsCursorShape: caps.supportsCursorShape,
         supportsOutputWaitWritable: caps.supportsOutputWaitWritable,
+        supportsUnderlineStyles: caps.supportsUnderlineStyles ?? false,
+        supportsColoredUnderlines: caps.supportsColoredUnderlines ?? false,
+        supportsHyperlinks: caps.supportsHyperlinks ?? false,
         sgrAttrsSupported: caps.sgrAttrsSupported,
       });
       cachedCaps = nextCaps;
@@ -903,13 +938,20 @@ export function createNodeBackendInlineInternal(opts: NodeBackendInternalOpts = 
   const out = { ...backend, debug, perf } as NodeBackend &
     Record<
       | typeof BACKEND_DRAWLIST_V2_MARKER
+      | typeof BACKEND_DRAWLIST_VERSION_MARKER
       | typeof BACKEND_MAX_EVENT_BYTES_MARKER
       | typeof BACKEND_FPS_CAP_MARKER,
       boolean | number
     >;
   Object.defineProperties(out, {
     [BACKEND_DRAWLIST_V2_MARKER]: {
-      value: useDrawlistV2,
+      value: requestedDrawlistVersion >= ZR_DRAWLIST_VERSION_V2,
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    },
+    [BACKEND_DRAWLIST_VERSION_MARKER]: {
+      value: requestedDrawlistVersion,
       writable: false,
       enumerable: false,
       configurable: false,

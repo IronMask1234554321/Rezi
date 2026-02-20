@@ -147,7 +147,7 @@ export interface DrawlistBuilderV2 extends DrawlistBuilderV1 {
 }
 
 // =============================================================================
-// Graphics Types (ZRDL v3)
+// Graphics Types (ZRDL v3+)
 // =============================================================================
 
 export type DrawlistCanvasBlitter =
@@ -165,20 +165,33 @@ export type DrawlistImageProtocol = "auto" | "kitty" | "sixel" | "iterm2" | "bli
 export type DrawlistImageFit = "fill" | "contain" | "cover";
 
 /**
- * ZRDL v3 drawlist builder interface.
+ * ZRDL v3+ drawlist builder interface.
  *
- * Extends v2 with hyperlink and graphics commands.
+ * Extends v2 with v3 style extensions and v4/v5 graphics commands.
  */
 export interface DrawlistBuilderV3 extends DrawlistBuilderV2 {
   /**
-   * Set the active terminal hyperlink.
+   * Active drawlist version for this builder (3, 4, or 5).
    *
+   * - v3: style extensions (underline color + hyperlinks)
+   * - v4: v3 + DRAW_CANVAS
+   * - v5: v4 + DRAW_IMAGE
+   */
+  readonly drawlistVersion: 3 | 4 | 5;
+
+  /**
+   * Set/clear the active hyperlink refs used for subsequent text style encoding.
+   *
+   * This is a builder-side state helper; it does not emit an explicit command.
    * Pass `uri=null` to clear the active hyperlink.
    */
   setLink(uri: string | null, id?: string): void;
 
   /**
-   * Draw a canvas RGBA blob.
+   * Draw a canvas RGBA blob (v4+).
+   *
+   * `pxWidth`/`pxHeight` are optional for backwards compatibility. When omitted,
+   * the builder derives them from destination cell size + blitter.
    */
   drawCanvas(
     x: number,
@@ -187,10 +200,15 @@ export interface DrawlistBuilderV3 extends DrawlistBuilderV2 {
     h: number,
     blobIndex: number,
     blitter: DrawlistCanvasBlitter,
+    pxWidth?: number,
+    pxHeight?: number,
   ): void;
 
   /**
-   * Draw an image blob.
+   * Draw an image blob (v5+).
+   *
+   * `pxWidth`/`pxHeight` are optional for backwards compatibility. When omitted,
+   * callers should ensure the builder can infer dimensions deterministically.
    */
   drawImage(
     x: number,
@@ -203,5 +221,7 @@ export interface DrawlistBuilderV3 extends DrawlistBuilderV2 {
     zLayer: -1 | 0 | 1,
     fit: DrawlistImageFit,
     imageId: number,
+    pxWidth?: number,
+    pxHeight?: number,
   ): void;
 }

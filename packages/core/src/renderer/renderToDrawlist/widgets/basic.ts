@@ -24,6 +24,7 @@ import {
 import {
   analyzeImageSource,
   hashImageBytes,
+  inferRgbaDimensions,
   normalizeImageFit,
   normalizeImageProtocol,
 } from "../../../widgets/image.js";
@@ -1659,6 +1660,69 @@ export function renderBasicWidget(
       const protocol = normalizeImageProtocol(readImageProtocol(props.protocol));
       const zLayer = readZLayer(props.zLayer);
       const imageId = readNonNegativeInt(props.imageId) ?? hashImageBytes(analyzed.bytes) ?? 0;
+      const dims =
+        analyzed.format === "png"
+          ? analyzed.width !== undefined && analyzed.height !== undefined
+            ? { width: analyzed.width, height: analyzed.height }
+            : null
+          : inferRgbaDimensions(analyzed.bytes.byteLength, rect.w, rect.h);
+      if (!dims) {
+        drawPlaceholderBox(
+          builder,
+          rect,
+          parentStyle,
+          "Image",
+          fallbackBody("unable to infer pixel size"),
+        );
+        break;
+      }
+
+      if (protocol === "blitter") {
+        if (builder.drawlistVersion < 4) {
+          drawPlaceholderBox(
+            builder,
+            rect,
+            parentStyle,
+            "Image",
+            fallbackBody("blitter protocol requires drawlist v4"),
+          );
+          break;
+        }
+        if (analyzed.format !== "rgba") {
+          drawPlaceholderBox(
+            builder,
+            rect,
+            parentStyle,
+            "Image",
+            fallbackBody("blitter protocol requires RGBA source"),
+          );
+          break;
+        }
+        const canvasBlobIndex = addBlobAligned(builder, analyzed.bytes);
+        if (canvasBlobIndex === null) {
+          drawPlaceholderBox(
+            builder,
+            rect,
+            parentStyle,
+            "Image",
+            fallbackBody("blob allocation failed"),
+          );
+          break;
+        }
+        const blitter = resolveCanvasBlitter("auto", true);
+        builder.drawCanvas(
+          rect.x,
+          rect.y,
+          rect.w,
+          rect.h,
+          canvasBlobIndex,
+          blitter,
+          dims.width,
+          dims.height,
+        );
+        break;
+      }
+
       const blobIndex = addBlobAligned(builder, analyzed.bytes);
       if (blobIndex === null) {
         drawPlaceholderBox(
@@ -1682,6 +1746,8 @@ export function renderBasicWidget(
         zLayer,
         fit,
         imageId >>> 0,
+        dims.width,
+        dims.height,
       );
       break;
     }

@@ -31,6 +31,7 @@ import {
   type DrawlistBuilderV3,
   createDrawlistBuilderV1,
   createDrawlistBuilderV2,
+  createDrawlistBuilderV3,
 } from "../drawlist/index.js";
 import type { ZrevEvent } from "../events.js";
 import type { VNode, ViewFn } from "../index.js";
@@ -621,6 +622,7 @@ export class WidgetRenderer<S> {
     opts: Readonly<{
       backend: RuntimeBackend;
       builder?: DrawlistBuilderV1 | DrawlistBuilderV2 | DrawlistBuilderV3;
+      drawlistVersion?: 1 | 2 | 3 | 4 | 5;
       maxDrawlistBytes?: number;
       drawlistValidateParams?: boolean;
       drawlistReuseOutputBuffer?: boolean;
@@ -663,11 +665,21 @@ export class WidgetRenderer<S> {
 
     if (opts.builder) {
       this.builder = opts.builder;
-    } else if (this.useV2Cursor) {
-      this.builder = createDrawlistBuilderV2(builderOpts);
-    } else {
-      this.builder = createDrawlistBuilderV1(builderOpts);
+      return;
     }
+    const drawlistVersion = opts.drawlistVersion ?? (this.useV2Cursor ? 2 : 1);
+    if (drawlistVersion >= 3) {
+      this.builder = createDrawlistBuilderV3({
+        ...builderOpts,
+        drawlistVersion: drawlistVersion === 3 ? 3 : drawlistVersion === 4 ? 4 : 5,
+      });
+      return;
+    }
+    if (drawlistVersion === 2 || this.useV2Cursor) {
+      this.builder = createDrawlistBuilderV2(builderOpts);
+      return;
+    }
+    this.builder = createDrawlistBuilderV1(builderOpts);
   }
 
   hasAnimatedWidgets(): boolean {

@@ -22,6 +22,11 @@ function u8(bytes: Uint8Array, off: number): number {
   return bytes[off] ?? 0;
 }
 
+function i8(bytes: Uint8Array, off: number): number {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return dv.getInt8(off);
+}
+
 function parseOpcodes(bytes: Uint8Array): readonly number[] {
   const cmdOffset = u32(bytes, 16);
   const cmdBytes = u32(bytes, 20);
@@ -71,29 +76,23 @@ function findCommandPayload(bytes: Uint8Array, opcode: number): number | null {
   return null;
 }
 
-function blobLength(bytes: Uint8Array, blobIndex: number): number {
-  const spanOffset = u32(bytes, 44);
-  const blobsCount = u32(bytes, 48);
-  assert.equal(blobIndex >= 0 && blobIndex < blobsCount, true);
-  return u32(bytes, spanOffset + blobIndex * 8 + 4);
-}
-
-function blobBytes(bytes: Uint8Array, blobIndex: number): Uint8Array {
-  const spanOffset = u32(bytes, 44);
-  const blobsCount = u32(bytes, 48);
-  const blobsBytesOffset = u32(bytes, 52);
-  const blobsBytesLen = u32(bytes, 56);
-  assert.equal(blobIndex >= 0 && blobIndex < blobsCount, true);
-  const blobOff = u32(bytes, spanOffset + blobIndex * 8);
-  const blobLen = u32(bytes, spanOffset + blobIndex * 8 + 4);
-  const start = blobsBytesOffset + blobOff;
-  const end = start + blobLen;
-  assert.equal(end <= blobsBytesOffset + blobsBytesLen, true);
-  return bytes.subarray(start, end);
-}
-
 function packRgb(r: number, g: number, b: number): number {
   return ((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff);
+}
+
+function makePngHeader(width: number, height: number): Uint8Array {
+  const out = new Uint8Array(24);
+  out.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+  out.set([0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52], 8);
+  out[16] = (width >>> 24) & 0xff;
+  out[17] = (width >>> 16) & 0xff;
+  out[18] = (width >>> 8) & 0xff;
+  out[19] = width & 0xff;
+  out[20] = (height >>> 24) & 0xff;
+  out[21] = (height >>> 16) & 0xff;
+  out[22] = (height >>> 8) & 0xff;
+  out[23] = height & 0xff;
+  return out;
 }
 
 function renderBytes(
@@ -130,13 +129,18 @@ function renderBytes(
 }
 
 describe("graphics widgets", () => {
-  test("link emits SET_LINK in v3 and degrades to text in v1", () => {
+  test("link encodes hyperlink refs in v3 and degrades to text in v1", () => {
     const vnode = ui.link({ url: "https://example.com", label: "Docs", id: "docs-link" });
     const v3 = renderBytes(vnode, () => createDrawlistBuilderV3());
     const v1 = renderBytes(vnode, () => createDrawlistBuilderV1());
-    assert.equal(parseOpcodes(v3).includes(8), true);
+    assert.equal(parseOpcodes(v3).includes(8), false);
     assert.equal(parseOpcodes(v1).includes(8), false);
     assert.equal(parseStrings(v3).includes("Docs"), true);
+    assert.equal(parseStrings(v1).includes("https://example.com"), false);
+    const v3TextPayload = findCommandPayload(v3, 3);
+    assert.equal(v3TextPayload !== null, true);
+    if (v3TextPayload === null) return;
+    assert.equal(u32(v3, v3TextPayload + 40) > 0, true);
   });
 
   test("canvas emits DRAW_CANVAS", () => {
@@ -151,7 +155,7 @@ describe("graphics widgets", () => {
       }),
       () => createDrawlistBuilderV3(),
     );
-    assert.equal(parseOpcodes(bytes).includes(9), true);
+    assert.equal(parseOpcodes(bytes).includes(8), true);
   });
 
   test("canvas text overlay preserves explicit hex color", () => {
@@ -173,7 +177,7 @@ describe("graphics widgets", () => {
     assert.equal(fg, packRgb(0xff, 0xd1, 0x66));
   });
 
-  test("canvas auto blitter resolves to braille and blob size matches subcell resolution", () => {
+  test("canvas auto blitter resolves to braille and blob span matches payload", () => {
     const width = 4;
     const height = 2;
     const bytes = renderBytes(
@@ -187,31 +191,36 @@ describe("graphics widgets", () => {
       }),
       () => createDrawlistBuilderV3(),
     );
-    const payloadOff = findCommandPayload(bytes, 9);
+    const payloadOff = findCommandPayload(bytes, 8);
     assert.equal(payloadOff !== null, true);
     if (payloadOff === null) return;
-    const blobIndex = u32(bytes, payloadOff + 16);
+    const blobOff = u32(bytes, payloadOff + 12);
+    const blobLen = u32(bytes, payloadOff + 16);
     const blitterCode = u8(bytes, payloadOff + 20);
-    assert.equal(blitterCode, 1);
-    assert.equal(blobLength(bytes, blobIndex), width * 2 * height * 4 * 4);
+    assert.equal(blitterCode, 2);
+    assert.equal(blobLen, width * 2 * height * 4 * 4);
+    const blobsBytesOffset = u32(bytes, 52);
+    const blobsBytesLen = u32(bytes, 56);
+    assert.equal(blobOff + blobLen <= blobsBytesLen, true);
+    assert.equal(blobsBytesOffset + blobOff + blobLen <= bytes.byteLength, true);
   });
 
   test("image route detects PNG format for DRAW_IMAGE", () => {
-    const pngLike = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+    const pngLike = makePngHeader(2, 1);
     const bytes = renderBytes(
       ui.image({ src: pngLike, width: 10, height: 4, fit: "contain" }),
       () => createDrawlistBuilderV3(),
     );
-    const payloadOff = findCommandPayload(bytes, 10);
+    const payloadOff = findCommandPayload(bytes, 9);
     assert.equal(payloadOff !== null, true);
     if (payloadOff !== null) {
-      const format = u8(bytes, payloadOff + 20);
+      const format = u8(bytes, payloadOff + 24);
       assert.equal(format, 1);
     }
   });
 
   test("image forwards protocol/fit/z-layer/imageId fields to DRAW_IMAGE", () => {
-    const src = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 7, 8, 9, 10]);
+    const src = makePngHeader(2, 1);
     const bytes = renderBytes(
       ui.image({
         src,
@@ -224,13 +233,14 @@ describe("graphics widgets", () => {
       }),
       () => createDrawlistBuilderV3(),
     );
-    const payloadOff = findCommandPayload(bytes, 10);
+    const payloadOff = findCommandPayload(bytes, 9);
     assert.equal(payloadOff !== null, true);
     if (payloadOff === null) return;
-    assert.equal(u8(bytes, payloadOff + 21), 2);
-    assert.equal(u8(bytes, payloadOff + 22), 2);
-    assert.equal(u8(bytes, payloadOff + 23), 0);
-    assert.equal(u32(bytes, payloadOff + 24), 0x0102_0304);
+    assert.equal(u8(bytes, payloadOff + 24), 1);
+    assert.equal(u8(bytes, payloadOff + 25), 2);
+    assert.equal(i8(bytes, payloadOff + 26), -1);
+    assert.equal(u8(bytes, payloadOff + 27), 2);
+    assert.equal(u32(bytes, payloadOff + 20), 0x0102_0304);
   });
 
   test("image defaults protocol/fit/z-layer/imageId when omitted", () => {
@@ -238,14 +248,55 @@ describe("graphics widgets", () => {
     const bytes = renderBytes(ui.image({ src, width: 10, height: 4 }), () =>
       createDrawlistBuilderV3(),
     );
-    const payloadOff = findCommandPayload(bytes, 10);
+    const payloadOff = findCommandPayload(bytes, 9);
     assert.equal(payloadOff !== null, true);
     if (payloadOff === null) return;
-    assert.equal(u8(bytes, payloadOff + 20), 0);
-    assert.equal(u8(bytes, payloadOff + 21), 0);
-    assert.equal(u8(bytes, payloadOff + 22), 1);
-    assert.equal(u8(bytes, payloadOff + 23), 1);
-    assert.equal(u32(bytes, payloadOff + 24), hashImageBytes(src));
+    assert.equal(u8(bytes, payloadOff + 24), 0);
+    assert.equal(u8(bytes, payloadOff + 25), 0);
+    assert.equal(i8(bytes, payloadOff + 26), 0);
+    assert.equal(u8(bytes, payloadOff + 27), 1);
+    assert.equal(u32(bytes, payloadOff + 20), hashImageBytes(src));
+  });
+
+  test("image protocol=blitter routes RGBA source through DRAW_CANVAS", () => {
+    const src = new Uint8Array(2 * 2 * 4).fill(255);
+    const bytes = renderBytes(
+      ui.image({
+        src,
+        width: 2,
+        height: 2,
+        protocol: "blitter",
+      }),
+      () => createDrawlistBuilderV3(),
+    );
+    assert.equal(parseOpcodes(bytes).includes(8), true);
+    assert.equal(parseOpcodes(bytes).includes(9), false);
+    const payloadOff = findCommandPayload(bytes, 8);
+    assert.equal(payloadOff !== null, true);
+    if (payloadOff === null) return;
+    assert.equal(u16(bytes, payloadOff + 8), 2);
+    assert.equal(u16(bytes, payloadOff + 10), 2);
+    assert.equal(u8(bytes, payloadOff + 20), 2);
+  });
+
+  test("image protocol=blitter degrades PNG source to placeholder", () => {
+    const src = makePngHeader(2, 1);
+    const bytes = renderBytes(
+      ui.image({
+        src,
+        width: 10,
+        height: 4,
+        protocol: "blitter",
+        alt: "Logo",
+      }),
+      () => createDrawlistBuilderV3(),
+    );
+    assert.equal(parseOpcodes(bytes).includes(8), false);
+    assert.equal(parseOpcodes(bytes).includes(9), false);
+    assert.equal(
+      parseStrings(bytes).some((value) => value.includes("Logo")),
+      true,
+    );
   });
 
   test("image degrades to placeholder on v1", () => {
@@ -277,7 +328,7 @@ describe("graphics widgets", () => {
       },
       () => createDrawlistBuilderV3(),
     );
-    assert.equal(parseOpcodes(bytes).includes(10), false);
+    assert.equal(parseOpcodes(bytes).includes(9), false);
     assert.equal(
       parseStrings(bytes).some((value) => value.includes("Broken image")),
       true,
@@ -308,7 +359,7 @@ describe("graphics widgets", () => {
       () => createDrawlistBuilderV3(),
       { cols: 40, rows: 30 },
     );
-    const canvasCount = parseOpcodes(bytes).filter((opcode) => opcode === 9).length;
+    const canvasCount = parseOpcodes(bytes).filter((opcode) => opcode === 8).length;
     assert.equal(canvasCount >= 3, true);
   });
 
@@ -327,7 +378,7 @@ describe("graphics widgets", () => {
       () => createDrawlistBuilderV3(),
       { cols: 40, rows: 12 },
     );
-    const canvasCount = parseOpcodes(bytes).filter((opcode) => opcode === 9).length;
+    const canvasCount = parseOpcodes(bytes).filter((opcode) => opcode === 8).length;
     assert.equal(canvasCount >= 2, true);
   });
 
@@ -337,11 +388,13 @@ describe("graphics widgets", () => {
       () => createDrawlistBuilderV3(),
       { cols: 10, rows: 4 },
     );
-    const payloadOff = findCommandPayload(bytes, 9);
+    const payloadOff = findCommandPayload(bytes, 8);
     assert.equal(payloadOff !== null, true);
     if (payloadOff === null) return;
-    const blobIndex = u32(bytes, payloadOff + 16);
-    const rgba = blobBytes(bytes, blobIndex);
+    const blobOff = u32(bytes, payloadOff + 12);
+    const blobLen = u32(bytes, payloadOff + 16);
+    const blobsBytesOffset = u32(bytes, 52);
+    const rgba = bytes.subarray(blobsBytesOffset + blobOff, blobsBytesOffset + blobOff + blobLen);
     const hasVisiblePixel = rgba.some((value, index) => index % 4 === 3 && value !== 0);
     assert.equal(hasVisiblePixel, true);
   });
@@ -358,9 +411,9 @@ describe("graphics widgets", () => {
       () => createDrawlistBuilderV3(),
       { cols: 20, rows: 8 },
     );
-    const payloadOff = findCommandPayload(bytes, 9);
+    const payloadOff = findCommandPayload(bytes, 8);
     assert.equal(payloadOff !== null, true);
     if (payloadOff === null) return;
-    assert.equal(u8(bytes, payloadOff + 20), 3);
+    assert.equal(u8(bytes, payloadOff + 20), 4);
   });
 });

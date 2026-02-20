@@ -13,6 +13,9 @@
         "supportsScrollRegion": false,
         "supportsCursorShape": false,
         "supportsOutputWaitWritable": false,
+        "supportsUnderlineStyles": false,
+        "supportsColoredUnderlines": false,
+        "supportsHyperlinks": false,
         "sgrAttrsSupported": 0
       },
       "expect": {
@@ -29,7 +32,7 @@
       }
     },
     {
-      "name": "OSC52 only enables hyperlinks",
+      "name": "OSC52 does not imply hyperlink support",
       "caps": {
         "colorMode": 2,
         "supportsMouse": true,
@@ -40,6 +43,9 @@
         "supportsScrollRegion": true,
         "supportsCursorShape": true,
         "supportsOutputWaitWritable": true,
+        "supportsUnderlineStyles": false,
+        "supportsColoredUnderlines": false,
+        "supportsHyperlinks": false,
         "sgrAttrsSupported": 0
       },
       "expect": {
@@ -50,7 +56,7 @@
         "supportsIterm2Images": false,
         "supportsUnderlineStyles": false,
         "supportsColoredUnderlines": false,
-        "supportsHyperlinks": true,
+        "supportsHyperlinks": false,
         "cellWidthPx": 0,
         "cellHeightPx": 0
       }
@@ -67,6 +73,9 @@
         "supportsScrollRegion": true,
         "supportsCursorShape": true,
         "supportsOutputWaitWritable": true,
+        "supportsUnderlineStyles": false,
+        "supportsColoredUnderlines": false,
+        "supportsHyperlinks": false,
         "sgrAttrsSupported": 4
       },
       "expect": {
@@ -94,7 +103,40 @@
         "supportsScrollRegion": true,
         "supportsCursorShape": true,
         "supportsOutputWaitWritable": true,
+        "supportsUnderlineStyles": false,
+        "supportsColoredUnderlines": false,
+        "supportsHyperlinks": false,
         "sgrAttrsSupported": 12
+      },
+      "expect": {
+        "id": "unknown",
+        "versionString": "",
+        "supportsKittyGraphics": false,
+        "supportsSixel": false,
+        "supportsIterm2Images": false,
+        "supportsUnderlineStyles": true,
+        "supportsColoredUnderlines": true,
+        "supportsHyperlinks": false,
+        "cellWidthPx": 0,
+        "cellHeightPx": 0
+      }
+    },
+    {
+      "name": "explicit hyperlink and underline capability flags",
+      "caps": {
+        "colorMode": 3,
+        "supportsMouse": true,
+        "supportsBracketedPaste": true,
+        "supportsFocusEvents": true,
+        "supportsOsc52": false,
+        "supportsSyncUpdate": true,
+        "supportsScrollRegion": true,
+        "supportsCursorShape": true,
+        "supportsOutputWaitWritable": true,
+        "supportsUnderlineStyles": true,
+        "supportsColoredUnderlines": true,
+        "supportsHyperlinks": true,
+        "sgrAttrsSupported": 0
       },
       "expect": {
         "id": "unknown",

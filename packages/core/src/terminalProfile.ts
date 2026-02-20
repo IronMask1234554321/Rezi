@@ -29,11 +29,27 @@ export const DEFAULT_TERMINAL_PROFILE: TerminalProfile = Object.freeze({
 const SGR_UNDERLINE = 1 << 2;
 
 export function terminalProfileFromCaps(caps: TerminalCaps): TerminalProfile {
-  const supportsUnderline = (caps.sgrAttrsSupported & SGR_UNDERLINE) !== 0;
+  const capsRecord = caps as TerminalCaps & Readonly<Record<string, unknown>>;
+  const supportsUnderlineBySgr = (caps.sgrAttrsSupported & SGR_UNDERLINE) !== 0;
+  const supportsUnderlineStyles =
+    caps.supportsUnderlineStyles === true ||
+    (typeof capsRecord.supportsUnderlineStyles === "boolean"
+      ? capsRecord.supportsUnderlineStyles
+      : false) ||
+    supportsUnderlineBySgr;
+  const supportsColoredUnderlines =
+    caps.supportsColoredUnderlines === true ||
+    (typeof capsRecord.supportsColoredUnderlines === "boolean"
+      ? capsRecord.supportsColoredUnderlines
+      : false) ||
+    supportsUnderlineStyles;
+  const supportsHyperlinks =
+    caps.supportsHyperlinks === true ||
+    (typeof capsRecord.supportsHyperlinks === "boolean" ? capsRecord.supportsHyperlinks : false);
   return Object.freeze({
     ...DEFAULT_TERMINAL_PROFILE,
-    supportsUnderlineStyles: supportsUnderline,
-    supportsColoredUnderlines: supportsUnderline,
-    supportsHyperlinks: caps.supportsOsc52,
+    supportsUnderlineStyles,
+    supportsColoredUnderlines,
+    supportsHyperlinks,
   });
 }

@@ -1,27 +1,21 @@
 /**
- * packages/core/src/drawlist/builder_v3.ts — ZRDL v3 drawlist builder implementation.
+ * packages/core/src/drawlist/builder_v3.ts — ZRDL v3/v4/v5 drawlist builder.
  *
- * Why: Extends v1 builder with SET_CURSOR command for native cursor control.
- * When the engine negotiates v2, it handles cursor display internally,
- * eliminating the need for "fake cursor" glyphs in the widget layer.
- *
- * Format changes from v1:
- *   - Header version field = 2
- *   - New opcode: ZR_DL_OP_SET_CURSOR (7)
- *
- * SET_CURSOR payload (12 bytes):
- *   - x: int32 (0-based cell; -1 = leave unchanged)
- *   - y: int32 (0-based cell; -1 = leave unchanged)
- *   - shape: u8 (0=block, 1=underline, 2=bar)
- *   - visible: u8 (0/1)
- *   - blink: u8 (0/1)
- *   - reserved0: u8 (must be 0)
+ * Why: Aligns TypeScript drawlist encoding with vendored Zireael protocol:
+ *  - v3: style extensions (underline RGB + hyperlink refs)
+ *  - v4: v3 + DRAW_CANVAS
+ *  - v5: v4 + DRAW_IMAGE
  *
  * @see docs/protocol/abi.md
  * @see docs/protocol/zrdl.md
  */
 
-import { ZRDL_MAGIC, ZR_DRAWLIST_VERSION_V3 } from "../abi.js";
+import {
+  ZRDL_MAGIC,
+  ZR_DRAWLIST_VERSION_V3,
+  ZR_DRAWLIST_VERSION_V4,
+  ZR_DRAWLIST_VERSION_V5,
+} from "../abi.js";
 import type { TextStyle } from "../index.js";
 import type {
   CursorState,
@@ -40,6 +34,7 @@ import type {
  * Builder configuration options with cap enforcement.
  */
 export type DrawlistBuilderV3Opts = Readonly<{
+  drawlistVersion?: 3 | 4 | 5;
   maxDrawlistBytes?: number;
   maxCmdCount?: number;
   maxBlobBytes?: number;
@@ -81,7 +76,7 @@ const DEFAULT_MAX_STRINGS = 10_000;
 const INT32_MIN = -2147483648;
 const INT32_MAX = 2147483647;
 
-/* --- Command Opcodes (ZRDL v1 + v2) --- */
+/* --- Command Opcodes (ZRDL v1-v5) --- */
 
 const OP_CLEAR = 1;
 const OP_FILL_RECT = 2;
@@ -90,17 +85,16 @@ const OP_PUSH_CLIP = 4;
 const OP_POP_CLIP = 5;
 const OP_DRAW_TEXT_RUN = 6;
 const OP_SET_CURSOR = 7;
-const OP_SET_LINK = 8;
-const OP_DRAW_CANVAS = 9;
-const OP_DRAW_IMAGE = 10;
+const OP_DRAW_CANVAS = 8;
+const OP_DRAW_IMAGE = 9;
 
 const BLITTER_CODE: Readonly<Record<DrawlistCanvasBlitter, number>> = Object.freeze({
   auto: 0,
-  braille: 1,
-  sextant: 2,
-  quadrant: 3,
-  halfblock: 4,
-  ascii: 5,
+  braille: 2,
+  sextant: 3,
+  quadrant: 4,
+  halfblock: 5,
+  ascii: 6,
 });
 
 const IMAGE_FORMAT_CODE: Readonly<Record<DrawlistImageFormat, number>> = Object.freeze({
@@ -108,13 +102,13 @@ const IMAGE_FORMAT_CODE: Readonly<Record<DrawlistImageFormat, number>> = Object.
   png: 1,
 });
 
-const IMAGE_PROTOCOL_CODE: Readonly<Record<DrawlistImageProtocol, number>> = Object.freeze({
-  auto: 0,
-  kitty: 1,
-  sixel: 2,
-  iterm2: 3,
-  blitter: 4,
-});
+const IMAGE_PROTOCOL_CODE: Readonly<Record<Exclude<DrawlistImageProtocol, "blitter">, number>> =
+  Object.freeze({
+    auto: 0,
+    kitty: 1,
+    sixel: 2,
+    iterm2: 3,
+  });
 
 const IMAGE_FIT_CODE: Readonly<Record<DrawlistImageFit, number>> = Object.freeze({
   fill: 0,
@@ -122,8 +116,30 @@ const IMAGE_FIT_CODE: Readonly<Record<DrawlistImageFit, number>> = Object.freeze
   cover: 2,
 });
 
-type EncodedStyle = Readonly<{ fg: number; bg: number; attrs: number; ext: number }>;
+type EncodedStyle = Readonly<{
+  fg: number;
+  bg: number;
+  attrs: number;
+  reserved: number;
+  underlineRgb: number;
+  linkUriRef: number;
+  linkIdRef: number;
+}>;
 type Utf8Encoder = Readonly<{ encode(input: string): Uint8Array }>;
+type LinkRefs = Readonly<{ uriRef: number; idRef: number }>;
+type CanvasPixelSize = Readonly<{ pxWidth: number; pxHeight: number }>;
+
+const MAX_U16 = 0xffff;
+
+const BLITTER_SUBCELL_RESOLUTION: Readonly<
+  Record<Exclude<DrawlistCanvasBlitter, "auto">, Readonly<{ subW: number; subH: number }>>
+> = Object.freeze({
+  braille: Object.freeze({ subW: 2, subH: 4 }),
+  sextant: Object.freeze({ subW: 2, subH: 3 }),
+  quadrant: Object.freeze({ subW: 2, subH: 2 }),
+  halfblock: Object.freeze({ subW: 1, subH: 2 }),
+  ascii: Object.freeze({ subW: 1, subH: 1 }),
+});
 
 function align4(n: number): number {
   return (n + 3) & ~3;
@@ -143,15 +159,15 @@ function isTextRunSegment(v: unknown): v is DrawlistTextRunSegment {
   return true;
 }
 
-function packRgb(v: unknown): number {
+function packRgb(v: unknown): number | null {
   if (typeof v === "string") {
     const raw = v.startsWith("#") ? v.slice(1) : v;
     if (/^[0-9a-fA-F]{6}$/.test(raw)) {
-      return Number.parseInt(raw, 16) & 0xff_ff_ff;
+      return Number.parseInt(raw, 16) & 0x00ff_ff_ff;
     }
-    return 0;
+    return null;
   }
-  if (!isRgbLike(v)) return 0;
+  if (!isRgbLike(v)) return null;
   const r0 = v.r;
   const g0 = v.g;
   const b0 = v.b;
@@ -178,14 +194,23 @@ function encodeUnderlineStyle(style: TextStyle["underlineStyle"] | undefined): n
   }
 }
 
-function encodeStyle(style: TextStyle | undefined): EncodedStyle {
-  if (!style) return { fg: 0, bg: 0, attrs: 0, ext: 0 };
+function encodeStyle(style: TextStyle | undefined, linkRefs: LinkRefs | null): EncodedStyle {
+  if (!style) {
+    return {
+      fg: 0,
+      bg: 0,
+      attrs: 0,
+      reserved: 0,
+      underlineRgb: 0,
+      linkUriRef: linkRefs?.uriRef ?? 0,
+      linkIdRef: linkRefs?.idRef ?? 0,
+    };
+  }
 
-  const fg = packRgb(style.fg);
-  const bg = packRgb(style.bg);
-  const underlineColor = packRgb(style.underlineColor);
+  const fg = packRgb(style.fg) ?? 0;
+  const bg = packRgb(style.bg) ?? 0;
+  const underlineColor = packRgb(style.underlineColor) ?? 0;
   const underlineStyle = encodeUnderlineStyle(style.underlineStyle);
-  const hasUnderlineColor = style.underlineColor !== undefined;
 
   let attrs = 0;
   if (style.bold) attrs |= 1 << 0;
@@ -197,8 +222,36 @@ function encodeStyle(style: TextStyle | undefined): EncodedStyle {
   if (style.overline) attrs |= 1 << 6;
   if (style.blink) attrs |= 1 << 7;
 
-  const ext = (underlineStyle & 0x7) | ((hasUnderlineColor ? 1 : 0) << 3) | (underlineColor << 8);
-  return { fg, bg, attrs, ext };
+  return {
+    fg,
+    bg,
+    attrs,
+    reserved: underlineStyle & 0x7,
+    underlineRgb: underlineColor,
+    linkUriRef: linkRefs?.uriRef ?? 0,
+    linkIdRef: linkRefs?.idRef ?? 0,
+  };
+}
+
+function deriveCanvasPxFromBlitter(
+  cols: number,
+  rows: number,
+  blitter: DrawlistCanvasBlitter,
+): CanvasPixelSize | null {
+  if (blitter === "auto") return null;
+  const res = BLITTER_SUBCELL_RESOLUTION[blitter];
+  if (!res) return null;
+  return Object.freeze({ pxWidth: cols * res.subW, pxHeight: rows * res.subH });
+}
+
+function inferAutoCanvasPx(blobLen: number, cols: number): CanvasPixelSize | null {
+  if (blobLen <= 0 || (blobLen & 3) !== 0) return null;
+  const pixels = blobLen >>> 2;
+  const pxWidth = cols > 0 ? cols : 1;
+  if (pxWidth <= 0 || pixels % pxWidth !== 0) return null;
+  const pxHeight = pixels / pxWidth;
+  if (pxHeight <= 0) return null;
+  return Object.freeze({ pxWidth, pxHeight });
 }
 
 /**
@@ -216,6 +269,7 @@ export function createDrawlistBuilderV3(opts: DrawlistBuilderV3Opts = {}): Drawl
  * Extends v1 logic with SET_CURSOR command and v2 header.
  */
 class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
+  readonly drawlistVersion: 3 | 4 | 5;
   private readonly maxDrawlistBytes: number;
   private readonly maxCmdCount: number;
   private readonly maxBlobBytes: number;
@@ -246,10 +300,13 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
 
   private outBuf: Uint8Array | null = null;
   private readonly encodedStringCache: Map<string, Uint8Array> | null;
+  private activeLinkUriRef = 0;
+  private activeLinkIdRef = 0;
 
   private error: DrawlistBuildError | undefined;
 
   constructor(opts: DrawlistBuilderV3Opts) {
+    const drawlistVersion = opts.drawlistVersion ?? ZR_DRAWLIST_VERSION_V5;
     const maxDrawlistBytes = opts.maxDrawlistBytes ?? DEFAULT_MAX_DRAWLIST_BYTES;
     const maxCmdCount = opts.maxCmdCount ?? DEFAULT_MAX_CMD_COUNT;
     const maxBlobBytes = opts.maxBlobBytes ?? DEFAULT_MAX_BLOB_BYTES;
@@ -260,6 +317,23 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
     const reuseOutputBuffer = opts.reuseOutputBuffer === true;
     const encodedStringCacheCap = opts.encodedStringCacheCap ?? 0;
 
+    if (
+      drawlistVersion !== ZR_DRAWLIST_VERSION_V3 &&
+      drawlistVersion !== ZR_DRAWLIST_VERSION_V4 &&
+      drawlistVersion !== ZR_DRAWLIST_VERSION_V5
+    ) {
+      this.fail(
+        "ZRDL_BAD_PARAMS",
+        `DrawlistBuilderV3: drawlistVersion must be 3, 4, or 5 (got ${String(drawlistVersion)})`,
+      );
+    }
+    this.drawlistVersion = (
+      drawlistVersion === ZR_DRAWLIST_VERSION_V3
+        ? ZR_DRAWLIST_VERSION_V3
+        : drawlistVersion === ZR_DRAWLIST_VERSION_V4
+          ? ZR_DRAWLIST_VERSION_V4
+          : ZR_DRAWLIST_VERSION_V5
+    ) as 3 | 4 | 5;
     this.maxDrawlistBytes = this.requirePositiveInt("maxDrawlistBytes", maxDrawlistBytes);
     this.maxCmdCount = this.requirePositiveInt("maxCmdCount", maxCmdCount);
     this.maxBlobBytes = this.requirePositiveInt("maxBlobBytes", maxBlobBytes);
@@ -328,11 +402,14 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
   setLink(uri: string | null, id?: string): void {
     if (this.error) return;
 
-    let uriIndex = 0xffff_ffff;
-    let idIndex = 0xffff_ffff;
-
     if (id !== undefined && typeof id !== "string") {
       this.fail("ZRDL_BAD_PARAMS", "setLink: id must be a string when provided");
+      return;
+    }
+
+    if (uri === null) {
+      this.activeLinkUriRef = 0;
+      this.activeLinkIdRef = 0;
       return;
     }
 
@@ -343,23 +420,16 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
       }
       const idx = this.internString(uri);
       if (this.error || idx === null) return;
-      uriIndex = idx >>> 0;
+      this.activeLinkUriRef = (idx + 1) >>> 0;
 
       if (id !== undefined) {
         const idIdx = this.internString(id);
         if (this.error || idIdx === null) return;
-        idIndex = idIdx >>> 0;
+        this.activeLinkIdRef = (idIdx + 1) >>> 0;
+      } else {
+        this.activeLinkIdRef = 0;
       }
     }
-
-    // Command size: 8 (header) + 12 (payload) = 20
-    this.writeCommandHeader(OP_SET_LINK, 20);
-    this.writeU32(uriIndex);
-    this.writeU32(idIndex);
-    this.writeU32(0); // reserved0
-    this.padCmdTo4();
-
-    this.maybeFailTooLargeAfterWrite();
   }
 
   drawCanvas(
@@ -369,13 +439,22 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
     h: number,
     blobIndex: number,
     blitter: DrawlistCanvasBlitter,
+    pxWidth?: number,
+    pxHeight?: number,
   ): void {
     if (this.error) return;
+    if (this.drawlistVersion < ZR_DRAWLIST_VERSION_V4) {
+      this.fail(
+        "ZRDL_BAD_PARAMS",
+        `drawCanvas: requires drawlist version >= 4 (current=${this.drawlistVersion})`,
+      );
+      return;
+    }
 
-    const xi = this.validateParams ? this.requireI32("drawCanvas", "x", x) : x | 0;
-    const yi = this.validateParams ? this.requireI32("drawCanvas", "y", y) : y | 0;
-    const wi = this.validateParams ? this.requireI32NonNeg("drawCanvas", "w", w) : w | 0;
-    const hi = this.validateParams ? this.requireI32NonNeg("drawCanvas", "h", h) : h | 0;
+    const xi = this.validateParams ? this.requireI32NonNeg("drawCanvas", "x", x) : x | 0;
+    const yi = this.validateParams ? this.requireI32NonNeg("drawCanvas", "y", y) : y | 0;
+    const wi = this.validateParams ? this.requireI32Positive("drawCanvas", "w", w) : w | 0;
+    const hi = this.validateParams ? this.requireI32Positive("drawCanvas", "h", h) : h | 0;
     const bi = this.validateParams
       ? this.requireU32("drawCanvas", "blobIndex", blobIndex)
       : blobIndex >>> 0;
@@ -396,17 +475,75 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
       return;
     }
 
-    // Command size: 8 (header) + 28 (payload) = 36
-    this.writeCommandHeader(OP_DRAW_CANVAS, 36);
-    this.writeI32(xi);
-    this.writeI32(yi);
-    this.writeI32(wi);
-    this.writeI32(hi);
-    this.writeU32(bi);
+    const blobOff = this.blobSpanOffs[bi];
+    const blobLen = this.blobSpanLens[bi];
+    if (blobOff === undefined || blobLen === undefined) {
+      this.fail("ZRDL_INTERNAL", "drawCanvas: blob span table is inconsistent");
+      return;
+    }
+
+    let resolvedPxW: number | null = null;
+    let resolvedPxH: number | null = null;
+    if (pxWidth !== undefined || pxHeight !== undefined) {
+      const pxWi = this.validateParams
+        ? this.requireI32Positive("drawCanvas", "pxWidth", pxWidth)
+        : (pxWidth ?? 0) | 0;
+      const pxHi = this.validateParams
+        ? this.requireI32Positive("drawCanvas", "pxHeight", pxHeight)
+        : (pxHeight ?? 0) | 0;
+      if (this.error) return;
+      if (pxWi === null || pxHi === null) return;
+      resolvedPxW = pxWi;
+      resolvedPxH = pxHi;
+    } else {
+      const derived = deriveCanvasPxFromBlitter(wi, hi, blitter) ?? inferAutoCanvasPx(blobLen, wi);
+      if (!derived) {
+        this.fail(
+          "ZRDL_BAD_PARAMS",
+          "drawCanvas: unable to infer pxWidth/pxHeight; pass explicit pixel dimensions",
+        );
+        return;
+      }
+      resolvedPxW = derived.pxWidth;
+      resolvedPxH = derived.pxHeight;
+    }
+
+    if (
+      resolvedPxW <= 0 ||
+      resolvedPxH <= 0 ||
+      resolvedPxW > MAX_U16 ||
+      resolvedPxH > MAX_U16 ||
+      wi > MAX_U16 ||
+      hi > MAX_U16 ||
+      xi > MAX_U16 ||
+      yi > MAX_U16
+    ) {
+      this.fail("ZRDL_BAD_PARAMS", "drawCanvas: dst/px dimensions must be in range 1..65535");
+      return;
+    }
+
+    const expectedBlobLen = resolvedPxW * resolvedPxH * 4;
+    if (expectedBlobLen !== blobLen) {
+      this.fail(
+        "ZRDL_BAD_PARAMS",
+        `drawCanvas: blob length mismatch (expected=${expectedBlobLen}, got=${blobLen})`,
+      );
+      return;
+    }
+
+    // Command size: 8 (header) + 24 (payload) = 32
+    this.writeCommandHeader(OP_DRAW_CANVAS, 32);
+    this.writeU16(xi);
+    this.writeU16(yi);
+    this.writeU16(wi);
+    this.writeU16(hi);
+    this.writeU16(resolvedPxW);
+    this.writeU16(resolvedPxH);
+    this.writeU32(blobOff);
+    this.writeU32(blobLen);
     this.writeU8(blitterCode);
     this.writeU8(0);
     this.writeU16(0);
-    this.writeU32(0); // reserved0
     this.padCmdTo4();
 
     this.maybeFailTooLargeAfterWrite();
@@ -423,13 +560,22 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
     zLayer: -1 | 0 | 1,
     fit: DrawlistImageFit,
     imageId: number,
+    pxWidth?: number,
+    pxHeight?: number,
   ): void {
     if (this.error) return;
+    if (this.drawlistVersion < ZR_DRAWLIST_VERSION_V5) {
+      this.fail(
+        "ZRDL_BAD_PARAMS",
+        `drawImage: requires drawlist version >= 5 (current=${this.drawlistVersion})`,
+      );
+      return;
+    }
 
-    const xi = this.validateParams ? this.requireI32("drawImage", "x", x) : x | 0;
-    const yi = this.validateParams ? this.requireI32("drawImage", "y", y) : y | 0;
-    const wi = this.validateParams ? this.requireI32NonNeg("drawImage", "w", w) : w | 0;
-    const hi = this.validateParams ? this.requireI32NonNeg("drawImage", "h", h) : h | 0;
+    const xi = this.validateParams ? this.requireI32NonNeg("drawImage", "x", x) : x | 0;
+    const yi = this.validateParams ? this.requireI32NonNeg("drawImage", "y", y) : y | 0;
+    const wi = this.validateParams ? this.requireI32Positive("drawImage", "w", w) : w | 0;
+    const hi = this.validateParams ? this.requireI32Positive("drawImage", "h", h) : h | 0;
     const bi = this.validateParams
       ? this.requireU32("drawImage", "blobIndex", blobIndex)
       : blobIndex >>> 0;
@@ -456,6 +602,13 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
     }
 
     const formatCode = IMAGE_FORMAT_CODE[format];
+    if (protocol === "blitter") {
+      this.fail(
+        "ZRDL_BAD_PARAMS",
+        'drawImage: protocol "blitter" is not encoded in DRAW_IMAGE; use drawCanvas with RGBA bytes',
+      );
+      return;
+    }
     const protocolCode = IMAGE_PROTOCOL_CODE[protocol];
     const fitCode = IMAGE_FIT_CODE[fit];
     if (formatCode === undefined || protocolCode === undefined || fitCode === undefined) {
@@ -468,21 +621,99 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
       this.fail("ZRDL_BAD_PARAMS", `drawImage: zLayer must be -1, 0, or 1 (got ${String(zLayer)})`);
       return;
     }
-    const zLayerCode = zLayerRaw + 1;
+    const blobOff = this.blobSpanOffs[bi];
+    const blobLen = this.blobSpanLens[bi];
+    if (blobOff === undefined || blobLen === undefined) {
+      this.fail("ZRDL_INTERNAL", "drawImage: blob span table is inconsistent");
+      return;
+    }
+
+    let resolvedPxW: number | null = null;
+    let resolvedPxH: number | null = null;
+    if (pxWidth !== undefined || pxHeight !== undefined) {
+      const pxWi = this.validateParams
+        ? this.requireI32Positive("drawImage", "pxWidth", pxWidth)
+        : (pxWidth ?? 0) | 0;
+      const pxHi = this.validateParams
+        ? this.requireI32Positive("drawImage", "pxHeight", pxHeight)
+        : (pxHeight ?? 0) | 0;
+      if (this.error) return;
+      if (pxWi === null || pxHi === null) return;
+      resolvedPxW = pxWi;
+      resolvedPxH = pxHi;
+    } else if (format === "rgba") {
+      const pixels = blobLen >>> 2;
+      if ((blobLen & 3) !== 0 || pixels === 0) {
+        this.fail("ZRDL_BAD_PARAMS", "drawImage: RGBA blobs must be width*height*4 bytes");
+        return;
+      }
+      if (wi > 0 && pixels % wi === 0) {
+        resolvedPxW = wi;
+        resolvedPxH = pixels / wi;
+      } else if (hi > 0 && pixels % hi === 0) {
+        resolvedPxW = pixels / hi;
+        resolvedPxH = hi;
+      } else {
+        this.fail(
+          "ZRDL_BAD_PARAMS",
+          "drawImage: unable to infer RGBA dimensions; pass explicit pxWidth/pxHeight",
+        );
+        return;
+      }
+    } else {
+      this.fail(
+        "ZRDL_BAD_PARAMS",
+        "drawImage: PNG format requires explicit pxWidth/pxHeight in draw command",
+      );
+      return;
+    }
+
+    if (
+      resolvedPxW <= 0 ||
+      resolvedPxH <= 0 ||
+      resolvedPxW > MAX_U16 ||
+      resolvedPxH > MAX_U16 ||
+      wi > MAX_U16 ||
+      hi > MAX_U16 ||
+      xi > MAX_U16 ||
+      yi > MAX_U16
+    ) {
+      this.fail("ZRDL_BAD_PARAMS", "drawImage: dst/px dimensions must be in range 1..65535");
+      return;
+    }
+
+    if (format === "rgba") {
+      const expectedBlobLen = resolvedPxW * resolvedPxH * 4;
+      if (expectedBlobLen !== blobLen) {
+        this.fail(
+          "ZRDL_BAD_PARAMS",
+          `drawImage: RGBA blob length mismatch (expected=${expectedBlobLen}, got=${blobLen})`,
+        );
+        return;
+      }
+    } else if (blobLen <= 0) {
+      this.fail("ZRDL_BAD_PARAMS", "drawImage: PNG blob must be non-empty");
+      return;
+    }
 
     // Command size: 8 (header) + 32 (payload) = 40
     this.writeCommandHeader(OP_DRAW_IMAGE, 40);
-    this.writeI32(xi);
-    this.writeI32(yi);
-    this.writeI32(wi);
-    this.writeI32(hi);
-    this.writeU32(bi);
+    this.writeU16(xi);
+    this.writeU16(yi);
+    this.writeU16(wi);
+    this.writeU16(hi);
+    this.writeU16(resolvedPxW);
+    this.writeU16(resolvedPxH);
+    this.writeU32(blobOff);
+    this.writeU32(blobLen);
+    this.writeU32(imageIdU32);
     this.writeU8(formatCode);
     this.writeU8(protocolCode);
+    this.writeI8(zLayerRaw);
     this.writeU8(fitCode);
-    this.writeU8(zLayerCode & 0xff);
-    this.writeU32(imageIdU32);
-    this.writeU32(0); // reserved0
+    this.writeU8(0);
+    this.writeU8(0);
+    this.writeU16(0);
     this.padCmdTo4();
 
     this.maybeFailTooLargeAfterWrite();
@@ -523,9 +754,9 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
     const w0 = wi < 0 ? 0 : wi;
     const h0 = hi < 0 ? 0 : hi;
 
-    const s = encodeStyle(style);
+    const s = encodeStyle(style, null);
 
-    this.writeCommandHeader(OP_FILL_RECT, 8 + 32);
+    this.writeCommandHeader(OP_FILL_RECT, 8 + 44);
     this.writeI32(xi);
     this.writeI32(yi);
     this.writeI32(w0);
@@ -559,9 +790,9 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
       return;
     }
 
-    const s = encodeStyle(style);
+    const s = encodeStyle(style, this.currentLinkRefs());
 
-    this.writeCommandHeader(OP_DRAW_TEXT, 8 + 40);
+    this.writeCommandHeader(OP_DRAW_TEXT, 8 + 52);
     this.writeI32(xi);
     this.writeI32(yi);
     this.writeU32(stringIndex);
@@ -671,7 +902,7 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
       return null;
     }
 
-    const blobLen = 4 + segments.length * 28;
+    const blobLen = 4 + segments.length * 40;
     const blob = new Uint8Array(blobLen);
     const dv = new DataView(blob.buffer, blob.byteOffset, blob.byteLength);
     dv.setUint32(0, segments.length >>> 0, true);
@@ -696,15 +927,18 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
         return null;
       }
 
-      const s = encodeStyle(seg0.style);
+      const s = encodeStyle(seg0.style, this.currentLinkRefs());
       dv.setUint32(off + 0, s.fg >>> 0, true);
       dv.setUint32(off + 4, s.bg >>> 0, true);
       dv.setUint32(off + 8, s.attrs >>> 0, true);
-      dv.setUint32(off + 12, s.ext >>> 0, true);
-      dv.setUint32(off + 16, stringIndex >>> 0, true);
-      dv.setUint32(off + 20, 0, true);
-      dv.setUint32(off + 24, byteLen >>> 0, true);
-      off += 28;
+      dv.setUint32(off + 12, s.reserved >>> 0, true);
+      dv.setUint32(off + 16, s.underlineRgb >>> 0, true);
+      dv.setUint32(off + 20, s.linkUriRef >>> 0, true);
+      dv.setUint32(off + 24, s.linkIdRef >>> 0, true);
+      dv.setUint32(off + 28, stringIndex >>> 0, true);
+      dv.setUint32(off + 32, 0, true);
+      dv.setUint32(off + 36, byteLen >>> 0, true);
+      off += 40;
     }
 
     return this.addBlob(blob);
@@ -818,9 +1052,9 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
     const out = this.reuseOutputBuffer ? outBuf.subarray(0, totalSize) : outBuf;
     const dv = new DataView(out.buffer, out.byteOffset, out.byteLength);
 
-    // Header (64 bytes) — version = 3
+    // Header (64 bytes) — version = 3/4/5
     dv.setUint32(0, ZRDL_MAGIC, true);
-    dv.setUint32(4, ZR_DRAWLIST_VERSION_V3, true); // v3
+    dv.setUint32(4, this.drawlistVersion, true);
     dv.setUint32(8, HEADER_SIZE, true);
     dv.setUint32(12, totalSize, true);
     dv.setUint32(16, cmdOffset, true);
@@ -906,6 +1140,8 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
     this.blobSpanOffs.length = 0;
     this.blobSpanLens.length = 0;
     this.blobBytesLen = 0;
+    this.activeLinkUriRef = 0;
+    this.activeLinkIdRef = 0;
   }
 
   // =========================================================================
@@ -970,12 +1206,34 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
     return iv;
   }
 
+  private requireI32Positive(method: string, name: string, v: number | undefined): number | null {
+    if (v === undefined) {
+      this.fail("ZRDL_BAD_PARAMS", `${method}: ${name} is required`);
+      return null;
+    }
+    const iv = this.requireI32(method, name, v);
+    if (iv === null) return null;
+    if (iv <= 0) {
+      this.fail("ZRDL_BAD_PARAMS", `${method}: ${name} must be > 0 (got ${String(v)})`);
+      return null;
+    }
+    return iv;
+  }
+
   private requireU32(method: string, name: string, v: number): number | null {
     if (!Number.isFinite(v) || !Number.isInteger(v) || v < 0 || v > 0xffff_ffff) {
       this.fail("ZRDL_BAD_PARAMS", `${method}: ${name} must be a u32 (got ${String(v)})`);
       return null;
     }
     return v >>> 0;
+  }
+
+  private currentLinkRefs(): LinkRefs | null {
+    if (this.activeLinkUriRef === 0) return null;
+    return Object.freeze({
+      uriRef: this.activeLinkUriRef >>> 0,
+      idRef: this.activeLinkIdRef >>> 0,
+    });
   }
 
   private fail(code: DrawlistBuildErrorCode, detail: string): void {
@@ -1178,13 +1436,14 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
   }
 
   private expectedCmdSize(opcode: number): number {
+    const styleBytes = 28;
     switch (opcode) {
       case OP_CLEAR:
         return 8;
       case OP_FILL_RECT:
-        return 8 + 32;
+        return 8 + 16 + styleBytes;
       case OP_DRAW_TEXT:
-        return 8 + 40;
+        return 8 + 20 + styleBytes + 4;
       case OP_PUSH_CLIP:
         return 8 + 16;
       case OP_POP_CLIP:
@@ -1192,13 +1451,11 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
       case OP_DRAW_TEXT_RUN:
         return 8 + 16;
       case OP_SET_CURSOR:
-        return 8 + 12; // 8 header + 12 payload (x, y, shape, visible, blink, reserved)
-      case OP_SET_LINK:
         return 8 + 12;
       case OP_DRAW_CANVAS:
-        return 8 + 28;
+        return this.drawlistVersion >= ZR_DRAWLIST_VERSION_V4 ? 8 + 24 : -1;
       case OP_DRAW_IMAGE:
-        return 8 + 32;
+        return this.drawlistVersion >= ZR_DRAWLIST_VERSION_V5 ? 8 + 32 : -1;
       default:
         return -1;
     }
@@ -1222,6 +1479,12 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
     this.cmdLen = off + 1;
   }
 
+  private writeI8(v: number): void {
+    const off = this.cmdLen;
+    this.cmdDv.setInt8(off, v | 0);
+    this.cmdLen = off + 1;
+  }
+
   private writeU16(v: number): void {
     const off = this.cmdLen;
     this.cmdDv.setUint16(off, v & 0xffff, true);
@@ -1232,7 +1495,10 @@ class DrawlistBuilderV3Impl implements DrawlistBuilderV3 {
     this.writeU32(s.fg);
     this.writeU32(s.bg);
     this.writeU32(s.attrs);
-    this.writeU32(s.ext);
+    this.writeU32(s.reserved);
+    this.writeU32(s.underlineRgb);
+    this.writeU32(s.linkUriRef);
+    this.writeU32(s.linkIdRef);
   }
 
   private padCmdTo4(): void {

@@ -7,9 +7,8 @@ import { createInstanceIdAllocator } from "../../runtime/instance.js";
 
 const OP_DRAW_TEXT = 3;
 const OP_DRAW_TEXT_RUN = 6;
-const OP_SET_LINK = 8;
-const OP_DRAW_CANVAS = 9;
-const OP_DRAW_IMAGE = 10;
+const OP_DRAW_CANVAS = 8;
+const OP_DRAW_IMAGE = 9;
 
 function u16(bytes: Uint8Array, off: number): number {
   const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -50,20 +49,36 @@ function findCommandPayload(bytes: Uint8Array, opcode: number): number | null {
   return null;
 }
 
-function decodeStyleExt(ext: number): Readonly<{
+function decodeStyleV3(
+  reserved: number,
+  underlineColorRgb: number,
+): Readonly<{
   underlineStyle: number;
-  hasUnderlineColor: boolean;
   underlineColorRgb: number;
 }> {
   return Object.freeze({
-    underlineStyle: ext & 0x7,
-    hasUnderlineColor: ((ext >> 3) & 0x1) === 1,
-    underlineColorRgb: (ext >> 8) & 0x00ff_ffff,
+    underlineStyle: reserved & 0x7,
+    underlineColorRgb,
   });
 }
 
 function packRgb(r: number, g: number, b: number): number {
   return ((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff);
+}
+
+function makePngHeader(width: number, height: number): Uint8Array {
+  const out = new Uint8Array(24);
+  out.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+  out.set([0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52], 8);
+  out[16] = (width >>> 24) & 0xff;
+  out[17] = (width >>> 16) & 0xff;
+  out[18] = (width >>> 8) & 0xff;
+  out[19] = width & 0xff;
+  out[20] = (height >>> 24) & 0xff;
+  out[21] = (height >>> 16) & 0xff;
+  out[22] = (height >>> 8) & 0xff;
+  out[23] = height & 0xff;
+  return out;
 }
 
 function renderBytes(
@@ -117,7 +132,11 @@ describe("graphics/widgets/style (locked) - zrdl-v3 golden fixtures", () => {
       { cols: 80, rows: 8 },
     );
     assertBytesEqual(actual, expected, "link_docs.bin");
-    assert.equal(parseOpcodes(actual).includes(OP_SET_LINK), true);
+    const payloadOff = findCommandPayload(actual, OP_DRAW_TEXT);
+    assert.equal(payloadOff !== null, true);
+    if (payloadOff === null) return;
+    assert.equal(u32(actual, payloadOff + 40) > 0, true);
+    assert.equal(u32(actual, payloadOff + 44) > 0, true);
   });
 
   test("canvas_primitives.bin", async () => {
@@ -149,10 +168,7 @@ describe("graphics/widgets/style (locked) - zrdl-v3 golden fixtures", () => {
     const expected = await load("image_png_contain.bin");
     const actual = renderBytes(
       ui.image({
-        src: new Uint8Array([
-          0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
-          0x52,
-        ]),
+        src: makePngHeader(2, 1),
         width: 12,
         height: 5,
         fit: "contain",
@@ -310,18 +326,18 @@ describe("graphics/widgets/style (locked) - zrdl-v3 golden fixtures", () => {
     const blobsSpanOffset = u32(actual, 44);
     const blobsBytesOffset = u32(actual, 52);
     const blobByteOff = u32(actual, blobsSpanOffset + blobIndex * 8);
-    const firstSegmentExt = u32(actual, blobsBytesOffset + blobByteOff + 4 + 12);
-    const thirdSegmentExt = u32(actual, blobsBytesOffset + blobByteOff + 4 + 12 + 28 * 2);
-    const firstDecoded = decodeStyleExt(firstSegmentExt);
-    const thirdDecoded = decodeStyleExt(thirdSegmentExt);
+    const firstSegmentReserved = u32(actual, blobsBytesOffset + blobByteOff + 4 + 12);
+    const firstSegmentUnderlineRgb = u32(actual, blobsBytesOffset + blobByteOff + 4 + 16);
+    const thirdSegmentReserved = u32(actual, blobsBytesOffset + blobByteOff + 4 + 12 + 40 * 2);
+    const thirdSegmentUnderlineRgb = u32(actual, blobsBytesOffset + blobByteOff + 4 + 16 + 40 * 2);
+    const firstDecoded = decodeStyleV3(firstSegmentReserved, firstSegmentUnderlineRgb);
+    const thirdDecoded = decodeStyleV3(thirdSegmentReserved, thirdSegmentUnderlineRgb);
     assert.deepEqual(firstDecoded, {
       underlineStyle: 3,
-      hasUnderlineColor: true,
       underlineColorRgb: 0xff3366,
     });
     assert.deepEqual(thirdDecoded, {
       underlineStyle: 5,
-      hasUnderlineColor: true,
       underlineColorRgb: 0x00aaff,
     });
   });

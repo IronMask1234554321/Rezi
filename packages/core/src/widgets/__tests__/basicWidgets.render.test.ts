@@ -71,7 +71,10 @@ type DrawTextCommand = Readonly<{
   fg: number;
   bg: number;
   attrs: number;
-  ext: number;
+  underlineStyle: number;
+  underlineColorRgb: number;
+  linkUriRef: number;
+  linkIdRef: number;
 }>;
 
 function parseDrawTextCommands(bytes: Uint8Array): readonly DrawTextCommand[] {
@@ -87,12 +90,17 @@ function parseDrawTextCommands(bytes: Uint8Array): readonly DrawTextCommand[] {
     const size = u32(bytes, off + 4);
     if (opcode === 3 && size >= 48) {
       const stringIndex = u32(bytes, off + 16);
+      const isV3 = size >= 60;
+      const reserved = u32(bytes, off + 40);
       out.push({
         text: strings[stringIndex] ?? "",
         fg: u32(bytes, off + 28),
         bg: u32(bytes, off + 32),
         attrs: u32(bytes, off + 36),
-        ext: u32(bytes, off + 40),
+        underlineStyle: reserved & 0x7,
+        underlineColorRgb: isV3 ? u32(bytes, off + 44) : 0,
+        linkUriRef: isV3 ? u32(bytes, off + 48) : 0,
+        linkIdRef: isV3 ? u32(bytes, off + 52) : 0,
       });
     }
     off += size;
@@ -102,18 +110,6 @@ function parseDrawTextCommands(bytes: Uint8Array): readonly DrawTextCommand[] {
 
 function packRgb(color: Readonly<{ r: number; g: number; b: number }>): number {
   return ((color.r & 0xff) << 16) | ((color.g & 0xff) << 8) | (color.b & 0xff);
-}
-
-function decodeUnderlineExt(ext: number): Readonly<{
-  underlineStyle: number;
-  hasUnderlineColor: number;
-  underlineColorRgb: number;
-}> {
-  return Object.freeze({
-    underlineStyle: ext & 0x7,
-    hasUnderlineColor: (ext >> 3) & 0x1,
-    underlineColorRgb: (ext >> 8) & 0x00ff_ffff,
-  });
 }
 
 const ATTR_BOLD = 1 << 0;
@@ -400,12 +396,16 @@ describe("basic widgets render to drawlist", () => {
     assert.equal((docs.attrs & ATTR_BOLD) !== 0, true);
   });
 
-  test("link emits SET_LINK on v3 and degrades on v1", () => {
+  test("link encodes hyperlink refs on v3 and degrades on v1", () => {
     const v3 = renderBytesV3(ui.link("https://example.com", "Docs"), { cols: 40, rows: 4 });
     const v1 = renderBytes(ui.link("https://example.com", "Docs"), { cols: 40, rows: 4 });
-    assert.equal(parseOpcodes(v3).includes(8), true);
+    assert.equal(parseOpcodes(v3).includes(8), false);
     assert.equal(parseOpcodes(v1).includes(8), false);
     assert.equal(parseInternedStrings(v3).includes("https://example.com"), true);
+    const v3Docs = parseDrawTextCommands(v3).find((cmd) => cmd.text === "Docs");
+    const v1Docs = parseDrawTextCommands(v1).find((cmd) => cmd.text === "Docs");
+    assert.equal((v3Docs?.linkUriRef ?? 0) > 0, true);
+    assert.equal(v1Docs?.linkUriRef ?? 0, 0);
   });
 
   test("codeEditor diagnostics use curly underline + token color on v3", () => {
@@ -433,12 +433,10 @@ describe("basic widgets render to drawlist", () => {
     const v3WarnStyles = parseDrawTextCommands(v3).filter((cmd) => cmd.text === "warn");
     assert.equal(
       v3WarnStyles.some((cmd) => {
-        const ext = decodeUnderlineExt(cmd.ext);
         return (
           (cmd.attrs & ATTR_UNDERLINE) !== 0 &&
-          ext.underlineStyle === 3 &&
-          ext.hasUnderlineColor === 1 &&
-          ext.underlineColorRgb === 0x010203
+          cmd.underlineStyle === 3 &&
+          cmd.underlineColorRgb === 0x010203
         );
       }),
       true,
@@ -450,7 +448,13 @@ describe("basic widgets render to drawlist", () => {
       true,
     );
     assert.equal(
-      v1WarnStyles.some((cmd) => cmd.ext !== 0),
+      v1WarnStyles.some(
+        (cmd) =>
+          cmd.underlineStyle !== 0 ||
+          cmd.underlineColorRgb !== 0 ||
+          cmd.linkUriRef !== 0 ||
+          cmd.linkIdRef !== 0,
+      ),
       false,
     );
   });
@@ -467,7 +471,7 @@ describe("basic widgets render to drawlist", () => {
       { cols: 40, rows: 10 },
     );
     const opcodes = parseOpcodes(bytes);
-    assert.equal(opcodes.includes(9), true);
+    assert.equal(opcodes.includes(8), true);
   });
 
   test("image emits DRAW_IMAGE opcode with v3 builder", () => {
@@ -481,7 +485,7 @@ describe("basic widgets render to drawlist", () => {
       { cols: 20, rows: 8 },
     );
     const opcodes = parseOpcodes(bytes);
-    assert.equal(opcodes.includes(10), true);
+    assert.equal(opcodes.includes(9), true);
   });
 
   test("tag emits fill rect for pill background", () => {

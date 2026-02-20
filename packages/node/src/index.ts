@@ -68,7 +68,7 @@ function toBackendConfig(config: NodeAppConfig | undefined): NodeBackendConfig {
     ...(config.executionMode !== undefined ? { executionMode: config.executionMode } : {}),
     ...(config.fpsCap !== undefined ? { fpsCap: config.fpsCap } : {}),
     ...(config.maxEventBytes !== undefined ? { maxEventBytes: config.maxEventBytes } : {}),
-    ...(config.useV2Cursor === true ? { useDrawlistV2: true } : {}),
+    ...(config.drawlistVersion !== undefined ? { drawlistVersion: config.drawlistVersion } : {}),
     ...(config.frameTransport !== undefined ? { frameTransport: config.frameTransport } : {}),
     ...(config.frameSabSlotCount !== undefined
       ? { frameSabSlotCount: config.frameSabSlotCount }

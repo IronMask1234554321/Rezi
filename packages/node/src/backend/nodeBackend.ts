@@ -21,14 +21,15 @@ import type {
 } from "@rezi-ui/core";
 import {
   BACKEND_DRAWLIST_V2_MARKER,
+  BACKEND_DRAWLIST_VERSION_MARKER,
   BACKEND_FPS_CAP_MARKER,
   BACKEND_MAX_EVENT_BYTES_MARKER,
   DEFAULT_TERMINAL_CAPS,
   FRAME_ACCEPTED_ACK_MARKER,
 } from "@rezi-ui/core";
 import {
-  ZR_DRAWLIST_VERSION_V1,
   ZR_DRAWLIST_VERSION_V2,
+  ZR_DRAWLIST_VERSION_V5,
   ZR_ENGINE_ABI_MAJOR,
   ZR_ENGINE_ABI_MINOR,
   ZR_ENGINE_ABI_PATCH,
@@ -84,6 +85,13 @@ export type NodeBackendConfig = Readonly<{
    * @deprecated Prefer createNodeApp({ config: { useV2Cursor: true } }).
    */
   useDrawlistV2?: boolean;
+  /**
+   * Explicit drawlist version request.
+   *
+   * Defaults to `5` (enables v3 style extensions + v4 canvas + v5 image commands).
+   * Set to `1`/`2` only for legacy protocol compatibility testing.
+   */
+  drawlistVersion?: 1 | 2 | 3 | 4 | 5;
   /**
    * Frame transport mode:
    * - "auto": prefer SAB mailbox transport when available, fallback to transfer.
@@ -184,6 +192,32 @@ function parsePositiveInt(n: unknown): number | null {
   if (!Number.isInteger(n)) return null;
   if (n <= 0) return null;
   return n;
+}
+
+function parseDrawlistVersion(v: unknown): 1 | 2 | 3 | 4 | 5 | null {
+  if (v === undefined) return null;
+  if (v === 1 || v === 2 || v === 3 || v === 4 || v === 5) return v;
+  throw new ZrUiError(
+    "ZRUI_INVALID_PROPS",
+    `createNodeBackend config mismatch: drawlistVersion must be one of 1, 2, 3, 4, 5 (got ${String(v)}).`,
+  );
+}
+
+function resolveRequestedDrawlistVersion(config: NodeBackendConfig): 1 | 2 | 3 | 4 | 5 {
+  const explicitDrawlistVersion = parseDrawlistVersion(config.drawlistVersion);
+  const useDrawlistV2 = config.useDrawlistV2 === true;
+
+  if (explicitDrawlistVersion !== null) {
+    if (useDrawlistV2 && explicitDrawlistVersion < ZR_DRAWLIST_VERSION_V2) {
+      throw new ZrUiError(
+        "ZRUI_INVALID_PROPS",
+        "createNodeBackend config mismatch: useDrawlistV2=true requires drawlistVersion >= 2.",
+      );
+    }
+    return explicitDrawlistVersion;
+  }
+
+  return useDrawlistV2 ? ZR_DRAWLIST_VERSION_V2 : ZR_DRAWLIST_VERSION_V5;
 }
 
 function readNativeTargetFpsValues(
@@ -347,7 +381,7 @@ export function createNodeBackendInternal(opts: NodeBackendInternalOpts = {}): N
     return createNodeBackendInlineInternal(opts);
   }
   const maxEventBytes = parsePositiveIntOr(cfg.maxEventBytes, 1 << 20);
-  const useDrawlistV2 = cfg.useDrawlistV2 === true;
+  const requestedDrawlistVersion = resolveRequestedDrawlistVersion(cfg);
   const frameTransportMode =
     cfg.frameTransport === "transfer" || cfg.frameTransport === "sab" ? cfg.frameTransport : "auto";
   const frameSabSlotCount = parsePositiveIntOr(cfg.frameSabSlotCount, FRAME_SAB_SLOT_COUNT_DEFAULT);
@@ -386,7 +420,7 @@ export function createNodeBackendInternal(opts: NodeBackendInternalOpts = {}): N
     requestedEngineAbiMajor: ZR_ENGINE_ABI_MAJOR,
     requestedEngineAbiMinor: ZR_ENGINE_ABI_MINOR,
     requestedEngineAbiPatch: ZR_ENGINE_ABI_PATCH,
-    requestedDrawlistVersion: useDrawlistV2 ? ZR_DRAWLIST_VERSION_V2 : ZR_DRAWLIST_VERSION_V1,
+    requestedDrawlistVersion: requestedDrawlistVersion,
     requestedEventBatchVersion: ZR_EVENT_BATCH_VERSION_V1,
 
     // Node worker runtime caps
@@ -818,6 +852,9 @@ export function createNodeBackendInternal(opts: NodeBackendInternalOpts = {}): N
           supportsScrollRegion: msg.supportsScrollRegion,
           supportsCursorShape: msg.supportsCursorShape,
           supportsOutputWaitWritable: msg.supportsOutputWaitWritable,
+          supportsUnderlineStyles: msg.supportsUnderlineStyles,
+          supportsColoredUnderlines: msg.supportsColoredUnderlines,
+          supportsHyperlinks: msg.supportsHyperlinks,
           sgrAttrsSupported: msg.sgrAttrsSupported,
         };
         cachedCaps = caps;
@@ -1273,13 +1310,20 @@ export function createNodeBackendInternal(opts: NodeBackendInternalOpts = {}): N
   const out = Object.assign(backend, { debug, perf }) as NodeBackend &
     Record<
       | typeof BACKEND_DRAWLIST_V2_MARKER
+      | typeof BACKEND_DRAWLIST_VERSION_MARKER
       | typeof BACKEND_MAX_EVENT_BYTES_MARKER
       | typeof BACKEND_FPS_CAP_MARKER,
       boolean | number
     >;
   Object.defineProperties(out, {
     [BACKEND_DRAWLIST_V2_MARKER]: {
-      value: useDrawlistV2,
+      value: requestedDrawlistVersion >= ZR_DRAWLIST_VERSION_V2,
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    },
+    [BACKEND_DRAWLIST_VERSION_MARKER]: {
+      value: requestedDrawlistVersion,
       writable: false,
       enumerable: false,
       configurable: false,

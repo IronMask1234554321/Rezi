@@ -4,8 +4,8 @@ import { createApp } from "@rezi-ui/core";
 import { ZrUiError } from "@rezi-ui/core";
 import { createNodeApp, createNodeBackend } from "../index.js";
 
-test("config guard: app useV2Cursor=true requires backend drawlist v2", () => {
-  const backend = createNodeBackend({ useDrawlistV2: false });
+test("config guard: app useV2Cursor=true requires backend drawlist version >= 2", () => {
+  const backend = createNodeBackend({ drawlistVersion: 1 });
   try {
     assert.throws(
       () =>
@@ -24,21 +24,15 @@ test("config guard: app useV2Cursor=true requires backend drawlist v2", () => {
   }
 });
 
-test("config guard: backend drawlist v2 requires app useV2Cursor=true", () => {
-  const backend = createNodeBackend({ useDrawlistV2: true });
+test("config guard: backend drawlist >=2 is allowed with app useV2Cursor=false", () => {
+  const backend = createNodeBackend({ drawlistVersion: 5 });
   try {
-    assert.throws(
-      () =>
-        createApp({
-          backend,
-          initialState: { value: 0 },
-          config: { useV2Cursor: false },
-        }),
-      (err) =>
-        err instanceof ZrUiError &&
-        err.code === "ZRUI_INVALID_PROPS" &&
-        err.message.includes("config.useV2Cursor=false but backend.useDrawlistV2=true"),
-    );
+    const app = createApp({
+      backend,
+      initialState: { value: 0 },
+      config: { useV2Cursor: false },
+    });
+    app.dispose();
   } finally {
     backend.dispose();
   }
