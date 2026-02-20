@@ -128,6 +128,11 @@ function panel(title: string, children: readonly VNode[], style: TextStyle, flex
   );
 }
 
+function applyTheme(context: RouteRenderContext<AppState>, themeName: ThemeName): void {
+  context.update((prev) => Object.freeze({ ...prev, themeName }));
+  app.setTheme(THEME_BY_NAME[themeName]);
+}
+
 function formatTime(timestampMs: number): string {
   return new Date(timestampMs).toLocaleTimeString("en-US", { hour12: false });
 }
@@ -228,6 +233,10 @@ function renderShell(
 ): VNode {
   const state = context.state;
   const styles = getViewStyles(state.themeName);
+  const historyPath = context.router
+    .history()
+    .map((entry) => entry.id[0]?.toUpperCase() + entry.id.slice(1))
+    .join(" > ");
 
   return ui.column({ p: 1, gap: 1, items: "stretch", style: styles.rootStyle }, [
     ui.box(
@@ -272,6 +281,7 @@ function renderShell(
             id: "app-route-breadcrumb",
             separator: " > ",
           }),
+          ui.text(`Backstack: ${historyPath}`, { style: styles.metaStyle }),
         ]),
       ],
     ),
@@ -287,6 +297,7 @@ function renderHome(
   const state = context.state;
   const styles = getViewStyles(state.themeName);
   const latest = state.logs[state.logs.length - 1];
+  const hasLatest = latest !== undefined;
 
   return renderShell(
     "Home",
@@ -331,7 +342,19 @@ function renderHome(
           label: "Open Settings",
           onPress: () => context.router.navigate("settings"),
         }),
+        ui.button({
+          id: "home-open-latest-detail",
+          label: "Open Latest Detail",
+          disabled: !hasLatest,
+          onPress: () => {
+            if (!latest) return;
+            context.router.navigate("detail", Object.freeze({ id: latest.id }));
+          },
+        }),
       ]),
+      ui.text("Tip: open a detail entry, then press Esc/Back to verify focus/history behavior.", {
+        style: styles.quietStyle,
+      }),
     ]),
     "Overview",
   );
@@ -379,31 +402,81 @@ function renderLogs(
   return renderShell(
     "Logs",
     context,
-    ui.row({ gap: 2 }, [
-      ui.box({ flex: 2, border: "single", p: 1, style: styles.stripStyle }, [logsConsole]),
-      ui.box({ flex: 1, border: "single", p: 1, style: styles.stripStyle }, [
-        ui.column({ gap: 1 }, [
-          ui.text("Recent entries", { style: styles.sectionLabelStyle }),
-          ...recent.map((entry) => {
-            const when = formatTime(entry.timestamp);
-            return ui.row({ gap: 1, items: "center" }, [
-              ui.badge(entry.level.toUpperCase(), { variant: levelBadgeVariant(entry.level) }),
-              ui.button({
-                id: `open-${entry.id}`,
-                label: `${entry.source} @ ${when}`,
-                onPress: () => context.router.navigate("detail", Object.freeze({ id: entry.id })),
+    ui.column({ gap: 1 }, [
+      ui.row({ gap: 1, wrap: true }, [
+        ui.tag(`debug:${state.includeDebug ? "on" : "off"}`, {
+          variant: state.includeDebug ? "info" : "default",
+        }),
+        ui.tag(`refresh:${state.autoRefresh ? "on" : "off"}`, {
+          variant: state.autoRefresh ? "success" : "warning",
+        }),
+        ui.button({
+          id: "logs-toggle-refresh",
+          label: state.autoRefresh ? "Pause stream" : "Resume stream",
+          onPress: () => {
+            context.update((prev) => Object.freeze({ ...prev, autoRefresh: !prev.autoRefresh }));
+          },
+        }),
+        ui.button({
+          id: "logs-clear-inline",
+          label: "Clear logs",
+          onPress: () => {
+            context.update((prev) =>
+              Object.freeze({
+                ...prev,
+                logs: Object.freeze([]),
+                logsScrollTop: 0,
+                expandedLogIds: Object.freeze([]),
               }),
-            ]);
-          }),
-          ...(recent.length === 0
-            ? [ui.text("No entries in history.", { style: styles.metaStyle })]
-            : []),
-          ui.button({
-            id: "logs-open-settings",
-            label: "Settings",
-            onPress: () => context.router.navigate("settings"),
-          }),
-        ]),
+            );
+          },
+        }),
+      ]),
+      ui.row({ gap: 2, wrap: true, items: "stretch" }, [
+        panel("Log Stream", [logsConsole], styles.stripStyle, 3),
+        panel(
+          "Open recent entry",
+          [
+            ui.column({ gap: 1 }, [
+              ...recent.map((entry) => {
+                const when = formatTime(entry.timestamp);
+                const sourceLabel =
+                  entry.source.length > 6 ? `${entry.source.slice(0, 6)}…` : entry.source;
+                return ui.row({ gap: 1, items: "center" }, [
+                  ui.badge(entry.level.toUpperCase(), { variant: levelBadgeVariant(entry.level) }),
+                  ui.button({
+                    id: `open-${entry.id}`,
+                    label: `${sourceLabel} ${when}`,
+                    onPress: () =>
+                      context.router.navigate("detail", Object.freeze({ id: entry.id })),
+                  }),
+                ]);
+              }),
+              ...(recent.length === 0
+                ? [ui.text("No entries in history.", { style: styles.metaStyle })]
+                : []),
+              ui.row({ gap: 1 }, [
+                ui.button({
+                  id: "logs-open-latest-detail",
+                  label: "Latest detail",
+                  disabled: recent.length === 0,
+                  onPress: () => {
+                    const latest = recent[0];
+                    if (!latest) return;
+                    context.router.navigate("detail", Object.freeze({ id: latest.id }));
+                  },
+                }),
+                ui.button({
+                  id: "logs-open-settings",
+                  label: "Settings",
+                  onPress: () => context.router.navigate("settings"),
+                }),
+              ]),
+            ]),
+          ],
+          styles.stripStyle,
+          2,
+        ),
       ]),
     ]),
     "Live Logs",
@@ -425,85 +498,115 @@ function renderSettings(
         title: "Preferences",
         variant: "info",
       }),
-      ui.box({ border: "single", p: 1, style: styles.stripStyle }, [
-        ui.column({ gap: 1 }, [
-          ui.field({
-            label: "Operator",
-            children: ui.input({
-              id: "settings-operator",
-              value: state.operatorName,
-              onInput: (value) => {
-                context.update((prev) => Object.freeze({ ...prev, operatorName: value }));
-              },
-            }),
-          }),
-          ui.field({
-            label: "Environment",
-            children: ui.select({
-              id: "settings-environment",
-              value: state.environment,
-              options: ENV_OPTIONS,
-              onChange: (value) => {
-                if (!isEnvironment(value)) return;
-                context.update((prev) => Object.freeze({ ...prev, environment: value }));
-              },
-            }),
-          }),
-          ui.field({
-            label: "Theme",
-            children: ui.select({
-              id: "settings-theme",
-              value: state.themeName,
-              options: THEME_OPTIONS,
-              onChange: (value) => {
-                if (!isThemeName(value)) return;
-                context.update((prev) => Object.freeze({ ...prev, themeName: value }));
-                app.setTheme(THEME_BY_NAME[value]);
-              },
-            }),
-          }),
-          ui.checkbox({
-            id: "settings-auto-refresh",
-            checked: state.autoRefresh,
-            label: "Auto-refresh log stream",
-            onChange: (checked) => {
-              context.update((prev) => Object.freeze({ ...prev, autoRefresh: checked }));
-            },
-          }),
-          ui.checkbox({
-            id: "settings-include-debug",
-            checked: state.includeDebug,
-            label: "Include debug level entries",
-            onChange: (checked) => {
-              context.update((prev) => Object.freeze({ ...prev, includeDebug: checked }));
-            },
-          }),
-          ui.field({
-            label: `Command timeout: ${String(state.commandTimeoutSec)}s`,
-            children: ui.slider({
-              id: "settings-timeout",
-              value: state.commandTimeoutSec,
-              min: 5,
-              max: 120,
-              step: 5,
-              onChange: (value) => {
-                context.update((prev) => Object.freeze({ ...prev, commandTimeoutSec: value }));
-              },
-            }),
-          }),
-          ui.row({ gap: 1 }, [
-            ui.button({
-              id: "settings-open-logs",
-              label: "Logs",
-              onPress: () => context.router.navigate("logs"),
-            }),
-            ui.button({
-              id: "settings-open-home",
-              label: "Home",
-              onPress: () => context.router.navigate("home"),
-            }),
-          ]),
-        ]),
+      ui.row({ gap: 2, wrap: true, items: "stretch" }, [
+        panel(
+          "Profile",
+          [
+            ui.column({ gap: 1 }, [
+              ui.text("Operator", { style: styles.sectionLabelStyle }),
+              ui.input({
+                id: "settings-operator",
+                value: state.operatorName,
+                onInput: (value) => {
+                  context.update((prev) => Object.freeze({ ...prev, operatorName: value }));
+                },
+              }),
+              ui.text("Environment", { style: styles.sectionLabelStyle }),
+              ui.select({
+                id: "settings-environment",
+                value: state.environment,
+                options: ENV_OPTIONS,
+                onChange: (value) => {
+                  if (!isEnvironment(value)) return;
+                  context.update((prev) => Object.freeze({ ...prev, environment: value }));
+                },
+              }),
+              ui.text("Theme", { style: styles.sectionLabelStyle }),
+              ui.select({
+                id: "settings-theme",
+                value: state.themeName,
+                options: THEME_OPTIONS,
+                onChange: (value) => {
+                  if (!isThemeName(value)) return;
+                  applyTheme(context, value);
+                },
+              }),
+            ]),
+          ],
+          styles.stripStyle,
+          2,
+        ),
+        panel(
+          "Runtime",
+          [
+            ui.column({ gap: 1 }, [
+              ui.checkbox({
+                id: "settings-auto-refresh",
+                checked: state.autoRefresh,
+                label: "Auto-refresh log stream",
+                onChange: (checked) => {
+                  context.update((prev) => Object.freeze({ ...prev, autoRefresh: checked }));
+                },
+              }),
+              ui.checkbox({
+                id: "settings-include-debug",
+                checked: state.includeDebug,
+                label: "Include debug level entries",
+                onChange: (checked) => {
+                  context.update((prev) => Object.freeze({ ...prev, includeDebug: checked }));
+                },
+              }),
+              ui.text(`Command timeout: ${String(state.commandTimeoutSec)}s`, {
+                style: styles.sectionLabelStyle,
+              }),
+              ui.slider({
+                id: "settings-timeout",
+                value: state.commandTimeoutSec,
+                min: 5,
+                max: 120,
+                step: 5,
+                onChange: (value) => {
+                  context.update((prev) => Object.freeze({ ...prev, commandTimeoutSec: value }));
+                },
+              }),
+              ui.text(
+                `Current preset: ${themeLabel(state.themeName)} · ${state.environment.toUpperCase()}`,
+                { style: styles.metaStyle },
+              ),
+            ]),
+          ],
+          styles.stripStyle,
+          2,
+        ),
+      ]),
+      panel(
+        "Theme presets",
+        [
+          ui.row(
+            { gap: 1, wrap: true },
+            THEME_OPTIONS.map((option) =>
+              ui.button({
+                id: `settings-theme-preset-${option.value}`,
+                label: option.label,
+                disabled: option.value === state.themeName,
+                onPress: () => applyTheme(context, option.value),
+              }),
+            ),
+          ),
+        ],
+        styles.stripStyle,
+      ),
+      ui.row({ gap: 1 }, [
+        ui.button({
+          id: "settings-open-logs",
+          label: "Logs",
+          onPress: () => context.router.navigate("logs"),
+        }),
+        ui.button({
+          id: "settings-open-home",
+          label: "Home",
+          onPress: () => context.router.navigate("home"),
+        }),
       ]),
     ]),
     "Configuration",
