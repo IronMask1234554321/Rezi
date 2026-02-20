@@ -32,10 +32,22 @@ fn main() {
   build.file(src_dir.join("core").join("zr_input_parser.c"));
   build.file(src_dir.join("core").join("zr_damage.c"));
   build.file(src_dir.join("core").join("zr_config.c"));
+  build.file(src_dir.join("core").join("zr_base64.c"));
+  build.file(src_dir.join("core").join("zr_blit.c"));
+  build.file(src_dir.join("core").join("zr_blit_ascii.c"));
+  build.file(src_dir.join("core").join("zr_blit_braille.c"));
+  build.file(src_dir.join("core").join("zr_blit_halfblock.c"));
+  build.file(src_dir.join("core").join("zr_blit_quadrant.c"));
+  build.file(src_dir.join("core").join("zr_blit_sextant.c"));
   build.file(src_dir.join("core").join("zr_debug_overlay.c"));
   build.file(src_dir.join("core").join("zr_debug_trace.c"));
+  build.file(src_dir.join("core").join("zr_detect.c"));
   build.file(src_dir.join("core").join("zr_diff.c"));
   build.file(src_dir.join("core").join("zr_placeholder.c"));
+  build.file(src_dir.join("core").join("zr_image.c"));
+  build.file(src_dir.join("core").join("zr_image_iterm2.c"));
+  build.file(src_dir.join("core").join("zr_image_kitty.c"));
+  build.file(src_dir.join("core").join("zr_image_sixel.c"));
 
   build.file(src_dir.join("unicode").join("zr_width.c"));
   build.file(src_dir.join("unicode").join("zr_unicode_data.c"));
