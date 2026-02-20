@@ -77,14 +77,20 @@ Most JavaScript TUI frameworks generate ANSI escape sequences in userland on eve
 
 ## Benchmarks
 
-In the latest PTY-mode benchmark suite (120×40 viewport, `benchmarks/2026-02-19-terminal-v3`), Rezi is:
+In the latest rigorous PTY-mode terminal suite (`benchmarks/2026-02-19-terminal-v3`), Rezi is:
 - **7.3×–59.1× faster than Ink**
-- **1.4×–52.5× faster than OpenTUI**
-- **1.9×–14.8× slower than native Rust (`ratatui`)** (expected for native baseline)
+- **1.4×–52.5× faster than OpenTUI (React driver dataset in that run)**
+- **1.9×–14.8× slower than native Rust (`ratatui`)** (expected for a native baseline)
 
-This run uses `7` replicates with first-replicate discard (`6` measured), framework-order shuffling, CPU pinning, and CI/range reporting in the generated markdown.
+That run uses `7` replicates with first-replicate discard (`6` measured), framework-order shuffling, CPU pinning, and confidence-aware ratio reporting.
 
-These benchmark numbers are a snapshot, not a final ceiling. Optimization work is ongoing during development, and we expect to keep improving performance while gradually narrowing the gap to pure native renderers.
+Additional committed 2026-02-20 quick matchup runs (single replicate, directional only) show:
+- Rezi vs OpenTUI React: Rezi faster in `21/21` scenarios (geomean ~`10.4×` advantage)
+- Rezi vs OpenTUI Core-imperative: Rezi faster in `19/21` scenarios (geomean ~`2.6×` advantage)
+- OpenTUI Core vs OpenTUI React: Core faster in `21/21` scenarios (geomean ~`4.0×`)
+- Rezi vs Bubble Tea (with OpenTUI Core): Rezi faster in `20/21` scenarios (geomean ~`8.5×`); Bubble Tea wins `scroll-stress`
+
+These numbers are workload snapshots, not ceilings. See `BENCHMARKS.md` for exact datasets, caveats, and reproduction commands.
 
 Representative scenarios (full per-scenario table is in `BENCHMARKS.md`):
 
@@ -97,6 +103,9 @@ Representative scenarios (full per-scenario table is in `BENCHMARKS.md`):
 Full benchmark table (all scenarios, confidence bands, memory, and methodology):
 - `BENCHMARKS.md`
 - `benchmarks/2026-02-19-terminal-v3/results.md`
+- `benchmarks/2026-02-20-rezi-opentui-react-all-quick-v6/results.md`
+- `benchmarks/2026-02-20-rezi-opentui-core-all-quick-v4/results.md`
+- `benchmarks/2026-02-20-rezi-opentui-bubbletea-core-all-quick-v3/results.md`
 
 Full methodology and reproduction steps:
 👉 **[BENCHMARKS.md](BENCHMARKS.md)**
