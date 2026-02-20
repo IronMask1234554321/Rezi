@@ -60,6 +60,8 @@ mod ffi {
     pub enable_debug_overlay: u8,
     pub enable_replay_recording: u8,
     pub wait_for_output_drain: u8,
+    pub cap_force_flags: u32,
+    pub cap_suppress_flags: u32,
   }
 
   #[repr(C)]
@@ -74,6 +76,8 @@ mod ffi {
     pub enable_debug_overlay: u8,
     pub enable_replay_recording: u8,
     pub wait_for_output_drain: u8,
+    pub cap_force_flags: u32,
+    pub cap_suppress_flags: u32,
   }
 
   #[repr(C)]
@@ -120,8 +124,15 @@ mod ffi {
     pub supports_scroll_region: u8,
     pub supports_cursor_shape: u8,
     pub supports_output_wait_writable: u8,
-    pub _pad0: [u8; 3],
+    pub supports_underline_styles: u8,
+    pub supports_colored_underlines: u8,
+    pub supports_hyperlinks: u8,
     pub sgr_attrs_supported: u32,
+    pub terminal_id: u32,
+    pub _pad1: [u8; 3],
+    pub cap_flags: u32,
+    pub cap_force_flags: u32,
+    pub cap_suppress_flags: u32,
   }
 
   #[repr(C)]
@@ -427,6 +438,9 @@ pub struct TerminalCaps {
   pub supportsScrollRegion: bool,
   pub supportsCursorShape: bool,
   pub supportsOutputWaitWritable: bool,
+  pub supportsUnderlineStyles: bool,
+  pub supportsColoredUnderlines: bool,
+  pub supportsHyperlinks: bool,
   /// Bitmask of supported SGR attributes
   pub sgrAttrsSupported: u32,
 }
@@ -579,6 +593,8 @@ const CREATE_CFG_KEYS: &[(&str, &str)] = &[
   ("enableDebugOverlay", "enable_debug_overlay"),
   ("enableReplayRecording", "enable_replay_recording"),
   ("waitForOutputDrain", "wait_for_output_drain"),
+  ("capForceFlags", "cap_force_flags"),
+  ("capSuppressFlags", "cap_suppress_flags"),
 ];
 
 const RUNTIME_CFG_KEYS: &[(&str, &str)] = &[
@@ -591,6 +607,8 @@ const RUNTIME_CFG_KEYS: &[(&str, &str)] = &[
   ("enableDebugOverlay", "enable_debug_overlay"),
   ("enableReplayRecording", "enable_replay_recording"),
   ("waitForOutputDrain", "wait_for_output_drain"),
+  ("capForceFlags", "cap_force_flags"),
+  ("capSuppressFlags", "cap_suppress_flags"),
 ];
 
 fn apply_create_cfg_strict(dst: &mut ffi::zr_engine_config_t, obj: &JsObject) -> napi::Result<()> {
@@ -790,6 +808,12 @@ fn apply_create_cfg(dst: &mut ffi::zr_engine_config_t, obj: &JsObject) -> ParseR
   if let Some(v) = js_u8_bool(obj, "waitForOutputDrain", "wait_for_output_drain")? {
     dst.wait_for_output_drain = v;
   }
+  if let Some(v) = js_u32(obj, "capForceFlags", "cap_force_flags")? {
+    dst.cap_force_flags = v;
+  }
+  if let Some(v) = js_u32(obj, "capSuppressFlags", "cap_suppress_flags")? {
+    dst.cap_suppress_flags = v;
+  }
   Ok(())
 }
 
@@ -805,6 +829,8 @@ fn create_default_runtime_cfg() -> ffi::zr_engine_runtime_config_t {
     enable_debug_overlay: base.enable_debug_overlay,
     enable_replay_recording: base.enable_replay_recording,
     wait_for_output_drain: base.wait_for_output_drain,
+    cap_force_flags: base.cap_force_flags,
+    cap_suppress_flags: base.cap_suppress_flags,
   }
 }
 
@@ -835,6 +861,12 @@ fn apply_runtime_cfg(dst: &mut ffi::zr_engine_runtime_config_t, obj: &JsObject) 
   }
   if let Some(v) = js_u8_bool(obj, "waitForOutputDrain", "wait_for_output_drain")? {
     dst.wait_for_output_drain = v;
+  }
+  if let Some(v) = js_u32(obj, "capForceFlags", "cap_force_flags")? {
+    dst.cap_force_flags = v;
+  }
+  if let Some(v) = js_u32(obj, "capSuppressFlags", "cap_suppress_flags")? {
+    dst.cap_suppress_flags = v;
   }
   Ok(())
 }
@@ -1103,8 +1135,15 @@ pub fn engine_get_caps(engine_id: u32) -> napi::Result<TerminalCaps> {
     supports_scroll_region: 0,
     supports_cursor_shape: 0,
     supports_output_wait_writable: 0,
-    _pad0: [0, 0, 0],
+    supports_underline_styles: 0,
+    supports_colored_underlines: 0,
+    supports_hyperlinks: 0,
     sgr_attrs_supported: 0,
+    terminal_id: 0,
+    _pad1: [0, 0, 0],
+    cap_flags: 0,
+    cap_force_flags: 0,
+    cap_suppress_flags: 0,
   };
 
   let rc = unsafe { ffi::engine_get_caps(guard.slot.engine, &mut caps as *mut _) };
@@ -1122,6 +1161,9 @@ pub fn engine_get_caps(engine_id: u32) -> napi::Result<TerminalCaps> {
     supportsScrollRegion: caps.supports_scroll_region != 0,
     supportsCursorShape: caps.supports_cursor_shape != 0,
     supportsOutputWaitWritable: caps.supports_output_wait_writable != 0,
+    supportsUnderlineStyles: caps.supports_underline_styles != 0,
+    supportsColoredUnderlines: caps.supports_colored_underlines != 0,
+    supportsHyperlinks: caps.supports_hyperlinks != 0,
     sgrAttrsSupported: caps.sgr_attrs_supported,
   })
 }

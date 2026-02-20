@@ -122,6 +122,9 @@ function cloneTerminalCaps(caps: TerminalCaps | null): TerminalCaps | null {
     supportsScrollRegion: caps.supportsScrollRegion,
     supportsCursorShape: caps.supportsCursorShape,
     supportsOutputWaitWritable: caps.supportsOutputWaitWritable,
+    supportsUnderlineStyles: caps.supportsUnderlineStyles,
+    supportsColoredUnderlines: caps.supportsColoredUnderlines,
+    supportsHyperlinks: caps.supportsHyperlinks,
     sgrAttrsSupported: caps.sgrAttrsSupported,
   };
 }

@@ -115,6 +115,9 @@ type TerminalCapsNative = Readonly<{
   supportsScrollRegion: boolean;
   supportsCursorShape: boolean;
   supportsOutputWaitWritable: boolean;
+  supportsUnderlineStyles?: boolean;
+  supportsColoredUnderlines?: boolean;
+  supportsHyperlinks?: boolean;
   sgrAttrsSupported: number;
 }>;
 
@@ -1045,6 +1048,9 @@ function onMessage(msg: MainToWorkerMessage): void {
           supportsScrollRegion: caps.supportsScrollRegion,
           supportsCursorShape: caps.supportsCursorShape,
           supportsOutputWaitWritable: caps.supportsOutputWaitWritable,
+          supportsUnderlineStyles: caps.supportsUnderlineStyles ?? false,
+          supportsColoredUnderlines: caps.supportsColoredUnderlines ?? false,
+          supportsHyperlinks: caps.supportsHyperlinks ?? false,
           sgrAttrsSupported: caps.sgrAttrsSupported,
         });
       } catch (err) {

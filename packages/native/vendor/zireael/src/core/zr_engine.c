@@ -12,10 +12,13 @@
 #include "core/zr_damage.h"
 #include "core/zr_debug_overlay.h"
 #include "core/zr_debug_trace.h"
+#include "core/zr_detect.h"
 #include "core/zr_diff.h"
+#include "core/zr_blit.h"
 #include "core/zr_drawlist.h"
 #include "core/zr_event_pack.h"
 #include "core/zr_event_queue.h"
+#include "core/zr_image.h"
 #include "core/zr_input_parser.h"
 #include "core/zr_metrics_internal.h"
 
@@ -24,6 +27,7 @@
 #include "util/zr_arena.h"
 #include "util/zr_assert.h"
 #include "util/zr_checked.h"
+#include "util/zr_string_builder.h"
 #include "util/zr_thread_yield.h"
 
 #include <limits.h>
@@ -35,6 +39,7 @@
 
 enum {
   ZR_ENGINE_INPUT_PENDING_CAP = 64u,
+  ZR_ENGINE_DETECT_PASSTHROUGH_CAP = 4096u,
   ZR_ENGINE_PASTE_MARKER_LEN = 6u,
   ZR_ENGINE_PASTE_IDLE_FLUSH_POLLS = 4u,
 };
@@ -50,7 +55,13 @@ struct zr_engine_t {
   uint8_t restore_registered;
   uint8_t _pad_restore0[3];
 
+  /* Baseline platform/probe caps before force/suppress overrides. */
+  plat_caps_t caps_base;
+  zr_terminal_profile_t term_profile_base;
+
+  /* Effective runtime caps/profile after force/suppress overrides. */
   plat_caps_t caps;
+  zr_terminal_profile_t term_profile;
   plat_size_t size;
 
   /* --- Config (engine-owned copies) --- */
@@ -67,6 +78,11 @@ struct zr_engine_t {
 
   zr_term_state_t term_state;
   zr_cursor_state_t cursor_desired;
+
+  /* --- Image sideband state (DRAW_IMAGE staging + protocol cache) --- */
+  zr_image_frame_t image_frame_next;
+  zr_image_frame_t image_frame_stage;
+  zr_image_state_t image_state;
 
   /* --- Output buffer (single flush per present) --- */
   uint8_t* out_buf;
@@ -471,17 +487,19 @@ static zr_result_t zr_engine_alloc_diff_row_scratch(uint32_t rows, uint64_t** ou
   return ZR_OK;
 }
 
-static void zr_engine_fb_copy(const zr_fb_t* src, zr_fb_t* dst) {
-  if (!src || !dst || !src->cells || !dst->cells) {
-    return;
+static zr_result_t zr_engine_fb_copy(const zr_fb_t* src, zr_fb_t* dst) {
+  if (!src || !dst) {
+    return ZR_ERR_INVALID_ARGUMENT;
   }
   if (src->cols != dst->cols || src->rows != dst->rows) {
-    return;
+    return ZR_ERR_INVALID_ARGUMENT;
   }
   const size_t n = zr_engine_cells_bytes(src);
-  if (n != 0u) {
+  if (n != 0u && src->cells && dst->cells) {
     memcpy(dst->cells, src->cells, n);
   }
+  zr_fb_links_reset(dst);
+  return zr_fb_links_clone_from(dst, src);
 }
 
 static void zr_engine_fb_swap(zr_fb_t* a, zr_fb_t* b) {
@@ -507,9 +525,9 @@ static zr_result_t zr_engine_resize_framebuffers(zr_engine_t* e, uint32_t cols, 
     return ZR_ERR_INVALID_ARGUMENT;
   }
 
-  zr_fb_t prev = {0u, 0u, NULL};
-  zr_fb_t next = {0u, 0u, NULL};
-  zr_fb_t stage = {0u, 0u, NULL};
+  zr_fb_t prev = {0};
+  zr_fb_t next = {0};
+  zr_fb_t stage = {0};
   uint64_t* new_prev_hashes = NULL;
   uint64_t* new_next_hashes = NULL;
   uint8_t* new_dirty_rows = NULL;
@@ -949,6 +967,8 @@ static void zr_engine_runtime_from_create_cfg(zr_engine_t* e, const zr_engine_co
   e->cfg_runtime.enable_debug_overlay = cfg->enable_debug_overlay;
   e->cfg_runtime.enable_replay_recording = cfg->enable_replay_recording;
   e->cfg_runtime.wait_for_output_drain = cfg->wait_for_output_drain;
+  e->cfg_runtime.cap_force_flags = cfg->cap_force_flags;
+  e->cfg_runtime.cap_suppress_flags = cfg->cap_suppress_flags;
 }
 
 /* Seed the metrics snapshot with negotiated ABI versions from create config. */
@@ -1042,6 +1062,68 @@ static zr_result_t zr_engine_init_event_queue(zr_engine_t* e) {
   return zr_event_queue_init(&e->evq, e->ev_storage, e->ev_cap, e->user_bytes, e->user_bytes_cap);
 }
 
+static void zr_engine_terminal_profile_defaults(const plat_caps_t* caps, zr_terminal_profile_t* out_profile) {
+  if (!caps || !out_profile) {
+    return;
+  }
+  memset(out_profile, 0, sizeof(*out_profile));
+  out_profile->id = ZR_TERM_UNKNOWN;
+  out_profile->supports_mouse = caps->supports_mouse;
+  out_profile->supports_bracketed_paste = caps->supports_bracketed_paste;
+  out_profile->supports_focus_events = caps->supports_focus_events;
+  out_profile->supports_osc52 = caps->supports_osc52;
+  out_profile->supports_sync_update = caps->supports_sync_update;
+}
+
+static void zr_engine_requeue_probe_passthrough(zr_engine_t* e, const uint8_t* bytes, size_t len) {
+  if (!e || !bytes || len == 0u) {
+    return;
+  }
+  const uint32_t time_ms = zr_engine_now_ms_u32();
+  for (size_t i = 0u; i < len; i++) {
+    zr_engine_input_pending_append_byte(e, bytes[i], time_ms);
+  }
+}
+
+/* Recompute effective runtime caps from base detection + force/suppress flags. */
+static void zr_engine_apply_cap_overrides(zr_engine_t* e) {
+  if (!e) {
+    return;
+  }
+  zr_detect_apply_overrides(&e->term_profile_base, &e->caps_base, e->cfg_runtime.cap_force_flags,
+                            e->cfg_runtime.cap_suppress_flags, &e->term_profile, &e->caps);
+}
+
+/*
+  Run startup terminal probing without breaking create on probe failures/timeouts.
+
+  Why: A non-responsive terminal must preserve current behavior and continue with
+  baseline backend caps.
+*/
+static void zr_engine_detect_terminal_profile(zr_engine_t* e) {
+  if (!e) {
+    return;
+  }
+
+  zr_engine_terminal_profile_defaults(&e->caps_base, &e->term_profile_base);
+  e->term_profile = e->term_profile_base;
+  e->caps = e->caps_base;
+
+  zr_terminal_profile_t detected_profile;
+  plat_caps_t detected_caps;
+  uint8_t probe_passthrough[ZR_ENGINE_DETECT_PASSTHROUGH_CAP];
+  size_t probe_passthrough_len = 0u;
+  zr_result_t rc = zr_detect_probe_terminal(e->plat, &e->caps_base, &detected_profile, &detected_caps,
+                                            probe_passthrough, sizeof(probe_passthrough), &probe_passthrough_len);
+  if (rc == ZR_OK) {
+    e->term_profile_base = detected_profile;
+    e->caps_base = detected_caps;
+    zr_engine_requeue_probe_passthrough(e, probe_passthrough, probe_passthrough_len);
+  }
+
+  zr_engine_apply_cap_overrides(e);
+}
+
 static zr_result_t zr_engine_init_platform(zr_engine_t* e) {
   if (!e) {
     return ZR_ERR_INVALID_ARGUMENT;
@@ -1055,10 +1137,11 @@ static zr_result_t zr_engine_init_platform(zr_engine_t* e) {
   if (rc != ZR_OK) {
     return rc;
   }
-  rc = plat_get_caps(e->plat, &e->caps);
+  rc = plat_get_caps(e->plat, &e->caps_base);
   if (rc != ZR_OK) {
     return rc;
   }
+  zr_engine_detect_terminal_profile(e);
   return plat_get_size(e->plat, &e->size);
 }
 
@@ -1147,6 +1230,9 @@ zr_result_t engine_create(zr_engine_t** out_engine, const zr_engine_config_t* cf
     return ZR_ERR_OOM;
   }
 
+  zr_image_frame_init(&e->image_frame_next);
+  zr_image_frame_init(&e->image_frame_stage);
+  zr_image_state_init(&e->image_state);
   e->cursor_desired = zr_engine_cursor_default();
   e->last_tick_ms = zr_engine_now_ms_u32();
 
@@ -1195,6 +1281,9 @@ static void zr_engine_release_heap_state(zr_engine_t* e) {
   zr_fb_release(&e->fb_prev);
   zr_fb_release(&e->fb_next);
   zr_fb_release(&e->fb_stage);
+  zr_image_frame_release(&e->image_frame_next);
+  zr_image_frame_release(&e->image_frame_stage);
+  zr_image_state_init(&e->image_state);
 
   zr_arena_release(&e->arena_frame);
   zr_arena_release(&e->arena_persistent);
@@ -1309,6 +1398,16 @@ static void zr_engine_trace_drawlist(zr_engine_t* e, uint32_t code, const uint8_
   (void)zr_debug_trace_drawlist(e->debug_trace, code, zr_engine_now_us(), &rec);
 }
 
+/* Build blitter AUTO-selection caps from engine profile plus runtime platform mode. */
+static void zr_engine_build_blit_caps(const zr_engine_t* e, zr_blit_caps_t* out_caps) {
+  if (!e || !out_caps) {
+    return;
+  }
+  zr_blit_caps_from_profile(&e->term_profile, out_caps);
+  out_caps->is_pipe_mode = (plat_supports_terminal_queries(e->plat) == 0u) ? 1u : 0u;
+  out_caps->is_dumb_terminal = plat_is_dumb_terminal(e->plat);
+}
+
 /*
   Validate and execute a drawlist against the staging framebuffer.
 
@@ -1340,18 +1439,29 @@ zr_result_t engine_submit_drawlist(zr_engine_t* e, const uint8_t* bytes, int byt
     return ZR_ERR_UNSUPPORTED;
   }
 
-  zr_engine_fb_copy(&e->fb_next, &e->fb_stage);
-
-  zr_cursor_state_t cursor_stage = e->cursor_desired;
-  rc = zr_dl_execute(&v, &e->fb_stage, &e->cfg_runtime.limits, e->cfg_runtime.tab_width, e->cfg_runtime.width_policy,
-                     &cursor_stage);
+  rc = zr_engine_fb_copy(&e->fb_next, &e->fb_stage);
   if (rc != ZR_OK) {
     zr_engine_trace_drawlist(e, ZR_DEBUG_CODE_DRAWLIST_EXECUTE, bytes, (uint32_t)bytes_len, v.hdr.cmd_count,
                              v.hdr.version, ZR_OK, rc);
     return rc;
   }
 
+  zr_cursor_state_t cursor_stage = e->cursor_desired;
+  zr_image_frame_reset(&e->image_frame_stage);
+  zr_blit_caps_t blit_caps;
+  zr_engine_build_blit_caps(e, &blit_caps);
+  rc = zr_dl_execute(&v, &e->fb_stage, &e->cfg_runtime.limits, e->cfg_runtime.tab_width, e->cfg_runtime.width_policy,
+                     &blit_caps, &e->term_profile, &e->image_frame_stage, &cursor_stage);
+  if (rc != ZR_OK) {
+    zr_image_frame_reset(&e->image_frame_stage);
+    zr_engine_trace_drawlist(e, ZR_DEBUG_CODE_DRAWLIST_EXECUTE, bytes, (uint32_t)bytes_len, v.hdr.cmd_count,
+                             v.hdr.version, ZR_OK, rc);
+    return rc;
+  }
+
   zr_engine_fb_swap(&e->fb_next, &e->fb_stage);
+  zr_image_frame_swap(&e->image_frame_next, &e->image_frame_stage);
+  zr_image_frame_reset(&e->image_frame_stage);
   e->cursor_desired = cursor_stage;
 
   zr_engine_trace_drawlist(e, ZR_DEBUG_CODE_DRAWLIST_EXECUTE, bytes, (uint32_t)bytes_len, v.hdr.cmd_count,
@@ -1422,13 +1532,27 @@ zr_result_t engine_get_caps(zr_engine_t* e, zr_terminal_caps_t* out_caps) {
   c.supports_scroll_region = e->caps.supports_scroll_region;
   c.supports_cursor_shape = e->caps.supports_cursor_shape;
   c.supports_output_wait_writable = e->caps.supports_output_wait_writable;
-  c._pad0[0] = 0u;
-  c._pad0[1] = 0u;
-  c._pad0[2] = 0u;
+  c.supports_underline_styles = e->caps.supports_underline_styles;
+  c.supports_colored_underlines = e->caps.supports_colored_underlines;
+  c.supports_hyperlinks = e->caps.supports_hyperlinks;
   c.sgr_attrs_supported = e->caps.sgr_attrs_supported;
+  c.terminal_id = e->term_profile.id;
+  c._pad1[0] = 0u;
+  c._pad1[1] = 0u;
+  c._pad1[2] = 0u;
+  c.cap_flags = zr_detect_profile_cap_flags(&e->term_profile, &e->caps);
+  c.cap_force_flags = e->cfg_runtime.cap_force_flags & ZR_TERM_CAP_ALL_MASK;
+  c.cap_suppress_flags = e->cfg_runtime.cap_suppress_flags & ZR_TERM_CAP_ALL_MASK;
 
   *out_caps = c;
   return ZR_OK;
+}
+
+const zr_terminal_profile_t* engine_get_terminal_profile(const zr_engine_t* e) {
+  if (!e) {
+    return NULL;
+  }
+  return &e->term_profile;
 }
 
 static zr_result_t zr_engine_set_config_prepare_out_buf(zr_engine_t* e, const zr_engine_runtime_config_t* cfg,
@@ -1552,6 +1676,7 @@ static void zr_engine_set_config_commit(zr_engine_t* e, const zr_engine_runtime_
   }
 
   e->cfg_runtime = *cfg;
+  zr_engine_apply_cap_overrides(e);
 }
 
 /*
@@ -1577,7 +1702,11 @@ zr_result_t engine_set_config(zr_engine_t* e, const zr_engine_runtime_config_t* 
     This mirrors the engine_create() early check and prevents repeated per-frame
     ZR_ERR_UNSUPPORTED failures from engine_present().
   */
-  if (cfg->wait_for_output_drain != 0u && e->caps.supports_output_wait_writable == 0u) {
+  zr_terminal_profile_t prospective_profile;
+  plat_caps_t prospective_caps;
+  zr_detect_apply_overrides(&e->term_profile_base, &e->caps_base, cfg->cap_force_flags, cfg->cap_suppress_flags,
+                            &prospective_profile, &prospective_caps);
+  if (cfg->wait_for_output_drain != 0u && prospective_caps.supports_output_wait_writable == 0u) {
     return ZR_ERR_UNSUPPORTED;
   }
 

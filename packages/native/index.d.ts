@@ -39,6 +39,9 @@ export interface TerminalCaps {
   supportsScrollRegion: boolean;
   supportsCursorShape: boolean;
   supportsOutputWaitWritable: boolean;
+  supportsUnderlineStyles: boolean;
+  supportsColoredUnderlines: boolean;
+  supportsHyperlinks: boolean;
   /** Bitmask of supported SGR attributes */
   sgrAttrsSupported: number;
 }

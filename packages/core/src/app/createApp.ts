@@ -25,6 +25,7 @@
 import { ZrUiError, type ZrUiErrorCode } from "../abi.js";
 import {
   BACKEND_DRAWLIST_V2_MARKER,
+  BACKEND_DRAWLIST_VERSION_MARKER,
   BACKEND_FPS_CAP_MARKER,
   BACKEND_MAX_EVENT_BYTES_MARKER,
   type BackendEventBatch,
@@ -61,6 +62,11 @@ import type { EventTimeUnwrapState } from "../protocol/types.js";
 import { parseEventBatchV1 } from "../protocol/zrev_v1.js";
 import { type RouterIntegration, createRouterIntegration } from "../router/integration.js";
 import type { RouteDefinition } from "../router/types.js";
+import {
+  DEFAULT_TERMINAL_PROFILE,
+  type TerminalProfile,
+  terminalProfileFromCaps,
+} from "../terminalProfile.js";
 import { defaultTheme } from "../theme/defaultTheme.js";
 import { coerceToLegacyTheme } from "../theme/interop.js";
 import type { Theme } from "../theme/theme.js";
@@ -183,6 +189,38 @@ function readBackendPositiveIntMarker(
     invalidProps(`backend marker ${marker} must be a positive integer when present`);
   }
   return value;
+}
+
+function readBackendDrawlistVersionMarker(backend: RuntimeBackend): 1 | 2 | 3 | 4 | 5 | null {
+  const value = (backend as RuntimeBackend & Readonly<Record<string, unknown>>)[
+    BACKEND_DRAWLIST_VERSION_MARKER
+  ];
+  if (value === undefined) return null;
+  if (
+    typeof value !== "number" ||
+    !Number.isInteger(value) ||
+    (value !== 1 && value !== 2 && value !== 3 && value !== 4 && value !== 5)
+  ) {
+    invalidProps(`backend marker ${BACKEND_DRAWLIST_VERSION_MARKER} must be an integer in [1..5]`);
+  }
+  return value as 1 | 2 | 3 | 4 | 5;
+}
+
+async function loadTerminalProfile(backend: RuntimeBackend): Promise<TerminalProfile> {
+  try {
+    if (typeof backend.getTerminalProfile === "function") {
+      return await backend.getTerminalProfile();
+    }
+  } catch {
+    // fall through to caps-derived profile
+  }
+
+  try {
+    const caps = await backend.getCaps();
+    return terminalProfileFromCaps(caps);
+  } catch {
+    return DEFAULT_TERMINAL_PROFILE;
+  }
 }
 
 /** Apply defaults to user-provided config, validating all values. */
@@ -338,18 +376,22 @@ export function createApp<S>(opts: CreateAppStateOptions<S> | CreateAppRoutesOnl
   const config = resolveAppConfig(opts.config);
 
   const backendUseDrawlistV2 = readBackendBooleanMarker(backend, BACKEND_DRAWLIST_V2_MARKER);
-  if (backendUseDrawlistV2 !== null && backendUseDrawlistV2 !== config.useV2Cursor) {
-    if (config.useV2Cursor) {
-      invalidProps(
-        "config.useV2Cursor=true but backend.useDrawlistV2=false. " +
-          "Fix: set createNodeBackend({ useDrawlistV2: true }) or use createNodeApp({ config: { useV2Cursor: true } }).",
-      );
-    }
+  if (config.useV2Cursor && backendUseDrawlistV2 === false) {
     invalidProps(
-      "config.useV2Cursor=false but backend.useDrawlistV2=true. " +
-        "Fix: set createApp({ config: { useV2Cursor: true } }) or set createNodeBackend({ useDrawlistV2: false }).",
+      "config.useV2Cursor=true but backend.useDrawlistV2=false. " +
+        "Fix: set createNodeBackend({ useDrawlistV2: true }) or configure a backend drawlist version >= 2.",
     );
   }
+
+  const backendDrawlistVersion = readBackendDrawlistVersionMarker(backend);
+  if (config.useV2Cursor && backendDrawlistVersion !== null && backendDrawlistVersion < 2) {
+    invalidProps(
+      `config.useV2Cursor=true but backend drawlistVersion=${String(
+        backendDrawlistVersion,
+      )}. Fix: set backend drawlist version >= 2.`,
+    );
+  }
+  const drawlistVersion: 1 | 2 | 3 | 4 | 5 = backendDrawlistVersion ?? (config.useV2Cursor ? 2 : 1);
 
   const backendMaxEventBytes = readBackendPositiveIntMarker(
     backend,
@@ -373,6 +415,7 @@ export function createApp<S>(opts: CreateAppStateOptions<S> | CreateAppRoutesOnl
   }
 
   let theme = coerceToLegacyTheme(opts.theme ?? defaultTheme);
+  let terminalProfile: TerminalProfile = DEFAULT_TERMINAL_PROFILE;
 
   const sm = new AppStateMachine();
 
@@ -493,6 +536,7 @@ export function createApp<S>(opts: CreateAppStateOptions<S> | CreateAppRoutesOnl
 
   const rawRenderer = new RawRenderer({
     backend,
+    drawlistVersion,
     maxDrawlistBytes: config.maxDrawlistBytes,
     ...(opts.config?.drawlistValidateParams === undefined
       ? {}
@@ -502,7 +546,9 @@ export function createApp<S>(opts: CreateAppStateOptions<S> | CreateAppRoutesOnl
   });
   const widgetRenderer = new WidgetRenderer<S>({
     backend,
+    drawlistVersion,
     maxDrawlistBytes: config.maxDrawlistBytes,
+    terminalProfile,
     useV2Cursor: config.useV2Cursor,
     ...(opts.config?.drawlistValidateParams === undefined
       ? {}
@@ -1113,12 +1159,11 @@ export function createApp<S>(opts: CreateAppStateOptions<S> | CreateAppRoutesOnl
     const plan: WidgetRenderPlan = {
       commit: (pendingDirtyFlags & DIRTY_VIEW) !== 0,
       layout: (pendingDirtyFlags & DIRTY_LAYOUT) !== 0,
-      // Keep interactive frames on the absolute fast path (no layout signature walk).
-      // Background commit turns can afford the signature check to avoid unnecessary relayout.
+      // Commit turns must always run layout-stability checks when layout is not
+      // already explicitly dirty; otherwise interactive state updates can render a
+      // newly-committed tree against stale layout nodes until the next resize.
       checkLayoutStability:
-        (pendingDirtyFlags & DIRTY_LAYOUT) === 0 &&
-        interactiveBudget === 0 &&
-        (pendingDirtyFlags & DIRTY_VIEW) !== 0,
+        (pendingDirtyFlags & DIRTY_LAYOUT) === 0 && (pendingDirtyFlags & DIRTY_VIEW) !== 0,
     };
 
     const renderStart = perfNow();
@@ -1327,8 +1372,10 @@ export function createApp<S>(opts: CreateAppStateOptions<S> | CreateAppRoutesOnl
       }
 
       return p.then(
-        () => {
+        async () => {
           lifecycleBusy = null;
+          terminalProfile = await loadTerminalProfile(backend);
+          widgetRenderer.setTerminalProfile(terminalProfile);
           sm.toRunning();
           markDirty(DIRTY_VIEW, false);
           pollToken++;
@@ -1425,6 +1472,10 @@ export function createApp<S>(opts: CreateAppStateOptions<S> | CreateAppRoutesOnl
 
     getMode(): string {
       return getMode(keybindingState);
+    },
+
+    getTerminalProfile(): TerminalProfile {
+      return terminalProfile;
     },
 
     ...(routerIntegration ? { router: routerIntegration.router } : {}),

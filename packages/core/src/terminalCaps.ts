@@ -53,6 +53,15 @@ export type TerminalCaps = Readonly<{
   /** Output wait/drain support for backpressure */
   supportsOutputWaitWritable: boolean;
 
+  /** Extended underline style variants (double/curly/dotted/dashed) */
+  supportsUnderlineStyles: boolean;
+
+  /** Independent underline color (SGR 58 / 59) */
+  supportsColoredUnderlines: boolean;
+
+  /** OSC 8 hyperlinks */
+  supportsHyperlinks: boolean;
+
   /** Bitmask of supported SGR text attributes */
   sgrAttrsSupported: number;
 }>;
@@ -71,6 +80,9 @@ export const DEFAULT_TERMINAL_CAPS: TerminalCaps = Object.freeze({
   supportsScrollRegion: false,
   supportsCursorShape: false,
   supportsOutputWaitWritable: false,
+  supportsUnderlineStyles: false,
+  supportsColoredUnderlines: false,
+  supportsHyperlinks: false,
   sgrAttrsSupported: 0,
 });
 

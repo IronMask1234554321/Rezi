@@ -4,6 +4,7 @@
  */
 
 import type { TerminalCaps } from "./terminalCaps.js";
+import type { TerminalProfile } from "./terminalProfile.js";
 
 /**
  * Optional marker on requestFrame() promises for backends that can signal
@@ -13,9 +14,14 @@ export const FRAME_ACCEPTED_ACK_MARKER = "__reziFrameAcceptedAckPromise" as cons
 
 /**
  * Optional marker on RuntimeBackend objects exposing the backend drawlist protocol.
- * Used by createApp() to reject core/backend cursor-protocol mismatches early.
+ * Used by createApp() to gate optional v2 cursor emission.
  */
 export const BACKEND_DRAWLIST_V2_MARKER = "__reziBackendUseDrawlistV2" as const;
+/**
+ * Optional marker on RuntimeBackend objects exposing the negotiated drawlist version.
+ * Used by createApp() to choose the matching drawlist builder version.
+ */
+export const BACKEND_DRAWLIST_VERSION_MARKER = "__reziBackendDrawlistVersion" as const;
 
 /**
  * Optional marker on RuntimeBackend objects exposing the backend event-batch cap.
@@ -96,9 +102,10 @@ export interface RuntimeBackend {
    * Submit a frame to be rendered.
    *
    * Frame submission is async and must not block the main thread.
-   * Drawlist bytes are ZRDL v1 and MUST be treated as immutable by the backend.
+   * Drawlist bytes MUST match the backend's negotiated ZRDL version and MUST be
+   * treated as immutable by the backend.
    *
-   * @param drawlist - ZRDL v1 drawlist bytes
+   * @param drawlist - ZRDL drawlist bytes
    */
   requestFrame(drawlist: Uint8Array): Promise<void>;
 
@@ -129,4 +136,12 @@ export interface RuntimeBackend {
    * @returns Terminal capabilities
    */
   getCaps(): Promise<TerminalCaps>;
+
+  /**
+   * Optional detailed terminal profile.
+   *
+   * Backends that do not expose this may omit it; callers should fall back to
+   * `getCaps()` and derive a conservative profile.
+   */
+  getTerminalProfile?: () => Promise<TerminalProfile>;
 }

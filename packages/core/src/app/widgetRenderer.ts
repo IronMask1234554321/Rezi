@@ -28,8 +28,10 @@ import { CURSOR_DEFAULTS } from "../cursor/index.js";
 import {
   type DrawlistBuilderV1,
   type DrawlistBuilderV2,
+  type DrawlistBuilderV3,
   createDrawlistBuilderV1,
   createDrawlistBuilderV2,
+  createDrawlistBuilderV3,
 } from "../drawlist/index.js";
 import type { ZrevEvent } from "../events.js";
 import type { VNode, ViewFn } from "../index.js";
@@ -104,6 +106,7 @@ import {
   type WidgetMetadataCollector,
   createWidgetMetadataCollector,
 } from "../runtime/widgetMeta.js";
+import { DEFAULT_TERMINAL_PROFILE, type TerminalProfile } from "../terminalProfile.js";
 import type { Theme } from "../theme/theme.js";
 import { deleteRange, insertText } from "../widgets/codeEditor.js";
 import { getHunkScrollPosition, navigateHunk } from "../widgets/diffViewer.js";
@@ -128,6 +131,7 @@ import type {
   FileNode,
   FilePickerProps,
   FileTreeExplorerProps,
+  LinkProps,
   LogsConsoleProps,
   RadioGroupProps,
   SelectProps,
@@ -331,6 +335,7 @@ type IdentityDiffDamageResult = Readonly<{
 function isRoutingRelevantKind(kind: WidgetKind): boolean {
   switch (kind) {
     case "button":
+    case "link":
     case "input":
     case "slider":
     case "focusZone":
@@ -372,6 +377,7 @@ function isDamageGranularityKind(kind: WidgetKind): boolean {
     case "divider":
     case "spacer":
     case "button":
+    case "link":
     case "input":
     case "slider":
     case "select":
@@ -425,7 +431,7 @@ function isDamageGranularityKind(kind: WidgetKind): boolean {
  */
 export class WidgetRenderer<S> {
   private readonly backend: RuntimeBackend;
-  private readonly builder: DrawlistBuilderV1 | DrawlistBuilderV2;
+  private readonly builder: DrawlistBuilderV1 | DrawlistBuilderV2 | DrawlistBuilderV3;
   private readonly useV2Cursor: boolean;
   private readonly cursorShape: CursorShape;
   private readonly cursorBlink: boolean;
@@ -438,6 +444,7 @@ export class WidgetRenderer<S> {
   private layoutTree: LayoutTree | null = null;
   private renderTick = 0;
   private lastViewport: Viewport = Object.freeze({ cols: 0, rows: 0 });
+  private terminalProfile: TerminalProfile = DEFAULT_TERMINAL_PROFILE;
 
   /* --- Focus/Interaction State --- */
   private focusState: FocusManagerState = createFocusManagerState();
@@ -483,6 +490,7 @@ export class WidgetRenderer<S> {
   /* --- Complex Widget Metadata (rebuilt each commit) --- */
   private readonly virtualListById = new Map<string, VirtualListProps<unknown>>();
   private readonly buttonById = new Map<string, ButtonProps>();
+  private readonly linkById = new Map<string, LinkProps>();
   private readonly tableById = new Map<string, TableProps<unknown>>();
   private readonly treeById = new Map<string, TreeProps<unknown>>();
   private readonly dropdownById = new Map<string, DropdownProps>();
@@ -615,7 +623,8 @@ export class WidgetRenderer<S> {
   constructor(
     opts: Readonly<{
       backend: RuntimeBackend;
-      builder?: DrawlistBuilderV1 | DrawlistBuilderV2;
+      builder?: DrawlistBuilderV1 | DrawlistBuilderV2 | DrawlistBuilderV3;
+      drawlistVersion?: 1 | 2 | 3 | 4 | 5;
       maxDrawlistBytes?: number;
       drawlistValidateParams?: boolean;
       drawlistReuseOutputBuffer?: boolean;
@@ -624,6 +633,8 @@ export class WidgetRenderer<S> {
       requestRender?: () => void;
       /** Called when composite widgets require a new view/commit pass. */
       requestView?: () => void;
+      /** Optional terminal capability profile for capability-gated widgets. */
+      terminalProfile?: TerminalProfile;
       /** Enable v2 cursor protocol for native cursor support */
       useV2Cursor?: boolean;
       /** Cursor shape for focused inputs (default: bar) */
@@ -641,6 +652,7 @@ export class WidgetRenderer<S> {
     this.collectRuntimeBreadcrumbs = opts.collectRuntimeBreadcrumbs === true;
     this.requestRender = opts.requestRender ?? (() => {});
     this.requestView = opts.requestView ?? (() => {});
+    this.terminalProfile = opts.terminalProfile ?? DEFAULT_TERMINAL_PROFILE;
 
     // Widget rendering is generated from validated layout/runtime data, so we
     // default builder param validation off here to reduce per-command overhead.
@@ -658,11 +670,21 @@ export class WidgetRenderer<S> {
 
     if (opts.builder) {
       this.builder = opts.builder;
-    } else if (this.useV2Cursor) {
-      this.builder = createDrawlistBuilderV2(builderOpts);
-    } else {
-      this.builder = createDrawlistBuilderV1(builderOpts);
+      return;
     }
+    const drawlistVersion = opts.drawlistVersion ?? (this.useV2Cursor ? 2 : 1);
+    if (drawlistVersion >= 3) {
+      this.builder = createDrawlistBuilderV3({
+        ...builderOpts,
+        drawlistVersion: drawlistVersion === 3 ? 3 : drawlistVersion === 4 ? 4 : 5,
+      });
+      return;
+    }
+    if (drawlistVersion === 2 || this.useV2Cursor) {
+      this.builder = createDrawlistBuilderV2(builderOpts);
+      return;
+    }
+    this.builder = createDrawlistBuilderV1(builderOpts);
   }
 
   hasAnimatedWidgets(): boolean {
@@ -732,6 +754,10 @@ export class WidgetRenderer<S> {
    */
   getRectByIdIndex(): ReadonlyMap<string, Rect> {
     return this.rectById;
+  }
+
+  setTerminalProfile(next: TerminalProfile): void {
+    this.terminalProfile = next;
   }
 
   /**
@@ -2349,6 +2375,8 @@ export class WidgetRenderer<S> {
       if (res.action.action === "press") {
         const btn = this.buttonById.get(res.action.id);
         if (btn?.onPress) btn.onPress();
+        const link = this.linkById.get(res.action.id);
+        if (link?.onPress) link.onPress();
       }
       return Object.freeze({ needsRender, action: res.action });
     }
@@ -3229,6 +3257,7 @@ export class WidgetRenderer<S> {
 
         this.virtualListById.clear();
         this.buttonById.clear();
+        this.linkById.clear();
         this.tableById.clear();
         this.treeById.clear();
         this.dropdownById.clear();
@@ -3271,6 +3300,13 @@ export class WidgetRenderer<S> {
             case "button": {
               const p = v.props as ButtonProps;
               this.buttonById.set(p.id, p);
+              break;
+            }
+            case "link": {
+              const p = v.props as LinkProps;
+              if (typeof p.id === "string" && p.id.length > 0) {
+                this.linkById.set(p.id, p);
+              }
               break;
             }
             case "virtualList": {
@@ -3960,6 +3996,7 @@ export class WidgetRenderer<S> {
                 this.diffRenderCacheById,
                 this.codeEditorRenderCacheById,
                 { damageRect },
+                this.terminalProfile,
               );
               this.builder.popClip();
             }
@@ -3978,6 +4015,7 @@ export class WidgetRenderer<S> {
           builder: this.builder,
           tick,
           theme,
+          terminalProfile: this.terminalProfile,
           cursorInfo,
           virtualListStore: this.virtualListStore,
           tableStore: this.tableStore,

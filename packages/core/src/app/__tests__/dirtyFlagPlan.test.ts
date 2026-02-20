@@ -256,3 +256,58 @@ test("state update that changes intrinsic width triggers relayout for mouse hit-
   assert.equal(actions.length, 1, "button press routed after relayout");
   assert.equal(actions[0], "b:press");
 });
+
+test("interactive text-driven state update re-layouts before mouse hit-testing", async () => {
+  const backend = new StubBackend();
+  const app = createApp({ backend, initialState: { label: "A" } });
+  const actions: string[] = [];
+
+  app.view((s) => ui.row({}, [ui.text(s.label), ui.button({ id: "b", label: "B" })]));
+  app.onEvent((ev) => {
+    if (ev.kind === "engine" && ev.event.kind === "text") {
+      app.update((s) => (s.label === "A" ? { ...s, label: "AAAAA" } : s));
+    }
+    if (ev.kind === "action") actions.push(`${ev.id}:${ev.action}`);
+  });
+
+  await app.start();
+  backend.pushBatch(
+    makeBackendBatch({
+      bytes: encodeZrevBatchV1({
+        events: [{ kind: "resize", timeMs: 1, cols: 40, rows: 10 }],
+      }),
+    }),
+  );
+  await flushMicrotasks(10);
+  assert.equal(backend.requestedFrames.length, 1, "bootstrap frame submitted");
+  backend.resolveNextFrame();
+  await flushMicrotasks(5);
+
+  // Text is interactive input, so this update runs on an interactive commit path.
+  backend.pushBatch(
+    makeBackendBatch({
+      bytes: encodeZrevBatchV1({
+        events: [{ kind: "text", timeMs: 10, codepoint: 65 }],
+      }),
+    }),
+  );
+  await flushMicrotasks(10);
+  assert.equal(backend.requestedFrames.length, 2, "interactive commit frame submitted");
+  backend.resolveNextFrame();
+  await flushMicrotasks(5);
+
+  backend.pushBatch(
+    makeBackendBatch({
+      bytes: encodeZrevBatchV1({
+        events: [
+          { kind: "mouse", timeMs: 20, x: 5, y: 0, mouseKind: 3, buttons: 1 },
+          { kind: "mouse", timeMs: 21, x: 5, y: 0, mouseKind: 4, buttons: 0 },
+        ],
+      }),
+    }),
+  );
+  await flushMicrotasks(10);
+
+  assert.equal(actions.length, 1, "button press routed after interactive relayout");
+  assert.equal(actions[0], "b:press");
+});

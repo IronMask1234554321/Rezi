@@ -189,6 +189,9 @@ describe("debug bundle export", () => {
         supportsScrollRegion: true,
         supportsCursorShape: true,
         supportsOutputWaitWritable: false,
+        supportsUnderlineStyles: false,
+        supportsColoredUnderlines: false,
+        supportsHyperlinks: false,
         sgrAttrsSupported: 0xff,
       }),
     });

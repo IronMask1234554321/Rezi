@@ -11,7 +11,12 @@
  */
 
 import type { RuntimeBackend } from "../backend.js";
-import { type DrawlistBuilderV1, createDrawlistBuilderV1 } from "../drawlist/index.js";
+import {
+  type DrawlistBuilderV1,
+  createDrawlistBuilderV1,
+  createDrawlistBuilderV2,
+  createDrawlistBuilderV3,
+} from "../drawlist/index.js";
 import type { DrawFn } from "../index.js";
 import { perfMarkEnd, perfMarkStart } from "../perf/perf.js";
 
@@ -53,6 +58,7 @@ export class RawRenderer {
     opts: Readonly<{
       backend: RuntimeBackend;
       builder?: DrawlistBuilderV1;
+      drawlistVersion?: 1 | 2 | 3 | 4 | 5;
       maxDrawlistBytes?: number;
       drawlistValidateParams?: boolean;
       drawlistReuseOutputBuffer?: boolean;
@@ -72,7 +78,23 @@ export class RawRenderer {
         ? {}
         : { encodedStringCacheCap: opts.drawlistEncodedStringCacheCap }),
     };
-    this.builder = opts.builder ?? createDrawlistBuilderV1(builderOpts);
+    if (opts.builder) {
+      this.builder = opts.builder;
+      return;
+    }
+    const drawlistVersion = opts.drawlistVersion ?? 1;
+    if (drawlistVersion >= 3) {
+      this.builder = createDrawlistBuilderV3({
+        ...builderOpts,
+        drawlistVersion: drawlistVersion === 3 ? 3 : drawlistVersion === 4 ? 4 : 5,
+      });
+      return;
+    }
+    if (drawlistVersion === 2) {
+      this.builder = createDrawlistBuilderV2(builderOpts);
+      return;
+    }
+    this.builder = createDrawlistBuilderV1(builderOpts);
   }
 
   /**

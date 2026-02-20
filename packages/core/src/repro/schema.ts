@@ -72,6 +72,9 @@ const TERMINAL_CAPS_KEYS: ReadonlySet<string> = new Set([
   "supportsScrollRegion",
   "supportsCursorShape",
   "supportsOutputWaitWritable",
+  "supportsUnderlineStyles",
+  "supportsColoredUnderlines",
+  "supportsHyperlinks",
   "sgrAttrsSupported",
 ]);
 
@@ -154,6 +157,22 @@ function assertKnownFields(
 
 function readBoolean(obj: JsonObject, key: string, path: string): ReproParseResult<boolean> {
   const value = obj[key];
+  if (typeof value !== "boolean") {
+    return fail("ZR_REPRO_INVALID_BUNDLE", path, "expected boolean");
+  }
+  return ok(value);
+}
+
+function readBooleanWithDefault(
+  obj: JsonObject,
+  key: string,
+  path: string,
+  fallback: boolean,
+): ReproParseResult<boolean> {
+  const value = obj[key];
+  if (value === undefined) {
+    return ok(fallback);
+  }
   if (typeof value !== "boolean") {
     return fail("ZR_REPRO_INVALID_BUNDLE", path, "expected boolean");
   }
@@ -354,6 +373,27 @@ function parseTerminalCapsSnapshot(
     `${path}.supportsOutputWaitWritable`,
   );
   if (!supportsOutputWaitWritable.ok) return supportsOutputWaitWritable;
+  const supportsUnderlineStyles = readBooleanWithDefault(
+    value,
+    "supportsUnderlineStyles",
+    `${path}.supportsUnderlineStyles`,
+    false,
+  );
+  if (!supportsUnderlineStyles.ok) return supportsUnderlineStyles;
+  const supportsColoredUnderlines = readBooleanWithDefault(
+    value,
+    "supportsColoredUnderlines",
+    `${path}.supportsColoredUnderlines`,
+    false,
+  );
+  if (!supportsColoredUnderlines.ok) return supportsColoredUnderlines;
+  const supportsHyperlinks = readBooleanWithDefault(
+    value,
+    "supportsHyperlinks",
+    `${path}.supportsHyperlinks`,
+    false,
+  );
+  if (!supportsHyperlinks.ok) return supportsHyperlinks;
   const sgrAttrsSupported = readNonNegativeInteger(
     value,
     "sgrAttrsSupported",
@@ -371,6 +411,9 @@ function parseTerminalCapsSnapshot(
     supportsScrollRegion: supportsScrollRegion.value,
     supportsCursorShape: supportsCursorShape.value,
     supportsOutputWaitWritable: supportsOutputWaitWritable.value,
+    supportsUnderlineStyles: supportsUnderlineStyles.value,
+    supportsColoredUnderlines: supportsColoredUnderlines.value,
+    supportsHyperlinks: supportsHyperlinks.value,
     sgrAttrsSupported: sgrAttrsSupported.value,
   });
 }

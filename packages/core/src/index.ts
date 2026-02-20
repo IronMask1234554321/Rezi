@@ -19,6 +19,9 @@ export {
   ZR_ENGINE_ABI_PATCH,
   ZR_DRAWLIST_VERSION_V1,
   ZR_DRAWLIST_VERSION_V2,
+  ZR_DRAWLIST_VERSION_V3,
+  ZR_DRAWLIST_VERSION_V4,
+  ZR_DRAWLIST_VERSION_V5,
   ZR_EVENT_BATCH_VERSION_V1,
   ZR_UNICODE_VERSION_MAJOR,
   ZR_UNICODE_VERSION_MINOR,
@@ -44,6 +47,9 @@ export {
 import {
   ZR_DRAWLIST_VERSION_V1,
   ZR_DRAWLIST_VERSION_V2,
+  ZR_DRAWLIST_VERSION_V3,
+  ZR_DRAWLIST_VERSION_V4,
+  ZR_DRAWLIST_VERSION_V5,
   ZR_ENGINE_ABI_MAJOR,
   ZR_ENGINE_ABI_MINOR,
   ZR_ENGINE_ABI_PATCH,
@@ -81,6 +87,7 @@ export const ZR_DRAWLIST_VERSION: 1 = ZR_DRAWLIST_VERSION_V1;
 export const ZR_EVENT_BATCH_VERSION: 1 = ZR_EVENT_BATCH_VERSION_V1;
 
 export {
+  BACKEND_DRAWLIST_VERSION_MARKER,
   BACKEND_DRAWLIST_V2_MARKER,
   BACKEND_FPS_CAP_MARKER,
   BACKEND_MAX_EVENT_BYTES_MARKER,
@@ -174,6 +181,9 @@ export type {
   BadgeVariant,
   BarChartItem,
   BarChartProps,
+  CanvasContext,
+  CanvasProps,
+  ChartAxis,
   BoxProps,
   BoxShadow,
   ButtonProps,
@@ -186,14 +196,23 @@ export type {
   EmptyProps,
   ErrorDisplayProps,
   FieldProps,
+  GraphicsBlitter,
   GaugeProps,
+  HeatmapColorScale,
+  HeatmapProps,
   IconProps,
+  ImageFit,
+  ImageProps,
+  ImageProtocol,
   InputProps,
   ItemHeightSpec,
   JustifyContent,
   KbdProps,
   LayerProps,
   LayersProps,
+  LineChartProps,
+  LineChartSeries,
+  LinkProps,
   MiniChartProps,
   ModalProps,
   NodeState,
@@ -207,6 +226,8 @@ export type {
   PaginationProps,
   RichTextProps,
   RichTextSpan,
+  ScatterPoint,
+  ScatterProps,
   SelectOption,
   SelectProps,
   SliderProps,
@@ -239,6 +260,8 @@ export type {
   CommandPaletteProps,
   CommandSource,
   CommandItem,
+  CodeEditorDiagnostic,
+  CodeEditorDiagnosticSeverity,
   FilePickerProps,
   FileTreeExplorerProps,
   FileNode,
@@ -451,18 +474,24 @@ export {
 export { debug, inspect } from "./debug/debug.js";
 
 // =============================================================================
-// Drawlist Builder (ZRDL v1 + v2)
+// Drawlist Builder (ZRDL v1 + v3)
 // =============================================================================
 
 export { createDrawlistBuilderV1, type DrawlistBuilderV1Opts } from "./drawlist/index.js";
 export { createDrawlistBuilderV2, type DrawlistBuilderV2Opts } from "./drawlist/index.js";
+export { createDrawlistBuilderV3, type DrawlistBuilderV3Opts } from "./drawlist/index.js";
 export type {
   CursorState,
+  DrawlistCanvasBlitter,
   DrawlistBuildError,
   DrawlistBuildErrorCode,
   DrawlistBuildResult,
   DrawlistBuilderV1,
   DrawlistBuilderV2,
+  DrawlistBuilderV3,
+  DrawlistImageFit,
+  DrawlistImageFormat,
+  DrawlistImageProtocol,
 } from "./drawlist/index.js";
 
 // =============================================================================
@@ -596,6 +625,11 @@ export {
   type ColorMode,
   type TerminalCaps,
 } from "./terminalCaps.js";
+export {
+  DEFAULT_TERMINAL_PROFILE,
+  terminalProfileFromCaps,
+  type TerminalProfile,
+} from "./terminalProfile.js";
 
 // =============================================================================
 // Cursor State API (v2)
@@ -833,6 +867,7 @@ import type { UiEvent } from "./events.js";
 import type { BindingMap, KeyContext, ModeBindingMap } from "./keybindings/index.js";
 import type { Rect } from "./layout/types.js";
 import type { RouterApi } from "./router/types.js";
+import type { TerminalProfile } from "./terminalProfile.js";
 import type { Theme } from "./theme/theme.js";
 import type { ThemeDefinition } from "./theme/tokens.js";
 import type { VNode } from "./widgets/types.js";
@@ -937,6 +972,11 @@ export interface App<S> {
    * @returns Current mode name (default: "default")
    */
   getMode(): string;
+
+  /**
+   * Get the latest terminal profile snapshot.
+   */
+  getTerminalProfile(): TerminalProfile;
 
   /**
    * Page router API when `createApp({ routes, initialRoute })` is used.
