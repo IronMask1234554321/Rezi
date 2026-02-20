@@ -548,6 +548,7 @@ export function createApp<S>(opts: CreateAppStateOptions<S> | CreateAppRoutesOnl
     backend,
     drawlistVersion,
     maxDrawlistBytes: config.maxDrawlistBytes,
+    terminalProfile,
     useV2Cursor: config.useV2Cursor,
     ...(opts.config?.drawlistValidateParams === undefined
       ? {}
@@ -1158,12 +1159,11 @@ export function createApp<S>(opts: CreateAppStateOptions<S> | CreateAppRoutesOnl
     const plan: WidgetRenderPlan = {
       commit: (pendingDirtyFlags & DIRTY_VIEW) !== 0,
       layout: (pendingDirtyFlags & DIRTY_LAYOUT) !== 0,
-      // Keep interactive frames on the absolute fast path (no layout signature walk).
-      // Background commit turns can afford the signature check to avoid unnecessary relayout.
+      // Commit turns must always run layout-stability checks when layout is not
+      // already explicitly dirty; otherwise interactive state updates can render a
+      // newly-committed tree against stale layout nodes until the next resize.
       checkLayoutStability:
-        (pendingDirtyFlags & DIRTY_LAYOUT) === 0 &&
-        interactiveBudget === 0 &&
-        (pendingDirtyFlags & DIRTY_VIEW) !== 0,
+        (pendingDirtyFlags & DIRTY_LAYOUT) === 0 && (pendingDirtyFlags & DIRTY_VIEW) !== 0,
     };
 
     const renderStart = perfNow();
@@ -1375,6 +1375,7 @@ export function createApp<S>(opts: CreateAppStateOptions<S> | CreateAppRoutesOnl
         async () => {
           lifecycleBusy = null;
           terminalProfile = await loadTerminalProfile(backend);
+          widgetRenderer.setTerminalProfile(terminalProfile);
           sm.toRunning();
           markDirty(DIRTY_VIEW, false);
           pollToken++;
