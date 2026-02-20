@@ -13,17 +13,29 @@ function makeRouter(
   historyEntries: readonly Readonly<{ id: string; params: Readonly<Record<string, string>> }>[],
 ): {
   router: RouterApi;
-  calls: Array<Readonly<{ id: string; params: Readonly<Record<string, string>> | undefined }>>;
+  calls: Array<
+    Readonly<{
+      method: "navigate" | "replace";
+      id: string;
+      params: Readonly<Record<string, string>> | undefined;
+    }>
+  >;
 } {
   const calls: Array<
-    Readonly<{ id: string; params: Readonly<Record<string, string>> | undefined }>
+    Readonly<{
+      method: "navigate" | "replace";
+      id: string;
+      params: Readonly<Record<string, string>> | undefined;
+    }>
   > = [];
 
   const router: RouterApi = {
     navigate(routeId, params) {
-      calls.push(Object.freeze({ id: routeId, params }));
+      calls.push(Object.freeze({ method: "navigate", id: routeId, params }));
     },
-    replace() {},
+    replace(routeId, params) {
+      calls.push(Object.freeze({ method: "replace", id: routeId, params }));
+    },
     back() {},
     currentRoute() {
       return Object.freeze({ id: currentId, params: Object.freeze({}) });
@@ -68,6 +80,7 @@ describe("router helper wrappers", () => {
     items[1]?.onPress?.();
     assert.deepEqual(calls, [
       {
+        method: "navigate",
         id: "logs",
         params: Object.freeze({ stream: "main" }),
       },
@@ -94,7 +107,29 @@ describe("router helper wrappers", () => {
     props.onChange("settings");
     assert.deepEqual(calls, [
       {
+        method: "replace",
         id: "settings",
+        params: undefined,
+      },
+    ]);
+  });
+
+  test("buildRouterTabsProps supports push history mode", () => {
+    const routes = [route("home", "Home"), route("logs", "Logs"), route("settings", "Settings")];
+    const history = Object.freeze([Object.freeze({ id: "home", params: Object.freeze({}) })]);
+    const { router, calls } = makeRouter("home", history);
+
+    const props = buildRouterTabsProps(
+      router,
+      routes,
+      Object.freeze({ id: "route-tabs", historyMode: "push" }),
+    );
+    props.onChange("logs");
+
+    assert.deepEqual(calls, [
+      {
+        method: "navigate",
+        id: "logs",
         params: undefined,
       },
     ]);

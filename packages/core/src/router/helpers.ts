@@ -30,6 +30,13 @@ export type RouterTabsProps = Readonly<{
   key?: string;
   variant?: TabsVariant;
   position?: TabsPosition;
+  /**
+   * How tab switches should affect route history.
+   *
+   * - `"replace"` (default): keep one top-level entry (recommended for peer tabs).
+   * - `"push"`: append a history entry per tab switch.
+   */
+  historyMode?: "replace" | "push";
 }>;
 
 function buildRouteTitleById<S>(
@@ -109,6 +116,8 @@ export function buildRouterTabsProps<S>(
   routes: readonly RouteDefinition<S>[],
   props: RouterTabsProps = {},
 ): TabsProps {
+  const historyMode = props.historyMode ?? "replace";
+
   return Object.freeze({
     id: props.id ?? "router-tabs",
     ...(props.key === undefined ? {} : { key: props.key }),
@@ -118,7 +127,11 @@ export function buildRouterTabsProps<S>(
     activeTab: router.currentRoute().id,
     onChange: (nextRouteId: string) => {
       if (nextRouteId === router.currentRoute().id) return;
-      router.navigate(nextRouteId);
+      if (historyMode === "push") {
+        router.navigate(nextRouteId);
+        return;
+      }
+      router.replace(nextRouteId);
     },
   });
 }

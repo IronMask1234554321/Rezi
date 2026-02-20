@@ -141,6 +141,16 @@ ui.routerBreadcrumb(ctx.router, routes, { id: "main-crumb" });
 
 These are thin wrappers over built-in `tabs` and `breadcrumb` widgets.
 
+`routerTabs` uses `replace` semantics by default so top-level tab switches
+don't spam route history. If you explicitly want push history per tab switch:
+
+```ts
+ui.routerTabs(ctx.router, routes, {
+  id: "main-tabs",
+  historyMode: "push",
+});
+```
+
 ## Parameterized Routes
 
 Pass params in `navigate`/`replace`:
