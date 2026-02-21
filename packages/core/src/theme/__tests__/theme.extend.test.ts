@@ -1,5 +1,6 @@
 import { assert, describe, test } from "@rezi-ui/testkit";
 import { extendTheme } from "../extend.js";
+import type { ThemeOverrides } from "../extend.js";
 import { darkTheme, lightTheme } from "../presets.js";
 import { color } from "../tokens.js";
 import type { ThemeDefinition } from "../tokens.js";
@@ -117,6 +118,21 @@ describe("theme.extend", () => {
     assert.notEqual(extended.colors.bg, mutableBase.colors.bg);
     assert.notEqual(extended.colors.bg.base, mutableBase.colors.bg.base);
     assert.equal(mutableBase.colors.bg.base.r, darkTheme.colors.bg.base.r);
+  });
+
+  test("undefined override branches do not freeze caller-owned base objects", () => {
+    const mutableBase = cloneTheme(darkTheme);
+    const overrides = {
+      colors: {
+        accent: undefined,
+      },
+    } as unknown as ThemeOverrides;
+
+    extendTheme(mutableBase, overrides);
+
+    assert.equal(Object.isFrozen(mutableBase.colors), false);
+    assert.equal(Object.isFrozen(mutableBase.colors.accent), false);
+    assert.equal(Object.isFrozen(mutableBase.colors.accent.primary), false);
   });
 
   test("extended theme is deeply frozen", () => {

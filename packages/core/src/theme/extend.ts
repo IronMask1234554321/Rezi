@@ -61,7 +61,7 @@ function deepMerge(base: unknown, overrides: unknown): unknown {
 
     const overrideValue = overrides[key];
     if (overrideValue === undefined) {
-      merged[key] = base[key];
+      merged[key] = deepMerge(base[key], undefined);
       continue;
     }
 
