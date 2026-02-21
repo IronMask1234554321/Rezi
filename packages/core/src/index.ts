@@ -314,6 +314,7 @@ export {
   type DefineWidgetOptions,
   type WidgetContext,
   type WidgetFactory,
+  type WidgetWrapperKind,
   type WidgetPropsBase,
 } from "./widgets/composition.js";
 
@@ -459,7 +460,7 @@ export {
 // Widget Utilities
 // =============================================================================
 
-export { each, type EachOptions } from "./widgets/collections.js";
+export { each, eachInline, type EachInlineOptions, type EachOptions } from "./widgets/collections.js";
 export { match, maybe, show, when } from "./widgets/conditionals.js";
 export { styled } from "./widgets/styled.js";
 export { extendStyle, mergeStyles, styleWhen, styles } from "./widgets/styleUtils.js";
