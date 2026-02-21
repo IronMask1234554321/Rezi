@@ -58,34 +58,10 @@ export function each<T>(
 }
 
 function injectKey(node: VNode, key: string): VNode {
-  switch (node.kind) {
-    case "text":
-      return { ...node, props: { ...node.props, key } };
-    case "box":
-    case "row":
-    case "column":
-    case "spacer":
-    case "divider":
-    case "button":
-    case "input":
-    case "focusZone":
-    case "focusTrap":
-    case "virtualList":
-    case "layers":
-    case "modal":
-    case "dropdown":
-    case "layer":
-    case "table":
-    case "tree":
-    case "field":
-    case "select":
-    case "checkbox":
-    case "radioGroup":
-      return {
-        ...node,
-        props: { ...(node as { props: Record<string, unknown> }).props, key },
-      } as VNode;
-  }
-
-  return node;
+  const props = node.props as { key?: unknown } & Record<string, unknown>;
+  if (props.key === key) return node;
+  return {
+    ...node,
+    props: { ...props, key },
+  } as VNode;
 }

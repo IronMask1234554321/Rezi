@@ -44,6 +44,17 @@ describe("collections", () => {
     assert.equal(t1.props.key, "k2");
   });
 
+  test("eachInline injects keys for widget kinds without explicit key in helper switch", () => {
+    const children = eachInline(["search", "close"], (icon) => ui.icon(icon), {
+      key: (icon) => `icon:${icon}`,
+    });
+    assert.equal(children.length, 2);
+    const i0 = children[0] as { kind: "icon"; props: { key?: string } };
+    const i1 = children[1] as { kind: "icon"; props: { key?: string } };
+    assert.equal(i0.props.key, "icon:search");
+    assert.equal(i1.props.key, "icon:close");
+  });
+
   test("ui.virtualList creates virtualList VNode", () => {
     const items = ["a", "b", "c"] as const;
     const vnode = ui.virtualList({
