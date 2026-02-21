@@ -75,6 +75,12 @@ describe("Composition API - defineWidget", () => {
     assert.ok(meta !== null);
     assert.equal(meta.key, "my-key");
   });
+
+  test("wrapper option controls composite container kind", () => {
+    const InlineRow = defineWidget<{ key?: string }>(() => ui.text("inline"), { wrapper: "row" });
+    const vnode = InlineRow({});
+    assert.equal(vnode.kind, "row");
+  });
 });
 
 describe("Composition API - scopedId", () => {

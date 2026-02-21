@@ -159,12 +159,19 @@ export type WidgetPropsBase = Readonly<{ key?: string }>;
  */
 export type WidgetFactory<Props extends WidgetPropsBase> = (props: Props) => VNode;
 
+export type WidgetWrapperKind = "column" | "row";
+
 /**
  * Options for defineWidget.
  */
 export type DefineWidgetOptions = Readonly<{
   /** Display name for debugging (optional). */
   name?: string;
+  /**
+   * Container wrapper kind used by the composite placeholder node.
+   * Defaults to "column" for backwards compatibility.
+   */
+  wrapper?: WidgetWrapperKind;
 }>;
 
 /**
@@ -205,6 +212,7 @@ export function defineWidget<Props extends WidgetPropsBase, State = void>(
   options?: DefineWidgetOptions,
 ): WidgetFactory<Props> {
   const widgetKey = generateWidgetKey(options?.name);
+  const wrapperKind = options?.wrapper ?? "column";
 
   return function widgetFactory(props: Props): VNode {
     // Store render function and props for later execution
@@ -213,9 +221,9 @@ export function defineWidget<Props extends WidgetPropsBase, State = void>(
     };
 
     // Create a composite VNode that the runtime will detect and handle
-    // Use column as the base kind with proper key handling
+    // Use a container wrapper so runtime can reconcile the rendered child.
     const baseVNode: VNode = {
-      kind: "column",
+      kind: wrapperKind,
       props: props.key !== undefined ? { key: props.key } : {},
       children: [],
     };

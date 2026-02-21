@@ -7,7 +7,39 @@ import type { VNode } from "./types.js";
 export type EachOptions<T> = Readonly<{
   key: (item: T, index: number) => string;
   empty?: () => VNode;
+  container?: "column" | "row";
 }>;
+
+export type EachInlineOptions<T> = Readonly<{
+  key: (item: T, index: number) => string;
+  empty?: () => readonly VNode[];
+}>;
+
+function collectEachChildren<T>(
+  items: readonly T[],
+  render: (item: T, index: number) => VNode,
+  keyFor: (item: T, index: number) => string,
+): readonly VNode[] {
+  const children: VNode[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item === undefined) continue;
+    const node = render(item, i);
+    children.push(injectKey(node, keyFor(item, i)));
+  }
+  return Object.freeze(children);
+}
+
+export function eachInline<T>(
+  items: readonly T[],
+  render: (item: T, index: number) => VNode,
+  options: EachInlineOptions<T>,
+): readonly VNode[] {
+  if (items.length === 0) {
+    return options.empty ? Object.freeze([...options.empty()]) : Object.freeze([]);
+  }
+  return collectEachChildren(items, render, options.key);
+}
 
 export function each<T>(
   items: readonly T[],
@@ -18,46 +50,18 @@ export function each<T>(
     return options.empty();
   }
 
-  const children: VNode[] = [];
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    if (item === undefined) continue;
-    const node = render(item, i);
-    children.push(injectKey(node, options.key(item, i)));
-  }
-
-  return { kind: "column", props: {}, children: Object.freeze(children) };
+  return {
+    kind: options.container ?? "column",
+    props: {},
+    children: collectEachChildren(items, render, options.key),
+  };
 }
 
 function injectKey(node: VNode, key: string): VNode {
-  switch (node.kind) {
-    case "text":
-      return { ...node, props: { ...node.props, key } };
-    case "box":
-    case "row":
-    case "column":
-    case "spacer":
-    case "divider":
-    case "button":
-    case "input":
-    case "focusZone":
-    case "focusTrap":
-    case "virtualList":
-    case "layers":
-    case "modal":
-    case "dropdown":
-    case "layer":
-    case "table":
-    case "tree":
-    case "field":
-    case "select":
-    case "checkbox":
-    case "radioGroup":
-      return {
-        ...node,
-        props: { ...(node as { props: Record<string, unknown> }).props, key },
-      } as VNode;
-  }
-
-  return node;
+  const props = node.props as { key?: unknown } & Record<string, unknown>;
+  if (props.key === key) return node;
+  return {
+    ...node,
+    props: { ...props, key },
+  } as VNode;
 }

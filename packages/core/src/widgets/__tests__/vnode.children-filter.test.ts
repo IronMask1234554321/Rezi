@@ -53,6 +53,7 @@ describe("vnode children filtering", () => {
   test("vstack children-only overload filters children", () => {
     const vnode = ui.vstack([text("a"), null, false, undefined, text("b")]);
     assert.equal(childrenOf(vnode).length, 2);
+    assert.equal((vnode.props as { gap?: number }).gap, 0);
   });
 
   test("vstack gap overload filters children", () => {
@@ -63,6 +64,14 @@ describe("vnode children filtering", () => {
   test("hstack children-only overload filters children", () => {
     const vnode = ui.hstack([text("a"), null, undefined, false, text("b")]);
     assert.equal(childrenOf(vnode).length, 2);
+    assert.equal((vnode.props as { gap?: number }).gap, 0);
+  });
+
+  test("spaced stack helpers default to gap=1", () => {
+    const vertical = ui.spacedVStack([text("a"), text("b")]);
+    const horizontal = ui.spacedHStack([text("a"), text("b")]);
+    assert.equal((vertical.props as { gap?: number }).gap, 1);
+    assert.equal((horizontal.props as { gap?: number }).gap, 1);
   });
 
   test("hstack props overload filters children", () => {

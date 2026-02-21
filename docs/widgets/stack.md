@@ -57,8 +57,10 @@ ui.column({ height: 6, justify: "between" }, [
 
 Rezi also includes:
 
-- `ui.hstack(...)` — shorthand row with default `gap: 1`
-- `ui.vstack(...)` — shorthand column with default `gap: 1`
+- `ui.hstack(...)` — shorthand row with default `gap: 0`
+- `ui.vstack(...)` — shorthand column with default `gap: 0`
+- `ui.spacedHStack(...)` — shorthand row with default `gap: 1`
+- `ui.spacedVStack(...)` — shorthand column with default `gap: 1`
 
 ## Related
 
