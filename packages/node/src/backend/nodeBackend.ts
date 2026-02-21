@@ -220,6 +220,23 @@ function resolveRequestedDrawlistVersion(config: NodeBackendConfig): 1 | 2 | 3 |
   return useDrawlistV2 ? ZR_DRAWLIST_VERSION_V2 : ZR_DRAWLIST_VERSION_V5;
 }
 
+function parseBoundedPositiveIntOrThrow(
+  name: string,
+  value: unknown,
+  fallback: number,
+  max: number,
+): number {
+  if (value === undefined) return fallback;
+  const parsed = parsePositiveInt(value);
+  if (parsed === null) {
+    throw new ZrUiError("ZRUI_INVALID_PROPS", `${name} must be a positive integer`);
+  }
+  if (parsed > max) {
+    throw new ZrUiError("ZRUI_INVALID_PROPS", `${name} must be <= ${String(max)}`);
+  }
+  return parsed;
+}
+
 function readNativeTargetFpsValues(
   cfg: Readonly<Record<string, unknown>>,
 ): Readonly<{ camel: number | null; snake: number | null }> {
@@ -256,6 +273,10 @@ const DEBUG_QUERY_DEFAULT_RECORDS = 4096 as const;
 const DEBUG_QUERY_MAX_RECORDS = 16384 as const;
 const FRAME_SAB_SLOT_COUNT_DEFAULT = 8 as const;
 const FRAME_SAB_SLOT_BYTES_DEFAULT = 1 << 20;
+const DEFAULT_FPS_CAP = 60 as const;
+const MAX_SAFE_FPS_CAP = 1000 as const;
+const DEFAULT_MAX_EVENT_BYTES = 1 << 20;
+const MAX_SAFE_EVENT_BYTES = 4 << 20;
 
 function copyInto(buf: ArrayBuffer, bytes: Uint8Array): void {
   new Uint8Array(buf, 0, bytes.byteLength).set(bytes);
@@ -367,7 +388,12 @@ function publishSabFrame(
 
 export function createNodeBackendInternal(opts: NodeBackendInternalOpts = {}): NodeBackend {
   const cfg = opts.config ?? {};
-  const fpsCap = parsePositiveIntOr(cfg.fpsCap, 60);
+  const fpsCap = parseBoundedPositiveIntOrThrow(
+    "fpsCap",
+    cfg.fpsCap,
+    DEFAULT_FPS_CAP,
+    MAX_SAFE_FPS_CAP,
+  );
   const requestedExecutionMode = cfg.executionMode ?? "auto";
   const executionMode: "worker" | "inline" =
     requestedExecutionMode === "inline"
@@ -380,8 +406,13 @@ export function createNodeBackendInternal(opts: NodeBackendInternalOpts = {}): N
   if (executionMode === "inline") {
     return createNodeBackendInlineInternal(opts);
   }
-  const maxEventBytes = parsePositiveIntOr(cfg.maxEventBytes, 1 << 20);
   const requestedDrawlistVersion = resolveRequestedDrawlistVersion(cfg);
+  const maxEventBytes = parseBoundedPositiveIntOrThrow(
+    "maxEventBytes",
+    cfg.maxEventBytes,
+    DEFAULT_MAX_EVENT_BYTES,
+    MAX_SAFE_EVENT_BYTES,
+  );
   const frameTransportMode =
     cfg.frameTransport === "transfer" || cfg.frameTransport === "sab" ? cfg.frameTransport : "auto";
   const frameSabSlotCount = parsePositiveIntOr(cfg.frameSabSlotCount, FRAME_SAB_SLOT_COUNT_DEFAULT);

@@ -126,6 +126,10 @@ const EVENT_POOL_SIZE = 16 as const;
 const POLL_IDLE_MS = 2 as const;
 const POLL_BUSY_MS = 0 as const;
 const ZR_ERR_LIMIT = -3 as const;
+const DEFAULT_FPS_CAP = 60 as const;
+const MAX_SAFE_FPS_CAP = 1000 as const;
+const DEFAULT_MAX_EVENT_BYTES = 1 << 20;
+const MAX_SAFE_EVENT_BYTES = 4 << 20;
 const WIDTH_POLICY_KEY = "widthPolicy" as const;
 const RESOLVED_VOID = Promise.resolve();
 const SYNC_FRAME_ACK_MARKER = "__reziSyncFrameAck";
@@ -195,6 +199,23 @@ function resolveRequestedDrawlistVersion(
   }
 
   return useDrawlistV2 ? ZR_DRAWLIST_VERSION_V2 : ZR_DRAWLIST_VERSION_V5;
+}
+
+function parseBoundedPositiveIntOrThrow(
+  name: string,
+  value: unknown,
+  fallback: number,
+  max: number,
+): number {
+  if (value === undefined) return fallback;
+  const parsed = parsePositiveInt(value);
+  if (parsed === null) {
+    throw new ZrUiError("ZRUI_INVALID_PROPS", `${name} must be a positive integer`);
+  }
+  if (parsed > max) {
+    throw new ZrUiError("ZRUI_INVALID_PROPS", `${name} must be <= ${String(max)}`);
+  }
+  return parsed;
 }
 
 function readNativeTargetFpsValues(
@@ -292,9 +313,19 @@ async function loadNative(shimModule: string | undefined): Promise<NativeApi> {
 
 export function createNodeBackendInlineInternal(opts: NodeBackendInternalOpts = {}): NodeBackend {
   const cfg = opts.config ?? {};
-  const fpsCap = parsePositiveIntOr(cfg.fpsCap, 60);
-  const maxEventBytes = parsePositiveIntOr(cfg.maxEventBytes, 1 << 20);
   const requestedDrawlistVersion = resolveRequestedDrawlistVersion(cfg);
+  const fpsCap = parseBoundedPositiveIntOrThrow(
+    "fpsCap",
+    cfg.fpsCap,
+    DEFAULT_FPS_CAP,
+    MAX_SAFE_FPS_CAP,
+  );
+  const maxEventBytes = parseBoundedPositiveIntOrThrow(
+    "maxEventBytes",
+    cfg.maxEventBytes,
+    DEFAULT_MAX_EVENT_BYTES,
+    MAX_SAFE_EVENT_BYTES,
+  );
   const nativeConfig: Readonly<Record<string, unknown>> =
     typeof cfg.nativeConfig === "object" &&
     cfg.nativeConfig !== null &&
