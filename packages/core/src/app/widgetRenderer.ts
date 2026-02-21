@@ -56,6 +56,12 @@ import {
 import { hitTestFocusable } from "../layout/hitTest.js";
 import { type LayoutTree, layout } from "../layout/layout.js";
 import { calculateAnchorPosition } from "../layout/positioning.js";
+import {
+  type ResponsiveBreakpointThresholds,
+  getResponsiveViewport,
+  normalizeBreakpointThresholds,
+  setResponsiveViewport,
+} from "../layout/responsive.js";
 import { measureTextCells } from "../layout/textMeasure.js";
 import type { Rect } from "../layout/types.js";
 import { PERF_DETAIL_ENABLED, PERF_ENABLED, perfMarkEnd, perfMarkStart } from "../perf/perf.js";
@@ -278,6 +284,30 @@ const ROUTE_RENDER: WidgetRoutingOutcome = Object.freeze({ needsRender: true });
 const ROUTE_NO_RENDER: WidgetRoutingOutcome = Object.freeze({ needsRender: false });
 const ZERO_RECT: Rect = Object.freeze({ x: 0, y: 0, w: 0, h: 0 });
 const INCREMENTAL_DAMAGE_AREA_FRACTION = 0.45;
+const NODE_ENV =
+  (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process?.env?.NODE_ENV ??
+  "development";
+const DEV_MODE = NODE_ENV !== "production";
+const LAYOUT_WARNINGS_ENV_RAW =
+  (
+    globalThis as {
+      process?: { env?: { REZI_LAYOUT_WARNINGS?: string; ZRUI_LAYOUT_WARNINGS?: string } };
+    }
+  ).process?.env?.REZI_LAYOUT_WARNINGS ??
+  (
+    globalThis as {
+      process?: { env?: { REZI_LAYOUT_WARNINGS?: string; ZRUI_LAYOUT_WARNINGS?: string } };
+    }
+  ).process?.env?.ZRUI_LAYOUT_WARNINGS ??
+  "";
+const LAYOUT_WARNINGS_ENV = LAYOUT_WARNINGS_ENV_RAW.toLowerCase();
+const DEV_LAYOUT_WARNINGS =
+  DEV_MODE && (LAYOUT_WARNINGS_ENV === "1" || LAYOUT_WARNINGS_ENV === "true");
+
+function warnDev(message: string): void {
+  const c = (globalThis as { console?: { warn?: (msg: string) => void } }).console;
+  c?.warn?.(message);
+}
 
 function clipRectToViewport(rect: Rect, viewport: Viewport): Rect | null {
   const x0 = Math.max(0, rect.x);
@@ -438,6 +468,10 @@ export class WidgetRenderer<S> {
   private collectRuntimeBreadcrumbs: boolean;
   private readonly requestRender: () => void;
   private readonly requestView: () => void;
+  private readonly rootPadding: number;
+  private readonly breakpointThresholds: ResponsiveBreakpointThresholds;
+  private readonly devMode = DEV_LAYOUT_WARNINGS;
+  private readonly warnedLayoutIssues = new Set<string>();
 
   /* --- Committed Tree State --- */
   private committedRoot: RuntimeInstance | null = null;
@@ -538,6 +572,7 @@ export class WidgetRenderer<S> {
   // Tracks whether the currently committed tree needs routing rebuild traversals.
   private hadRoutingWidgets = false;
   private hasAnimatedWidgetsInCommittedTree = false;
+  private hasViewportAwareCompositesInCommittedTree = false;
 
   /* --- Render Caches (avoid per-frame recompute) --- */
   private readonly tableRenderCacheById = new Map<string, TableRenderCache>();
@@ -629,6 +664,10 @@ export class WidgetRenderer<S> {
       drawlistValidateParams?: boolean;
       drawlistReuseOutputBuffer?: boolean;
       drawlistEncodedStringCacheCap?: number;
+      /** Root viewport padding in terminal cells. */
+      rootPadding?: number;
+      /** Responsive breakpoint thresholds (inclusive max widths). */
+      breakpointThresholds?: ResponsiveBreakpointThresholds;
       /** Called when composite widgets invalidate (useState/useEffect). */
       requestRender?: () => void;
       /** Called when composite widgets require a new view/commit pass. */
@@ -652,6 +691,8 @@ export class WidgetRenderer<S> {
     this.collectRuntimeBreadcrumbs = opts.collectRuntimeBreadcrumbs === true;
     this.requestRender = opts.requestRender ?? (() => {});
     this.requestView = opts.requestView ?? (() => {});
+    this.rootPadding = Math.max(0, Math.trunc(opts.rootPadding ?? 0));
+    this.breakpointThresholds = normalizeBreakpointThresholds(opts.breakpointThresholds);
     this.terminalProfile = opts.terminalProfile ?? DEFAULT_TERMINAL_PROFILE;
 
     // Widget rendering is generated from validated layout/runtime data, so we
@@ -689,6 +730,80 @@ export class WidgetRenderer<S> {
 
   hasAnimatedWidgets(): boolean {
     return this.hasAnimatedWidgetsInCommittedTree;
+  }
+
+  hasViewportAwareComposites(): boolean {
+    return this.hasViewportAwareCompositesInCommittedTree;
+  }
+
+  invalidateCompositeWidgets(): void {
+    const ids = this.compositeRegistry.getAllIds();
+    for (const id of ids) {
+      this.compositeRegistry.invalidate(id);
+    }
+  }
+
+  private describeLayoutNode(node: LayoutTree): string {
+    const props = node.vnode.props as { id?: unknown } | undefined;
+    const id = typeof props?.id === "string" && props.id.length > 0 ? `#${props.id}` : "";
+    return `${node.vnode.kind}${id}`;
+  }
+
+  private warnLayoutIssue(key: string, detail: string): void {
+    if (!this.devMode) return;
+    if (this.warnedLayoutIssues.has(key)) return;
+    this.warnedLayoutIssues.add(key);
+    warnDev(`[rezi][layout] ${detail}`);
+  }
+
+  private emitDevLayoutWarnings(root: LayoutTree, viewport: Viewport): void {
+    if (!this.devMode) return;
+    this._pooledLayoutStack.length = 0;
+    this._pooledLayoutStack.push(root);
+    while (this._pooledLayoutStack.length > 0) {
+      const node = this._pooledLayoutStack.pop();
+      if (!node) continue;
+
+      const desc = this.describeLayoutNode(node);
+      const props = node.vnode.props as
+        | Readonly<{
+            minWidth?: unknown;
+            minHeight?: unknown;
+          }>
+        | undefined;
+      const minWidth = typeof props?.minWidth === "number" ? Math.trunc(props.minWidth) : null;
+      const minHeight = typeof props?.minHeight === "number" ? Math.trunc(props.minHeight) : null;
+      if (minWidth !== null && Number.isFinite(minWidth) && minWidth > viewport.cols) {
+        this.warnLayoutIssue(
+          `minWidth:${desc}:${minWidth}`,
+          `${desc} minWidth=${String(minWidth)} exceeds viewport width=${String(viewport.cols)}.`,
+        );
+      }
+      if (minHeight !== null && Number.isFinite(minHeight) && minHeight > viewport.rows) {
+        this.warnLayoutIssue(
+          `minHeight:${desc}:${minHeight}`,
+          `${desc} minHeight=${String(minHeight)} exceeds viewport height=${String(viewport.rows)}.`,
+        );
+      }
+
+      if (node.rect.w <= 0 || node.rect.h <= 0) {
+        this.warnLayoutIssue(
+          `zeroRect:${desc}:${node.rect.w}x${node.rect.h}`,
+          `${desc} resolved to zero-size rect ${String(node.rect.w)}x${String(node.rect.h)} and may be invisible.`,
+        );
+      }
+
+      if (node.meta && node.meta.viewportWidth <= 0 && node.meta.viewportHeight <= 0) {
+        this.warnLayoutIssue(
+          `scrollViewport:${desc}`,
+          `${desc} overflow viewport collapsed to 0x0.`,
+        );
+      }
+
+      for (let i = 0; i < node.children.length; i++) {
+        this._pooledLayoutStack.push(node.children[i] as LayoutTree);
+      }
+    }
   }
 
   private recomputeAnimatedWidgetPresence(runtimeRoot: RuntimeInstance): void {
@@ -3057,6 +3172,7 @@ export class WidgetRenderer<S> {
     }
 
     this.lastViewport = viewport;
+    setResponsiveViewport(viewport.cols, viewport.rows, this.breakpointThresholds);
     this.builder.reset();
 
     let entered = false;
@@ -3081,6 +3197,7 @@ export class WidgetRenderer<S> {
       let identityDamageFromCommit: IdentityDiffDamageResult | null = null;
 
       if (doCommit) {
+        let commitReadViewport = false;
         const viewToken = PERF_DETAIL_ENABLED ? perfMarkStart("view") : 0;
         const vnode = viewFn(snapshot);
         if (PERF_DETAIL_ENABLED) perfMarkEnd("view", viewToken);
@@ -3092,7 +3209,11 @@ export class WidgetRenderer<S> {
           composite: {
             registry: this.compositeRegistry,
             appState: snapshot,
+            viewport: getResponsiveViewport(),
             onInvalidate: () => this.requestView(),
+            onUseViewport: () => {
+              commitReadViewport = true;
+            },
           },
         });
         if (PERF_DETAIL_ENABLED) perfMarkEnd("vnode_commit", commitToken);
@@ -3100,6 +3221,9 @@ export class WidgetRenderer<S> {
           return { ok: false, code: commitRes0.fatal.code, detail: commitRes0.fatal.detail };
         }
         commitRes = commitRes0.value;
+        if (commitReadViewport) {
+          this.hasViewportAwareCompositesInCommittedTree = true;
+        }
         this.committedRoot = commitRes.root;
         this.recomputeAnimatedWidgetPresence(this.committedRoot);
 
@@ -3147,13 +3271,16 @@ export class WidgetRenderer<S> {
           // Commit can replace vnode identities; reset cross-frame measure memoization.
           this._layoutMeasureCache = new WeakMap<VNode, unknown>();
         }
+        const rootPad = this.rootPadding;
+        const rootW = Math.max(0, viewport.cols - rootPad * 2);
+        const rootH = Math.max(0, viewport.rows - rootPad * 2);
         const layoutToken = perfMarkStart("layout");
         const layoutRes = layout(
           this.committedRoot.vnode,
-          0,
-          0,
-          viewport.cols,
-          viewport.rows,
+          rootPad,
+          rootPad,
+          rootW,
+          rootH,
           "column",
           this._layoutMeasureCache,
         );
@@ -3163,6 +3290,7 @@ export class WidgetRenderer<S> {
         }
         const nextLayoutTree = layoutRes.value;
         this.layoutTree = nextLayoutTree;
+        this.emitDevLayoutWarnings(nextLayoutTree, viewport);
 
         // Build a fast instanceId->rect index for overlay routing (modal/layer hit testing),
         // plus an id->rect map for widget-local interactions (scrolling, divider drags).

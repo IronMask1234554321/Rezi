@@ -16,6 +16,7 @@
  * @see docs/guide/runtime-and-layout.md
  */
 
+import type { ResponsiveViewportSnapshot } from "../layout/responsive.js";
 import {
   type CompositeWidgetMeta,
   type WidgetContext,
@@ -605,13 +606,20 @@ type CommitCtx = Readonly<{
   composite: Readonly<{
     registry: CompositeInstanceRegistry;
     appState: unknown;
+    viewport?: ResponsiveViewportSnapshot;
     onInvalidate: (instanceId: InstanceId) => void;
+    onUseViewport?: () => void;
   }> | null;
   compositeRenderStack: Array<Readonly<{ widgetKey: string; instanceId: InstanceId }>>;
   pendingEffects: EffectState[];
 }>;
 
 const MAX_COMPOSITE_RENDER_DEPTH = 100;
+const DEFAULT_VIEWPORT_SNAPSHOT: ResponsiveViewportSnapshot = Object.freeze({
+  width: 0,
+  height: 0,
+  breakpoint: "sm",
+});
 
 function commitNode(
   prev: RuntimeInstance | null,
@@ -750,6 +758,10 @@ function commitNode(
                 value: selected,
               });
               return selected;
+            },
+            useViewport: () => {
+              compositeRuntime.onUseViewport?.();
+              return compositeRuntime.viewport ?? DEFAULT_VIEWPORT_SNAPSHOT;
             },
             invalidate: invalidateInstance,
           });
@@ -1063,7 +1075,9 @@ export function commitVNodeTree(
     composite?: Readonly<{
       registry: CompositeInstanceRegistry;
       appState: unknown;
+      viewport?: ResponsiveViewportSnapshot;
       onInvalidate: (instanceId: InstanceId) => void;
+      onUseViewport?: () => void;
     }>;
   }>,
 ): CommitResult {
