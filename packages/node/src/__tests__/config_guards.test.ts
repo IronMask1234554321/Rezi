@@ -127,3 +127,51 @@ test("createNodeApp constructs a compatible app/backend pair", () => {
   });
   app.dispose();
 });
+
+test("config guard: createNodeBackend rejects fpsCap above safe bound", () => {
+  assert.throws(
+    () => createNodeBackend({ fpsCap: 1001 }),
+    (err) =>
+      err instanceof ZrUiError &&
+      err.code === "ZRUI_INVALID_PROPS" &&
+      err.message.includes("fpsCap must be <= 1000"),
+  );
+});
+
+test("config guard: createNodeBackend rejects maxEventBytes above safe bound", () => {
+  assert.throws(
+    () => createNodeBackend({ maxEventBytes: (4 << 20) + 1 }),
+    (err) =>
+      err instanceof ZrUiError &&
+      err.code === "ZRUI_INVALID_PROPS" &&
+      err.message.includes("maxEventBytes must be <= 4194304"),
+  );
+});
+
+test("config guard: createNodeApp rejects fpsCap above safe bound", () => {
+  assert.throws(
+    () =>
+      createNodeApp({
+        initialState: { value: 0 },
+        config: { fpsCap: 1001 },
+      }),
+    (err) =>
+      err instanceof ZrUiError &&
+      err.code === "ZRUI_INVALID_PROPS" &&
+      err.message.includes("fpsCap must be <= 1000"),
+  );
+});
+
+test("config guard: createNodeApp rejects maxEventBytes above safe bound", () => {
+  assert.throws(
+    () =>
+      createNodeApp({
+        initialState: { value: 0 },
+        config: { maxEventBytes: (4 << 20) + 1 },
+      }),
+    (err) =>
+      err instanceof ZrUiError &&
+      err.code === "ZRUI_INVALID_PROPS" &&
+      err.message.includes("maxEventBytes must be <= 4194304"),
+  );
+});

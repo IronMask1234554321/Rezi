@@ -115,6 +115,8 @@ const app = createNodeApp<State>({
 
 - `createNodeApp<State>` creates a typed application instance and compatible Node/Bun backend
 - `config` controls app/backend runtime knobs in one place (`fpsCap`, `maxEventBytes`, `useV2Cursor`)
+- `fpsCap` must be a positive integer `<= 1000` (default `60`)
+- `maxEventBytes` must be a positive integer `<= 4 MiB` (default `1 MiB`)
 - `initialState` provides the initial application state
 
 ### Defining the View

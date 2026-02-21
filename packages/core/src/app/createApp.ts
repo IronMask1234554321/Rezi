@@ -122,6 +122,9 @@ const DEFAULT_CONFIG: ResolvedAppConfig = Object.freeze({
   internal_onRender: undefined,
   internal_onLayout: undefined,
 });
+
+const MAX_SAFE_FPS_CAP = 1000;
+const MAX_SAFE_EVENT_BYTES = 4 << 20 /* 4 MiB */;
 const SYNC_FRAME_ACK_MARKER = "__reziSyncFrameAck";
 export const APP_INTERNAL_REQUEST_VIEW_LAYOUT_MARKER = "__reziRequestViewLayout";
 export const APP_INTERNAL_SET_RUNTIME_BREADCRUMB_HOOKS_MARKER = "__reziSetRuntimeBreadcrumbHooks";
@@ -138,6 +141,12 @@ function invalidProps(detail: string): never {
 function requirePositiveInt(name: string, v: number): number {
   if (!Number.isInteger(v) || v <= 0) invalidProps(`${name} must be a positive integer`);
   return v;
+}
+
+function requirePositiveIntAtMost(name: string, v: number, max: number): number {
+  const parsed = requirePositiveInt(name, v);
+  if (parsed > max) invalidProps(`${name} must be <= ${String(max)}`);
+  return parsed;
 }
 
 function requireNonNegativeInt(name: string, v: number): number {
@@ -229,11 +238,11 @@ export function resolveAppConfig(config: AppConfig | undefined): ResolvedAppConf
   const fpsCap =
     config.fpsCap === undefined
       ? DEFAULT_CONFIG.fpsCap
-      : requirePositiveInt("fpsCap", config.fpsCap);
+      : requirePositiveIntAtMost("fpsCap", config.fpsCap, MAX_SAFE_FPS_CAP);
   const maxEventBytes =
     config.maxEventBytes === undefined
       ? DEFAULT_CONFIG.maxEventBytes
-      : requirePositiveInt("maxEventBytes", config.maxEventBytes);
+      : requirePositiveIntAtMost("maxEventBytes", config.maxEventBytes, MAX_SAFE_EVENT_BYTES);
   const maxDrawlistBytes =
     config.maxDrawlistBytes === undefined
       ? DEFAULT_CONFIG.maxDrawlistBytes

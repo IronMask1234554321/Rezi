@@ -44,7 +44,7 @@ default to `undefined`.
 
 | Detail   | Value |
 |----------|-------|
-| Type     | `number` (positive integer) |
+| Type     | `number` (positive integer, `<= 1000`) |
 | Default  | `60` |
 
 Controls the maximum frames per second the runtime will attempt to render. The
@@ -62,7 +62,7 @@ config: {
 
 | Detail   | Value |
 |----------|-------|
-| Type     | `number` (positive integer) |
+| Type     | `number` (positive integer, `<= 4 << 20`) |
 | Default  | `1 << 20` (1 MiB) |
 
 Upper limit on the byte size of a single event batch received from the backend.
