@@ -113,14 +113,25 @@ describe("theme.extend", () => {
       },
     });
 
-    (
-      extended as unknown as {
-        colors: { bg: { base: { r: number } } };
-      }
-    ).colors.bg.base.r = 99;
-
+    assert.notEqual(extended.colors, mutableBase.colors);
+    assert.notEqual(extended.colors.bg, mutableBase.colors.bg);
+    assert.notEqual(extended.colors.bg.base, mutableBase.colors.bg.base);
     assert.equal(mutableBase.colors.bg.base.r, darkTheme.colors.bg.base.r);
-    assert.equal(extended.colors.bg.base.r, 99);
+  });
+
+  test("extended theme is deeply frozen", () => {
+    const extended = extendTheme(darkTheme, {
+      colors: {
+        accent: {
+          primary: color(1, 2, 3),
+        },
+      },
+    });
+
+    assert.equal(Object.isFrozen(extended), true);
+    assert.equal(Object.isFrozen(extended.colors), true);
+    assert.equal(Object.isFrozen(extended.colors.accent), true);
+    assert.equal(Object.isFrozen(extended.colors.accent.primary), true);
   });
 
   test("nested extension preserves prior overrides", () => {
@@ -178,6 +189,18 @@ describe("theme.extend", () => {
     assert.equal(two.name, "custom-1");
     assert.deepEqual(two.colors.info, { r: 1, g: 1, b: 1 });
     assert.deepEqual(two.colors.warning, darkTheme.colors.warning);
+  });
+
+  test("unrelated overrides preserve inherited diagnostic tokens", () => {
+    const next = extendTheme(darkTheme, {
+      colors: {
+        fg: {
+          primary: color(20, 30, 40),
+        },
+      },
+    });
+
+    assert.deepEqual(next.colors.diagnostic, darkTheme.colors.diagnostic);
   });
 
   test("each extension call returns a distinct object", () => {
