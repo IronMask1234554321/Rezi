@@ -216,8 +216,6 @@ async function runBlessed(config: ScenarioConfig): Promise<BenchMetrics> {
     box.setContent(`terminal-rerender\n\ntick=${tick}\n`);
     screen.render();
     await renderP;
-    await new Promise<void>((resolve) => process.nextTick(resolve));
-    await new Promise<void>((resolve) => setImmediate(resolve));
   };
 
   try {
@@ -254,7 +252,7 @@ export const terminalRerenderScenario: Scenario = {
   description: "Small update benchmark across terminal UI frameworks (includes PTY output path)",
   defaultConfig: { warmup: 100, iterations: 1000 },
   paramSets: [],
-  frameworks: ["rezi-native", "ink", "opentui", "bubbletea", "blessed", "ratatui"],
+  frameworks: ["rezi-native", "ink", "opentui", "opentui-core", "bubbletea", "blessed", "ratatui"],
 
   async run(framework: Framework, config: ScenarioConfig): Promise<BenchMetrics> {
     tryGc();
@@ -264,6 +262,8 @@ export const terminalRerenderScenario: Scenario = {
       case "ink":
         return runInk(config);
       case "opentui":
+      case "opentui-core":
+      case "bubbletea":
         return runOpenTui(config);
       case "blessed":
         return runBlessed(config);

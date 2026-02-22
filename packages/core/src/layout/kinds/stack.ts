@@ -1,6 +1,7 @@
 import type { VNode } from "../../index.js";
 import { measureContentBounds, resolveLayoutConstraints, resolveOverflow } from "../constraints.js";
 import { clampNonNegative, clampWithin, isPercentString, toFiniteMax } from "../engine/bounds.js";
+import { getActiveDirtySet } from "../engine/dirtySet.js";
 import {
   type FlexItem,
   type Justify,
@@ -36,6 +37,7 @@ type LayoutNodeFn = (
   axis: Axis,
   forcedW?: number | null,
   forcedH?: number | null,
+  precomputedSize?: Size | null,
 ) => LayoutResult<LayoutTree>;
 
 function countNonEmptyChildren(children: readonly (VNode | undefined)[]): number {
@@ -87,6 +89,36 @@ type WrapLineLayout = Readonly<{
   main: number;
   cross: number;
 }>;
+
+const previousChildSizeCache = new WeakMap<VNode, Size>();
+
+function recordChildLayoutSize(child: VNode, layout: LayoutTree): void {
+  previousChildSizeCache.set(child, { w: layout.rect.w, h: layout.rect.h });
+}
+
+function maybePruneRemainingDirtySiblings(
+  children: readonly (VNode | undefined)[],
+  index: number,
+  child: VNode,
+  laidOut: LayoutTree,
+): void {
+  const dirtySet = getActiveDirtySet();
+  if (dirtySet === null || !dirtySet.has(child)) {
+    recordChildLayoutSize(child, laidOut);
+    return;
+  }
+
+  const prev = previousChildSizeCache.get(child);
+  recordChildLayoutSize(child, laidOut);
+  if (!prev) return;
+  if (prev.w !== laidOut.rect.w || prev.h !== laidOut.rect.h) return;
+
+  for (let i = index + 1; i < children.length; i++) {
+    const sibling = children[i];
+    if (!sibling) continue;
+    dirtySet.delete(sibling);
+  }
+}
 
 function isWrapEnabled(props: unknown): boolean {
   if (typeof props !== "object" || props === null) return false;
@@ -1618,6 +1650,7 @@ export function layoutStackKinds(
 
         const mainSizes = new Array(vnode.children.length).fill(0);
         const measureMaxMain = new Array(vnode.children.length).fill(0);
+        const precomputedSizes = new Array<Size | null>(vnode.children.length).fill(null);
 
         const flexItems: FlexItem[] = [];
         let remaining = availableForChildren;
@@ -1691,6 +1724,7 @@ export function layoutStackKinds(
           if (!childRes.ok) return childRes;
           mainSizes[i] = childRes.value.w;
           measureMaxMain[i] = childRes.value.w;
+          precomputedSizes[i] = childRes.value;
           remaining = clampNonNegative(remaining - childRes.value.w);
         }
 
@@ -1730,19 +1764,31 @@ export function layoutStackKinds(
           if (!child) continue;
 
           if (remainingWidth === 0) {
-            const childRes = layoutNode(child, cursorX, cy, 0, 0, "row");
+            let precomputed = precomputedSizes[i];
+            if (precomputed == null) {
+              const zeroSizeRes = measureNode(child, 0, 0, "row");
+              if (!zeroSizeRes.ok) return zeroSizeRes;
+              precomputed = zeroSizeRes.value;
+              precomputedSizes[i] = precomputed;
+            }
+            const childRes = layoutNode(child, cursorX, cy, 0, 0, "row", null, null, precomputed);
             if (!childRes.ok) return childRes;
             children.push(childRes.value);
+            maybePruneRemainingDirtySiblings(vnode.children, i, child, childRes.value);
             childOrdinal++;
             continue;
           }
 
           const main = mainSizes[i] ?? 0;
           const mm = measureMaxMain[i] ?? 0;
-
-          const childSizeRes = measureNode(child, mm, ch, "row");
-          if (!childSizeRes.ok) return childSizeRes;
-          const childH = childSizeRes.value.h;
+          let childSize = precomputedSizes[i];
+          if (childSize == null) {
+            const childSizeRes = measureNode(child, mm, ch, "row");
+            if (!childSizeRes.ok) return childSizeRes;
+            childSize = childSizeRes.value;
+            precomputedSizes[i] = childSize;
+          }
+          const childH = childSize.h;
 
           let childY = cy;
           let forceH: number | null = null;
@@ -1754,9 +1800,20 @@ export function layoutStackKinds(
             forceH = ch;
           }
 
-          const childRes = layoutNode(child, cursorX, childY, mm, ch, "row", main, forceH);
+          const childRes = layoutNode(
+            child,
+            cursorX,
+            childY,
+            mm,
+            ch,
+            "row",
+            main,
+            forceH,
+            childSize,
+          );
           if (!childRes.ok) return childRes;
           children.push(childRes.value);
+          maybePruneRemainingDirtySiblings(vnode.children, i, child, childRes.value);
 
           const hasNextChild = childOrdinal < childCount - 1;
           const extraGap = hasNextChild
@@ -2052,6 +2109,7 @@ export function layoutStackKinds(
 
         const mainSizes = new Array(vnode.children.length).fill(0);
         const measureMaxMain = new Array(vnode.children.length).fill(0);
+        const precomputedSizes = new Array<Size | null>(vnode.children.length).fill(null);
 
         const flexItems: FlexItem[] = [];
         let remaining = availableForChildren;
@@ -2125,6 +2183,7 @@ export function layoutStackKinds(
           if (!childRes.ok) return childRes;
           mainSizes[i] = childRes.value.h;
           measureMaxMain[i] = childRes.value.h;
+          precomputedSizes[i] = childRes.value;
           remaining = clampNonNegative(remaining - childRes.value.h);
         }
 
@@ -2164,19 +2223,41 @@ export function layoutStackKinds(
           if (!child) continue;
 
           if (remainingHeight === 0) {
-            const childRes = layoutNode(child, cx, cursorY, 0, 0, "column");
+            let precomputed = precomputedSizes[i];
+            if (precomputed == null) {
+              const zeroSizeRes = measureNode(child, 0, 0, "column");
+              if (!zeroSizeRes.ok) return zeroSizeRes;
+              precomputed = zeroSizeRes.value;
+              precomputedSizes[i] = precomputed;
+            }
+            const childRes = layoutNode(
+              child,
+              cx,
+              cursorY,
+              0,
+              0,
+              "column",
+              null,
+              null,
+              precomputed,
+            );
             if (!childRes.ok) return childRes;
             children.push(childRes.value);
+            maybePruneRemainingDirtySiblings(vnode.children, i, child, childRes.value);
             childOrdinal++;
             continue;
           }
 
           const main = mainSizes[i] ?? 0;
           const mm = measureMaxMain[i] ?? 0;
-
-          const childSizeRes = measureNode(child, cw, mm, "column");
-          if (!childSizeRes.ok) return childSizeRes;
-          const childW = childSizeRes.value.w;
+          let childSize = precomputedSizes[i];
+          if (childSize == null) {
+            const childSizeRes = measureNode(child, cw, mm, "column");
+            if (!childSizeRes.ok) return childSizeRes;
+            childSize = childSizeRes.value;
+            precomputedSizes[i] = childSize;
+          }
+          const childW = childSize.w;
 
           let childX = cx;
           let forceW: number | null = null;
@@ -2188,9 +2269,20 @@ export function layoutStackKinds(
             forceW = cw;
           }
 
-          const childRes = layoutNode(child, childX, cursorY, cw, mm, "column", forceW, main);
+          const childRes = layoutNode(
+            child,
+            childX,
+            cursorY,
+            cw,
+            mm,
+            "column",
+            forceW,
+            main,
+            childSize,
+          );
           if (!childRes.ok) return childRes;
           children.push(childRes.value);
+          maybePruneRemainingDirtySiblings(vnode.children, i, child, childRes.value);
 
           const hasNextChild = childOrdinal < childCount - 1;
           const extraGap = hasNextChild
