@@ -8,6 +8,12 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 
 ### Added
 
+- _No unreleased changes yet._
+
+## [0.1.0-alpha.28] - 2026-02-22
+
+### Added
+
 - **Design System**: cohesive token/recipe/capability-tier architecture for theme-aware widget styling
   - Design tokens module (`packages/core/src/ui/designTokens.ts`): typography roles, elevation levels, widget sizes, variants, tones, states, density
   - Capability tiers (`packages/core/src/ui/capabilities.ts`): A (256-color), B (truecolor), C (enhanced) detection with `rgbTo256()` palette mapping
