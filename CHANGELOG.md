@@ -10,6 +10,19 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 
 - _No unreleased changes yet._
 
+## [0.1.0-alpha.29] - 2026-02-22
+
+### Added
+
+- Scrollbar rendering for `codeEditor`, `diffViewer`, and `logsConsole` widgets via `scrollbarVariant` and `scrollbarStyle` props
+- Five scrollbar glyph variants: minimal, classic, modern, dots, thin
+
+### Fixed
+
+- Mouse wheel direction was inverted in native xterm SGR parser (WHEEL_UP produced positive `wheelY`, now correctly negative)
+- Wheel scroll routing now falls back to focused editor when hover target is a non-editor widget
+- `logsConsole` scrollbar X coordinate off-by-one (was drawn one cell past right edge)
+
 ## [0.1.0-alpha.28] - 2026-02-22
 
 ### Added
