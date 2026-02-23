@@ -43,9 +43,7 @@ function applyWheelSequence(
       scrollTop,
       totalHeight: ctx.totalHeight,
       viewportHeight: ctx.viewportHeight,
-      ...(ctx.scrollDirection === undefined
-        ? {}
-        : { scrollDirection: ctx.scrollDirection }),
+      ...(ctx.scrollDirection === undefined ? {} : { scrollDirection: ctx.scrollDirection }),
     };
     const res = routeVirtualListWheel(wheelEvent(wheelY), wheelCtx);
     if (res.nextScrollTop !== undefined) {
