@@ -1,4 +1,5 @@
 import { assert, describe, test } from "@rezi-ui/testkit";
+import { createTestRenderer } from "../../testing/renderer.js";
 import { isCompositeVNode } from "../composition.js";
 import { alertDialog, confirmDialog, dialog, promptDialog } from "../dialogs/index.js";
 import { ui } from "../ui.js";
@@ -70,6 +71,56 @@ describe("dialogs", () => {
     assert.equal(actionProps?.intent, "primary");
     assert.equal(actionProps?.dsVariant, "solid");
     assert.equal(actionProps?.dsTone, "primary");
+  });
+
+  test("ui.dialog maps primary intent to solid/primary DS props", () => {
+    const renderer = createTestRenderer();
+    const result = renderer.render(
+      ui.dialog({
+        id: "primary-intent",
+        title: "Title",
+        message: "Body",
+        actions: [{ label: "Save", intent: "primary", onPress: () => {} }],
+      }),
+    );
+
+    const action = result.findById("primary-intent-action-0");
+    const actionProps = action?.props as { dsVariant?: unknown; dsTone?: unknown } | undefined;
+    assert.equal(actionProps?.dsVariant, "solid");
+    assert.equal(actionProps?.dsTone, "primary");
+  });
+
+  test("ui.dialog maps danger intent to outline/danger DS props", () => {
+    const renderer = createTestRenderer();
+    const result = renderer.render(
+      ui.dialog({
+        id: "danger-intent",
+        title: "Title",
+        message: "Body",
+        actions: [{ label: "Delete", intent: "danger", onPress: () => {} }],
+      }),
+    );
+
+    const action = result.findById("danger-intent-action-0");
+    const actionProps = action?.props as { dsVariant?: unknown; dsTone?: unknown } | undefined;
+    assert.equal(actionProps?.dsVariant, "outline");
+    assert.equal(actionProps?.dsTone, "danger");
+  });
+
+  test("ui.dialog keeps default button styling when action has no intent", () => {
+    const renderer = createTestRenderer();
+    const result = renderer.render(
+      ui.dialog({
+        id: "no-intent",
+        title: "Title",
+        message: "Body",
+        actions: [{ label: "OK", onPress: () => {} }],
+      }),
+    );
+
+    const action = result.findById("no-intent-action-0");
+    assert.equal(Object.prototype.hasOwnProperty.call(action?.props ?? {}, "dsVariant"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(action?.props ?? {}, "dsTone"), false);
   });
 
   test("ui.dialog does not map implicit close to last action", () => {
