@@ -98,6 +98,7 @@ import type {
   VNode,
   VirtualListProps,
 } from "./types.js";
+import type { ThemeOverrides } from "../theme/extend.js";
 
 type UiChild = VNode | false | null | undefined | readonly UiChild[];
 type PanelOptions = Readonly<{
@@ -240,6 +241,10 @@ function column(props: ColumnProps = {}, children: readonly UiChild[] = []): VNo
     props: resolved,
     children: maybeReverseChildren(filtered, resolved.reverse),
   };
+}
+
+function themed(themeOverride: ThemeOverrides, children: readonly UiChild[] = []): VNode {
+  return { kind: "themed", props: { theme: themeOverride }, children: filterChildren(children) };
 }
 
 function grid(props: GridProps, ...children: UiChild[]): VNode {
@@ -1129,6 +1134,7 @@ export const ui = {
   box,
   row,
   column,
+  themed,
   grid,
   vstack,
   hstack,

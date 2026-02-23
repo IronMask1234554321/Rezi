@@ -17,6 +17,7 @@
  */
 
 import type { ResponsiveViewportSnapshot } from "../layout/responsive.js";
+import type { ColorTokens } from "../theme/tokens.js";
 import {
   type CompositeWidgetMeta,
   type WidgetContext,
@@ -420,6 +421,15 @@ function focusTrapPropsEqual(a: unknown, b: unknown): boolean {
   );
 }
 
+function themedPropsEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  const ao = (a ?? {}) as {
+    theme?: unknown;
+  };
+  const bo = (b ?? {}) as typeof ao;
+  return ao.theme === bo.theme;
+}
+
 function canFastReuseContainerSelf(prev: VNode, next: VNode): boolean {
   if (prev.kind !== next.kind) return false;
   switch (prev.kind) {
@@ -432,6 +442,8 @@ function canFastReuseContainerSelf(prev: VNode, next: VNode): boolean {
       return focusZonePropsEqual(prev.props, (next as typeof prev).props);
     case "focusTrap":
       return focusTrapPropsEqual(prev.props, (next as typeof prev).props);
+    case "themed":
+      return themedPropsEqual(prev.props, (next as typeof prev).props);
     default:
       return false;
   }
@@ -563,6 +575,7 @@ function commitChildrenForVNode(vnode: VNode): readonly VNode[] {
     vnode.kind === "box" ||
     vnode.kind === "row" ||
     vnode.kind === "column" ||
+    vnode.kind === "themed" ||
     vnode.kind === "grid" ||
     vnode.kind === "focusZone" ||
     vnode.kind === "focusTrap" ||
@@ -650,6 +663,7 @@ type CommitCtx = Readonly<{
   composite: Readonly<{
     registry: CompositeInstanceRegistry;
     appState: unknown;
+    colorTokens?: ColorTokens | null;
     viewport?: ResponsiveViewportSnapshot;
     onInvalidate: (instanceId: InstanceId) => void;
     onUseViewport?: () => void;
@@ -763,6 +777,7 @@ function isContainerVNode(vnode: VNode): boolean {
     vnode.kind === "box" ||
     vnode.kind === "row" ||
     vnode.kind === "column" ||
+    vnode.kind === "themed" ||
     vnode.kind === "grid" ||
     vnode.kind === "focusZone" ||
     vnode.kind === "focusTrap" ||
@@ -815,6 +830,7 @@ function rewriteCommittedVNode(next: VNode, committedChildren: readonly VNode[])
     next.kind === "box" ||
     next.kind === "row" ||
     next.kind === "column" ||
+    next.kind === "themed" ||
     next.kind === "grid" ||
     next.kind === "focusZone" ||
     next.kind === "focusTrap" ||
@@ -1142,6 +1158,7 @@ function executeCompositeRender(
           });
           return selected;
         },
+        useTheme: () => compositeRuntime.colorTokens ?? null,
         useViewport: () => {
           compositeRuntime.onUseViewport?.();
           return compositeRuntime.viewport ?? DEFAULT_VIEWPORT_SNAPSHOT;
@@ -1380,6 +1397,7 @@ export function commitVNodeTree(
     composite?: Readonly<{
       registry: CompositeInstanceRegistry;
       appState: unknown;
+      colorTokens?: ColorTokens | null;
       viewport?: ResponsiveViewportSnapshot;
       onInvalidate: (instanceId: InstanceId) => void;
       onUseViewport?: () => void;

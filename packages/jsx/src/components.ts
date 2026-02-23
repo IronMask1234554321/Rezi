@@ -147,6 +147,7 @@ import type {
   TableJsxProps,
   TabsJsxProps,
   TagJsxProps,
+  ThemedJsxProps,
   TextJsxProps,
   TextareaJsxProps,
   ToastContainerJsxProps,
@@ -206,6 +207,11 @@ export function Row(props: RowJsxProps): VNode {
 export function Column(props: ColumnJsxProps): VNode {
   const { children, key, ...rest } = props;
   return ui.column(withOptionalKey<ColumnProps>(rest, key), normalizeContainerChildren(children));
+}
+
+export function Themed(props: ThemedJsxProps): VNode {
+  const { children, key, theme } = props;
+  return withVNodeKey(ui.themed(theme, normalizeContainerChildren(children)), key);
 }
 
 export function Grid(props: GridJsxProps): VNode {
