@@ -299,13 +299,26 @@ export function renderTextWidgets(
           let line = rawLine;
 
           if (isLastVisible) {
-            const hiddenSuffix = hasHiddenLines && !rawLine.endsWith("…") ? "…" : "";
             switch (textOverflow) {
-              case "ellipsis":
-                line = truncateWithEllipsis(`${rawLine}${hiddenSuffix}`, overflowW);
+              case "ellipsis": {
+                if (!hasHiddenLines) {
+                  line = truncateWithEllipsis(rawLine, overflowW);
+                  break;
+                }
+                if (overflowW <= 1) {
+                  line = "…";
+                  break;
+                }
+                const reservedWidth = overflowW - 1;
+                const base =
+                  measureTextCells(rawLine) <= reservedWidth
+                    ? rawLine
+                    : truncateWithEllipsis(rawLine, reservedWidth);
+                line = base.endsWith("…") ? base : `${base}…`;
                 break;
+              }
               case "middle":
-                line = truncateMiddle(`${rawLine}${hiddenSuffix}`, overflowW);
+                line = truncateMiddle(hasHiddenLines ? `${rawLine}…` : rawLine, overflowW);
                 break;
               case "clip":
                 break;
