@@ -16,8 +16,7 @@ import type { FocusState } from "../../../runtime/focus.js";
 import type { TerminalProfile } from "../../../terminalProfile.js";
 import type { Theme } from "../../../theme/theme.js";
 import { resolveColor } from "../../../theme/theme.js";
-import type { ColorTokens } from "../../../theme/tokens.js";
-import type { WidgetSize, WidgetTone, WidgetVariant } from "../../../ui/designTokens.js";
+import type { WidgetTone } from "../../../ui/designTokens.js";
 import {
   buttonRecipe,
   calloutRecipe,
@@ -59,109 +58,18 @@ import { renderBoxBorder } from "../boxBorder.js";
 import { isVisibleRect } from "../indices.js";
 import { mergeTextStyle, shouldFillForStyleOverride } from "../textStyle.js";
 import type { ResolvedTextStyle } from "../textStyle.js";
+import {
+  getColorTokens,
+  readWidgetSize,
+  readWidgetTone,
+  readWidgetVariant,
+} from "../themeTokens.js";
 import type { CursorInfo } from "../types.js";
 import {
   focusIndicatorEnabled,
   readFocusConfig,
   resolveFocusedContentStyle,
 } from "./focusConfig.js";
-
-/**
- * Extract ColorTokens from the runtime Theme for design system recipe use.
- * The runtime Theme stores semantic token paths as flat keys (e.g. "bg.base").
- * This reconstructs the structured ColorTokens shape.
- */
-function extractColorTokens(theme: Theme): ColorTokens | null {
-  const c = theme.colors;
-  // Check if semantic tokens exist (they do when theme was coerced from ThemeDefinition)
-  const bgBase = c["bg.base"] as Rgb | undefined;
-  if (!bgBase) return null;
-
-  return {
-    bg: {
-      base: bgBase,
-      elevated: (c["bg.elevated"] as Rgb) ?? bgBase,
-      overlay: (c["bg.overlay"] as Rgb) ?? bgBase,
-      subtle: (c["bg.subtle"] as Rgb) ?? bgBase,
-    },
-    fg: {
-      primary: (c["fg.primary"] as Rgb) ?? c.fg,
-      secondary: (c["fg.secondary"] as Rgb) ?? c.muted,
-      muted: (c["fg.muted"] as Rgb) ?? c.muted,
-      inverse: (c["fg.inverse"] as Rgb) ?? c.bg,
-    },
-    accent: {
-      primary: (c["accent.primary"] as Rgb) ?? c.primary,
-      secondary: (c["accent.secondary"] as Rgb) ?? c.secondary,
-      tertiary: (c["accent.tertiary"] as Rgb) ?? c.info,
-    },
-    success: c.success,
-    warning: c.warning,
-    error: c.danger ?? (c as { error?: Rgb }).error ?? { r: 220, g: 53, b: 69 },
-    info: c.info,
-    focus: {
-      ring: (c["focus.ring"] as Rgb) ?? c.primary,
-      bg: (c["focus.bg"] as Rgb) ?? c.bg,
-    },
-    selected: {
-      bg: (c["selected.bg"] as Rgb) ?? c.primary,
-      fg: (c["selected.fg"] as Rgb) ?? c.fg,
-    },
-    disabled: {
-      fg: (c["disabled.fg"] as Rgb) ?? c.muted,
-      bg: (c["disabled.bg"] as Rgb) ?? c.bg,
-    },
-    diagnostic: {
-      error: (c["diagnostic.error"] as Rgb) ?? c.danger ?? { r: 220, g: 53, b: 69 },
-      warning: (c["diagnostic.warning"] as Rgb) ?? c.warning,
-      info: (c["diagnostic.info"] as Rgb) ?? c.info,
-      hint: (c["diagnostic.hint"] as Rgb) ?? c.success,
-    },
-    border: {
-      subtle: (c["border.subtle"] as Rgb) ?? c.border,
-      default: (c["border.default"] as Rgb) ?? c.border,
-      strong: (c["border.strong"] as Rgb) ?? c.border,
-    },
-  };
-}
-
-/** Cache to avoid repeated extraction */
-const colorTokensCache = new WeakMap<Theme["colors"], ColorTokens | null>();
-
-function getColorTokens(theme: Theme): ColorTokens | null {
-  const cached = colorTokensCache.get(theme.colors);
-  if (cached !== undefined) return cached;
-  const tokens = extractColorTokens(theme);
-  colorTokensCache.set(theme.colors, tokens);
-  return tokens;
-}
-
-function readDsButtonVariant(value: unknown): WidgetVariant | undefined {
-  if (value === "solid" || value === "soft" || value === "outline" || value === "ghost") {
-    return value;
-  }
-  return undefined;
-}
-
-function readDsButtonTone(value: unknown): WidgetTone | undefined {
-  if (
-    value === "default" ||
-    value === "primary" ||
-    value === "danger" ||
-    value === "success" ||
-    value === "warning"
-  ) {
-    return value;
-  }
-  return undefined;
-}
-
-function readDsButtonSize(value: unknown): WidgetSize | undefined {
-  if (value === "sm" || value === "md" || value === "lg") {
-    return value;
-  }
-  return undefined;
-}
 
 function calloutVariantToTone(variant: unknown): WidgetTone | "info" {
   switch (variant) {
@@ -1034,12 +942,12 @@ export function renderBasicWidget(
 
       // Design system recipe path
       const colorTokens = getColorTokens(theme);
-      const dsVariant = readDsButtonVariant(props.dsVariant) ?? "soft";
+      const dsVariant = readWidgetVariant(props.dsVariant) ?? "soft";
 
       if (colorTokens !== null) {
         // Use design system recipe
-        const dsTone = readDsButtonTone(props.dsTone) ?? "default";
-        const dsSize = readDsButtonSize(props.dsSize) ?? "md";
+        const dsTone = readWidgetTone(props.dsTone) ?? "default";
+        const dsSize = readWidgetSize(props.dsSize) ?? "md";
         const state = disabled
           ? ("disabled" as const)
           : pressed
@@ -1167,7 +1075,7 @@ export function renderBasicWidget(
       const focusVisible = focused && focusIndicatorEnabled(focusConfig);
       const showPlaceholder = value.length === 0 && placeholder.length > 0;
       const colorTokens = getColorTokens(theme);
-      const dsSize = readDsButtonSize(props.dsSize) ?? "md";
+      const dsSize = readWidgetSize(props.dsSize) ?? "md";
       let textX = rect.x + 1;
       let textY = rect.y;
       let contentW = Math.max(1, rect.w - 2);
@@ -1484,7 +1392,7 @@ export function renderBasicWidget(
       if (label.length === 0) label = placeholder;
 
       const colorTokens = getColorTokens(theme);
-      const dsSize = readDsButtonSize(props.dsSize) ?? "md";
+      const dsSize = readWidgetSize(props.dsSize) ?? "md";
       if (colorTokens !== null) {
         const state = disabled
           ? ("disabled" as const)
@@ -1915,7 +1823,7 @@ export function renderBasicWidget(
       const fillGlyph = variant === "minimal" ? "━" : variant === "blocks" ? "▓" : "█";
       const emptyGlyph = variant === "minimal" ? "╌" : "░";
       const colorTokens = getColorTokens(theme);
-      const dsTone = readDsButtonTone(props.dsTone);
+      const dsTone = readWidgetTone(props.dsTone);
       const recipeResult =
         colorTokens !== null
           ? progressRecipe(colorTokens, dsTone === undefined ? {} : { tone: dsTone })
