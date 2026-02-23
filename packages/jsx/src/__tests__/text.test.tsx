@@ -42,10 +42,11 @@ describe("text and display widgets", () => {
       </Text>
     );
     const rendered = createTestRenderer({ viewport: { cols: 20, rows: 10 } }).render(vnode);
-    assert.ok(rendered.ok);
-    if (!rendered.ok) return;
-    assert.equal(rendered.value.layoutTree.rect.w, 4);
-    assert.equal(rendered.value.layoutTree.rect.h, 2);
+    const root = rendered.nodes.find((node) => node.path.length === 0);
+    assert.ok(root !== undefined);
+    if (!root) return;
+    assert.equal(root.rect.w, 4);
+    assert.equal(root.rect.h, 2);
   });
 
   test("Text preserves numeric zero and empty string and filters booleans/null", () => {
