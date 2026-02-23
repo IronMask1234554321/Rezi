@@ -7,6 +7,7 @@
  * @see docs/widgets/split-pane.md
  */
 
+import { distributeInteger } from "../layout/engine/distributeInteger.js";
 import type { SplitDirection } from "./types.js";
 
 /** Default divider size in cells. */
@@ -104,8 +105,11 @@ export function computePanelSizes(
   const totalDividerSpace = Math.max(0, panelCount - 1) * dividerSize;
   const availableForPanels = Math.max(0, available - totalDividerSpace);
 
-  // First pass: compute ideal sizes
-  const sizes = percentages.map((p) => Math.floor((availableForPanels * p) / 100));
+  // First pass: compute ideal sizes with deterministic integer remainder handling.
+  const weights = percentages.map((p) =>
+    Number.isFinite(p) && (p as number) > 0 ? (p as number) : 0,
+  );
+  const sizes = distributeInteger(availableForPanels, weights);
 
   normalizePanelCellSizes(sizes, availableForPanels, minSizes, maxSizes);
 
@@ -152,6 +156,7 @@ export function computePanelCellSizes(
   const availableForPanels = Math.max(0, available - totalDividerSpace);
 
   const cellSizes = new Array<number>(panelCount);
+  const percentWeights = new Array<number>(panelCount).fill(0);
   for (let i = 0; i < panelCount; i++) {
     const rawSizeSpec = sizes[i];
     const sizeSpec = Number.isFinite(rawSizeSpec)
@@ -160,10 +165,18 @@ export function computePanelCellSizes(
         ? 100 / panelCount
         : Math.floor(availableForPanels / panelCount);
 
-    cellSizes[i] =
-      sizeMode === "percent"
-        ? Math.floor((availableForPanels * sizeSpec) / 100)
-        : Math.max(0, Math.trunc(sizeSpec));
+    if (sizeMode === "percent") {
+      percentWeights[i] = sizeSpec > 0 ? sizeSpec : 0;
+    } else {
+      cellSizes[i] = Math.max(0, Math.trunc(sizeSpec));
+    }
+  }
+
+  if (sizeMode === "percent") {
+    const distributed = distributeInteger(availableForPanels, percentWeights);
+    for (let i = 0; i < panelCount; i++) {
+      cellSizes[i] = distributed[i] ?? 0;
+    }
   }
 
   normalizePanelCellSizes(cellSizes, availableForPanels, minSizes, maxSizes);

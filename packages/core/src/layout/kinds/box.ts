@@ -1,6 +1,12 @@
 import type { VNode } from "../../widgets/types.js";
-import { measureContentBounds, resolveLayoutConstraints, resolveOverflow } from "../constraints.js";
+import {
+  measureContentBounds,
+  resolveAbsolutePosition,
+  resolveLayoutConstraints,
+  resolveOverflow,
+} from "../constraints.js";
 import { clampNonNegative, clampWithin, toFiniteMax } from "../engine/bounds.js";
+import { childHasAbsolutePosition } from "../engine/guards.js";
 import { ok } from "../engine/result.js";
 import type { LayoutTree } from "../engine/types.js";
 import {
@@ -27,6 +33,8 @@ type LayoutNodeFn = (
 
 type SyntheticColumnCacheEntry = Readonly<{
   childrenRef: readonly VNode[];
+  gap: number;
+  flowSignature: string;
   columnNode: VNode;
 }>;
 
@@ -34,12 +42,42 @@ const syntheticColumnCache = new WeakMap<VNode, SyntheticColumnCacheEntry>();
 
 type VNodeWithChildren = VNode & Readonly<{ children: readonly VNode[] }>;
 
-function getSyntheticColumn(vnode: VNodeWithChildren): VNode {
-  const hit = syntheticColumnCache.get(vnode);
-  if (hit && hit.childrenRef === vnode.children) return hit.columnNode;
+function computeFlowSignature(children: readonly VNode[]): string {
+  let signature = `${children.length}:`;
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
+    signature += child !== undefined && childHasAbsolutePosition(child) ? "1" : "0";
+  }
+  return signature;
+}
 
-  const columnNode: VNode = { kind: "column", props: { gap: 0 }, children: vnode.children };
-  syntheticColumnCache.set(vnode, Object.freeze({ childrenRef: vnode.children, columnNode }));
+function getSyntheticColumn(vnode: VNodeWithChildren, gap: number): VNode {
+  const flowSignature = computeFlowSignature(vnode.children);
+  const hit = syntheticColumnCache.get(vnode);
+  if (
+    hit &&
+    hit.childrenRef === vnode.children &&
+    hit.gap === gap &&
+    hit.flowSignature === flowSignature
+  ) {
+    return hit.columnNode;
+  }
+
+  const flowChildren: VNode[] = [];
+  for (let i = 0; i < vnode.children.length; i++) {
+    const child = vnode.children[i];
+    if (!child || childHasAbsolutePosition(child)) continue;
+    flowChildren.push(child);
+  }
+  const columnNode: VNode = {
+    kind: "column",
+    props: { gap },
+    children: Object.freeze(flowChildren),
+  };
+  syntheticColumnCache.set(
+    vnode,
+    Object.freeze({ childrenRef: vnode.children, gap, flowSignature, columnNode }),
+  );
   return columnNode;
 }
 
@@ -115,7 +153,7 @@ export function measureBoxKinds(
       let contentUsedH = 0;
 
       if (vnode.children.length > 0) {
-        const columnNode = getSyntheticColumn(vnode);
+        const columnNode = getSyntheticColumn(vnode, propsRes.value.gap);
         const innerRes = measureNode(columnNode, cw, ch, "column");
         if (!innerRes.ok) return innerRes;
         contentUsedW = innerRes.value.w;
@@ -162,6 +200,7 @@ export function layoutBoxKinds(
   rectW: number,
   rectH: number,
   axis: Axis,
+  measureNode: MeasureNodeFn,
   layoutNode: LayoutNodeFn,
 ): LayoutResult<LayoutTree> {
   switch (vnode.kind) {
@@ -188,13 +227,43 @@ export function layoutBoxKinds(
 
       const children: LayoutTree[] = [];
       if (vnode.children.length > 0) {
-        const columnNode = getSyntheticColumn(vnode);
+        const columnNode = getSyntheticColumn(vnode, propsRes.value.gap);
         // The synthetic column wrapper must fill the box content rect so that
         // percentage constraints resolve against the actual available space.
         const innerRes = layoutNode(columnNode, cx, cy, cw, ch, "column", cw, ch);
         if (!innerRes.ok) return innerRes;
         // Attach the box's children (not the synthetic column wrapper).
         children.push(...innerRes.value.children);
+      }
+
+      const contentRect: Rect = { x: cx, y: cy, w: cw, h: ch };
+      for (let i = 0; i < vnode.children.length; i++) {
+        const child = vnode.children[i];
+        if (!child || !childHasAbsolutePosition(child)) continue;
+        const naturalRes = measureNode(child, cw, ch, axis);
+        if (!naturalRes.ok) return naturalRes;
+        const absProps = (child.props ?? {}) as {
+          top?: number;
+          right?: number;
+          bottom?: number;
+          left?: number;
+          width?: unknown;
+          height?: unknown;
+        };
+        const absRect = resolveAbsolutePosition(absProps, contentRect, naturalRes.value);
+        const childRes = layoutNode(
+          child,
+          absRect.x,
+          absRect.y,
+          absRect.w,
+          absRect.h,
+          axis,
+          absRect.w,
+          absRect.h,
+          naturalRes.value,
+        );
+        if (!childRes.ok) return childRes;
+        children.push(childRes.value);
       }
 
       const { contentWidth, contentHeight } = measureContentBounds(children, cx, cy);
