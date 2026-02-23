@@ -232,6 +232,7 @@ export type {
   ModalProps,
   MasterDetailOptions,
   NodeState,
+  PageOptions,
   ProgressProps,
   ProgressVariant,
   RadioGroupProps,
@@ -1100,6 +1101,8 @@ export {
   routerTabs,
 } from "./router/index.js";
 export type {
+  RouterBreadcrumbProps,
+  RouterTabsProps,
   RouteDefinition,
   RouteGuard,
   RouteGuardContext,

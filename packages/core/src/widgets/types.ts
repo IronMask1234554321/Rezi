@@ -1083,6 +1083,16 @@ export type AppShellOptions = Readonly<{
   gap?: number;
 }>;
 
+export type PageOptions = Readonly<{
+  id?: string;
+  key?: string;
+  header?: VNode | null;
+  body: VNode;
+  footer?: VNode | null;
+  gap?: SpacingValue;
+  p?: SpacingValue;
+}>;
+
 export type CardOptions = Readonly<{
   id?: string;
   key?: string;
