@@ -1,16 +1,26 @@
 import { assert, describe, test } from "@rezi-ui/testkit";
-import type { CompositeInstanceState, EffectState, HookContext } from "../instances.js";
+import type {
+  CompositeInstanceState,
+  EffectCleanup,
+  EffectState,
+  HookContext,
+} from "../instances.js";
 import {
   createCompositeInstanceRegistry,
   createHookContext,
+  runPendingCleanups,
   runPendingEffects,
 } from "../instances.js";
 
 type HookProgram = (hooks: HookContext) => void;
+type PendingHookWork = Readonly<{
+  pendingEffects: readonly EffectState[];
+  pendingCleanups: readonly EffectCleanup[];
+}>;
 
 function createHarness(instanceId = 1): {
-  render: (program: HookProgram) => readonly EffectState[];
-  runPending: (effects: readonly EffectState[]) => void;
+  render: (program: HookProgram) => PendingHookWork;
+  runPending: (pending: PendingHookWork) => void;
   unmount: () => boolean;
   getNeedsRender: () => boolean;
   getInvalidateCount: () => number;
@@ -29,7 +39,7 @@ function createHarness(instanceId = 1): {
     return state;
   };
 
-  const render = (program: HookProgram): readonly EffectState[] => {
+  const render = (program: HookProgram): PendingHookWork => {
     registry.beginRender(instanceId);
     const hooks = createHookContext(getState(), () => {
       invalidateCount++;
@@ -37,13 +47,17 @@ function createHarness(instanceId = 1): {
     });
 
     program(hooks);
-    return registry.endRender(instanceId);
+    return Object.freeze({
+      pendingEffects: registry.endRender(instanceId),
+      pendingCleanups: registry.getPendingCleanups(instanceId),
+    });
   };
 
   return {
     render,
-    runPending: (effects: readonly EffectState[]) => {
-      runPendingEffects(effects);
+    runPending: (pending: PendingHookWork) => {
+      runPendingCleanups(pending.pendingCleanups);
+      runPendingEffects(pending.pendingEffects);
     },
     unmount: () => registry.delete(instanceId),
     getNeedsRender: () => getState().needsRender,
@@ -63,7 +77,7 @@ describe("runtime hooks useEffect hardening", () => {
       }, []);
     });
 
-    assert.equal(pending.length, 1);
+    assert.equal(pending.pendingEffects.length, 1);
     assert.equal(ran, false);
 
     h.runPending(pending);
@@ -89,7 +103,7 @@ describe("runtime hooks useEffect hardening", () => {
     h.runPending(pending);
 
     assert.equal(runCount, 1);
-    assert.equal(pending.length, 0);
+    assert.equal(pending.pendingEffects.length, 0);
   });
 
   test("[] effect cleanup runs on unmount after effect executed", () => {
@@ -156,7 +170,7 @@ describe("runtime hooks useEffect hardening", () => {
     assert.equal(runCount, 2);
   });
 
-  test("deps effect cleanup runs before refire when dependency changes", () => {
+  test("deps effect cleanup is deferred until post-commit and runs before refire", () => {
     const h = createHarness();
     let dep = 1;
     const events: string[] = [];
@@ -183,7 +197,9 @@ describe("runtime hooks useEffect hardening", () => {
       }, [dep]);
     });
 
-    assert.deepEqual(events, ["effect-1", "cleanup-1"]);
+    assert.equal(pending.pendingCleanups.length, 1);
+    assert.equal(pending.pendingEffects.length, 1);
+    assert.deepEqual(events, ["effect-1"]);
 
     h.runPending(pending);
     assert.deepEqual(events, ["effect-1", "cleanup-1", "effect-2"]);
@@ -216,6 +232,84 @@ describe("runtime hooks useEffect hardening", () => {
     h.runPending(pending);
 
     assert.deepEqual(cleaned, [10]);
+  });
+
+  test("skipped post-commit flush is retried on next render with stable deps", () => {
+    const h = createHarness();
+    let dep = 1;
+    const events: string[] = [];
+
+    let pending = h.render((hooks) => {
+      hooks.useEffect(() => {
+        const snapshot = dep;
+        events.push(`effect-${String(snapshot)}`);
+        return () => {
+          events.push(`cleanup-${String(snapshot)}`);
+        };
+      }, [dep]);
+    });
+    h.runPending(pending);
+
+    dep = 2;
+    pending = h.render((hooks) => {
+      hooks.useEffect(() => {
+        const snapshot = dep;
+        events.push(`effect-${String(snapshot)}`);
+        return () => {
+          events.push(`cleanup-${String(snapshot)}`);
+        };
+      }, [dep]);
+    });
+
+    assert.equal(pending.pendingCleanups.length, 1);
+    assert.equal(pending.pendingEffects.length, 1);
+    assert.deepEqual(events, ["effect-1"]);
+
+    const retryPending = h.render((hooks) => {
+      hooks.useEffect(() => {
+        const snapshot = dep;
+        events.push(`effect-${String(snapshot)}`);
+        return () => {
+          events.push(`cleanup-${String(snapshot)}`);
+        };
+      }, [dep]);
+    });
+
+    assert.equal(retryPending.pendingCleanups.length, 1);
+    assert.equal(retryPending.pendingEffects.length, 1);
+    assert.deepEqual(events, ["effect-1"]);
+
+    h.runPending(retryPending);
+    assert.deepEqual(events, ["effect-1", "cleanup-1", "effect-2"]);
+  });
+
+  test("unmount keeps previous cleanup if deps-change flush was skipped", () => {
+    const h = createHarness();
+    let dep = 1;
+    let cleanupCount = 0;
+
+    let pending = h.render((hooks) => {
+      hooks.useEffect(() => {
+        return () => {
+          cleanupCount++;
+        };
+      }, [dep]);
+    });
+    h.runPending(pending);
+
+    dep = 2;
+    pending = h.render((hooks) => {
+      hooks.useEffect(() => {
+        return () => {
+          cleanupCount++;
+        };
+      }, [dep]);
+    });
+
+    assert.equal(pending.pendingCleanups.length, 1);
+    assert.equal(cleanupCount, 0);
+    h.unmount();
+    assert.equal(cleanupCount, 1);
   });
 
   test("deps effect reruns when dependency array length changes", () => {
@@ -332,7 +426,9 @@ describe("runtime hooks useEffect hardening", () => {
       });
     });
 
-    assert.deepEqual(events, ["effect-1", "cleanup-1"]);
+    assert.equal(pending.pendingCleanups.length, 1);
+    assert.equal(pending.pendingEffects.length, 1);
+    assert.deepEqual(events, ["effect-1"]);
 
     h.runPending(pending);
     assert.deepEqual(events, ["effect-1", "cleanup-1", "effect-2"]);
@@ -475,7 +571,9 @@ describe("runtime hooks useEffect hardening", () => {
       }, [dep]);
     });
 
-    assert.deepEqual(events, ["effect-a-1", "effect-b-1", "cleanup-a-1", "cleanup-b-1"]);
+    assert.equal(pending.pendingCleanups.length, 2);
+    assert.equal(pending.pendingEffects.length, 2);
+    assert.deepEqual(events, ["effect-a-1", "effect-b-1"]);
 
     h.runPending(pending);
 
@@ -597,8 +695,11 @@ describe("runtime hooks useEffect hardening", () => {
       });
     });
 
+    assert.equal(cleanupCalls, 0);
+    assert.doesNotThrow(() => {
+      h.runPending(pending);
+    });
     assert.equal(cleanupCalls, 1);
-    h.runPending(pending);
   });
 
   test("cleanup error is swallowed during unmount", () => {
@@ -621,16 +722,20 @@ describe("runtime hooks useEffect hardening", () => {
     assert.equal(cleanupCalls, 1);
   });
 
-  test("pending effects list returned by endRender is frozen", () => {
+  test("pending effect and cleanup lists returned by render are frozen", () => {
     const h = createHarness();
 
     const pending = h.render((hooks) => {
       hooks.useEffect(() => {}, []);
     });
 
-    assert.equal(Object.isFrozen(pending), true);
+    assert.equal(Object.isFrozen(pending.pendingEffects), true);
+    assert.equal(Object.isFrozen(pending.pendingCleanups), true);
     assert.throws(() => {
-      (pending as EffectState[]).push(pending[0] as EffectState);
+      (pending.pendingEffects as EffectState[]).push(pending.pendingEffects[0] as EffectState);
+    });
+    assert.throws(() => {
+      (pending.pendingCleanups as EffectCleanup[]).push(() => {});
     });
   });
 

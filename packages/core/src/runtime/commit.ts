@@ -28,6 +28,7 @@ import type { InstanceId, InstanceIdAllocator } from "./instance.js";
 import {
   type AppStateSelection,
   type CompositeInstanceRegistry,
+  type EffectCleanup,
   type EffectState,
   createHookContext,
 } from "./instances.js";
@@ -466,6 +467,8 @@ export type CommitOk = Readonly<{
   mountedInstanceIds: readonly InstanceId[];
   reusedInstanceIds: readonly InstanceId[];
   unmountedInstanceIds: readonly InstanceId[];
+  /** Pending cleanups from previous effects to run before new effects. */
+  pendingCleanups: readonly EffectCleanup[];
   /** Pending effects scheduled by composite widgets during this commit. */
   pendingEffects: readonly EffectState[];
 }>;
@@ -679,6 +682,7 @@ type CommitCtx = Readonly<{
     onUseViewport?: () => void;
   }> | null;
   compositeRenderStack: Array<Readonly<{ widgetKey: string; instanceId: InstanceId }>>;
+  pendingCleanups: EffectCleanup[];
   pendingEffects: EffectState[];
   errorBoundary: Readonly<{
     errorsByPath: Map<string, CommitErrorBoundaryState>;
@@ -1028,6 +1032,8 @@ function commitNode(
 
           try {
             const pending = registry.endRender(instanceId);
+            const pendingCleanups = registry.getPendingCleanups(instanceId);
+            for (const cleanup of pendingCleanups) ctx.pendingCleanups.push(cleanup);
             for (const eff of pending) ctx.pendingEffects.push(eff);
             registry.setAppStateSelections(instanceId, nextSelections);
           } catch (e: unknown) {
@@ -1363,6 +1369,7 @@ export function commitVNodeTree(
     collectLifecycleInstanceIds,
     composite: opts.composite ?? null,
     compositeRenderStack: [],
+    pendingCleanups: [],
     pendingEffects: [],
     errorBoundary: opts.errorBoundary ?? null,
   };
@@ -1397,6 +1404,7 @@ export function commitVNodeTree(
       mountedInstanceIds: ctx.lists.mounted,
       reusedInstanceIds: ctx.lists.reused,
       unmountedInstanceIds: ctx.lists.unmounted,
+      pendingCleanups: ctx.pendingCleanups,
       pendingEffects: ctx.pendingEffects,
     },
   };
