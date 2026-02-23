@@ -35,6 +35,15 @@ describe("text and display widgets", () => {
     );
   });
 
+  test("Text forwards wrap for multiline layout", () => {
+    const vnode = (
+      <Text wrap maxWidth={8}>
+        wrap me
+      </Text>
+    );
+    assert.deepEqual(vnode, ui.text("wrap me", { wrap: true, maxWidth: 8 }));
+  });
+
   test("Text preserves numeric zero and empty string and filters booleans/null", () => {
     assert.deepEqual(<Text>{0}</Text>, ui.text("0"));
     assert.deepEqual(<Text>{""}</Text>, ui.text(""));
