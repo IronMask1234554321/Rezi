@@ -173,7 +173,7 @@ export async function getFilteredItems(
         (b.prefix?.length ?? 0) - (a.prefix?.length ?? 0) || (b.priority ?? 0) - (a.priority ?? 0),
     );
   const activeSource = prefixMatches[0];
-  if (activeSource && activeSource.prefix) {
+  if (activeSource?.prefix) {
     activeSourceId = activeSource.id;
     effectiveQuery = query.slice(activeSource.prefix.length).trim();
   }

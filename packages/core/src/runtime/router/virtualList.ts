@@ -1,7 +1,7 @@
 import type { ZrevEvent } from "../../events.js";
 import {
-  computeVisibleRange,
   clampScrollTop,
+  computeVisibleRange,
   ensureVisible,
   getItemHeight,
   getItemOffset,

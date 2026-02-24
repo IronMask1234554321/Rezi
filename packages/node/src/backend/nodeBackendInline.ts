@@ -987,12 +987,13 @@ export function createNodeBackendInlineInternal(opts: NodeBackendInternalOpts = 
     },
     debugGetPayload: async (recordId: bigint) => {
       await backend.start();
-      if (native === null || engineId === null) {
+      const activeEngineId = engineId;
+      if (native === null || activeEngineId === null) {
         throw new Error("NodeBackend(inline): engine not started");
       }
       const dbg = ensureDebugApiLoaded(native);
       return readDebugBytesWithRetry(
-        (out) => dbg.engineDebugGetPayload(engineId, recordId, out),
+        (out) => dbg.engineDebugGetPayload(activeEngineId, recordId, out),
         maxEventBytes,
         null,
         "engineDebugGetPayload",
@@ -1017,12 +1018,13 @@ export function createNodeBackendInlineInternal(opts: NodeBackendInternalOpts = 
     },
     debugExport: async () => {
       await backend.start();
-      if (native === null || engineId === null) {
+      const activeEngineId = engineId;
+      if (native === null || activeEngineId === null) {
         throw new Error("NodeBackend(inline): engine not started");
       }
       const dbg = ensureDebugApiLoaded(native);
       return readDebugBytesWithRetry(
-        (out) => dbg.engineDebugExport(engineId, out),
+        (out) => dbg.engineDebugExport(activeEngineId, out),
         maxEventBytes,
         new Uint8Array(0),
         "engineDebugExport",

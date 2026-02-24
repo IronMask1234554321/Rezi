@@ -7,7 +7,9 @@ let imageCacheMaxEntries = DEFAULT_IMAGE_CACHE_MAX_ENTRIES;
 
 function normalizeCacheMaxEntries(maxEntries: number): number {
   if (!Number.isFinite(maxEntries) || !Number.isInteger(maxEntries) || maxEntries < 0) {
-    throw new TypeError("setImageCacheMaxEntries(maxEntries): maxEntries must be a non-negative integer");
+    throw new TypeError(
+      "setImageCacheMaxEntries(maxEntries): maxEntries must be a non-negative integer",
+    );
   }
   return maxEntries;
 }

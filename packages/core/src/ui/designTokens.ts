@@ -8,7 +8,7 @@
  * @see docs/design-system.md
  */
 
-import { DEFAULT_THEME_SPACING, type ColorTokens, type ThemeDefinition } from "../theme/tokens.js";
+import { type ColorTokens, DEFAULT_THEME_SPACING, type ThemeDefinition } from "../theme/tokens.js";
 import type { Rgb, TextStyle } from "../widgets/style.js";
 
 // ---------------------------------------------------------------------------
@@ -118,23 +118,36 @@ function resolveSpacingToken(input: unknown, fallback: number): number {
   return Math.trunc(input);
 }
 
+function isLegacySpacingInput(spacing: SizeSpacingInput): spacing is readonly number[] {
+  return Array.isArray(spacing);
+}
+
 /**
  * Resolve spacing for a widget size.
  */
 export function resolveSize(size: WidgetSize, spacing?: SizeSpacingInput): SizeSpacing {
-  const semanticSpacing = Array.isArray(spacing) ? undefined : spacing;
-  const legacySpacing = Array.isArray(spacing) ? spacing : undefined;
+  let semanticSpacing: ThemeDefinition["spacing"] | undefined;
+  let legacySpacing: readonly number[] | undefined;
+  if (isLegacySpacingInput(spacing)) {
+    legacySpacing = spacing;
+  } else {
+    semanticSpacing = spacing;
+  }
+  const legacyIsSemanticScale = (legacySpacing?.length ?? 0) >= 7;
+  const legacySmIndex = legacyIsSemanticScale ? 2 : 1;
+  const legacyMdIndex = legacyIsSemanticScale ? 3 : 2;
+  const legacyLgIndex = legacyIsSemanticScale ? 4 : 3;
 
   const smPx = resolveSpacingToken(
-    semanticSpacing?.sm ?? legacySpacing?.[1],
+    semanticSpacing?.sm ?? legacySpacing?.[legacySmIndex],
     DEFAULT_THEME_SPACING.sm,
   );
   const mdPx = resolveSpacingToken(
-    semanticSpacing?.md ?? legacySpacing?.[2],
+    semanticSpacing?.md ?? legacySpacing?.[legacyMdIndex],
     DEFAULT_THEME_SPACING.md,
   );
   const lgPx = resolveSpacingToken(
-    semanticSpacing?.lg ?? legacySpacing?.[3],
+    semanticSpacing?.lg ?? legacySpacing?.[legacyLgIndex],
     DEFAULT_THEME_SPACING.lg,
   );
 
