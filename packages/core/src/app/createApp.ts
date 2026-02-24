@@ -2061,7 +2061,7 @@ export function createApp<S>(opts: CreateAppStateOptions<S> | CreateAppRoutesOnl
     },
 
     measureElement(id: string): Rect | null {
-      if (mode !== "widget" || !widgetRenderer) return null;
+      if (mode !== "widget") return null;
       return widgetRenderer.getRectByIdIndex().get(id) ?? null;
     },
 
