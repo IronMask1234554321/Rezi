@@ -38,7 +38,6 @@ export type ReproRecorderBounds = Readonly<{
 export type ReproRecorderBackendCapsOverrides = Readonly<{
   maxEventBytes?: number;
   fpsCap?: number;
-  cursorProtocolVersion?: 2;
 }>;
 
 export type CreateReproRecorderOptions = Readonly<{

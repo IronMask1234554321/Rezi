@@ -122,7 +122,7 @@ Both the builder and the engine perform version checks:
 
 1. The builder writes the correct magic and version into the header at build time.
 2. The version is determined by the selected builder version.
-3. `createApp()` validates backend drawlist version markers and requires version `>= 2`.
+3. `createApp()` validates the backend `drawlistVersion` and requires version `>= 2`.
 
 **Engine side (C):**
 

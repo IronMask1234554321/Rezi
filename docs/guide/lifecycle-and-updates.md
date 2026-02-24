@@ -14,7 +14,7 @@ type State = { count: number };
 
 const app = createNodeApp<State>({
   initialState: { count: 0 },
-  config: { fpsCap: 60, maxEventBytes: 1 << 20 },
+  config: { fpsCap: 30, maxEventBytes: 1 << 20 },
 });
 
 app.view((state) => ui.text(`Count: ${state.count}`));

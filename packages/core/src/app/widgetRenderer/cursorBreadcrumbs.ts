@@ -277,64 +277,26 @@ export function emitIncrementalCursor(
       cursorInfo,
     );
 
+  const summary = resolveSummary();
+
   if (!cursorInfo || !isCursorBuilder(ctx.builder)) {
-    return ctx.collectRuntimeBreadcrumbs ? resolveSummary() : null;
+    return ctx.collectRuntimeBreadcrumbs ? summary : null;
   }
 
-  const focusedId = ctx.focusedId;
-  if (!focusedId) {
+  if (!summary || !summary.visible) {
     ctx.builder.hideCursor();
-    return ctx.collectRuntimeBreadcrumbs ? resolveSummary() : null;
-  }
-
-  const input = ctx.inputById.get(focusedId);
-  if (!input || input.disabled) {
-    ctx.builder.hideCursor();
-    return ctx.collectRuntimeBreadcrumbs ? resolveSummary() : null;
-  }
-
-  const rect = ctx.pooledRectByInstanceId.get(input.instanceId);
-  if (!rect || rect.w <= 1 || rect.h <= 0) {
-    ctx.builder.hideCursor();
-    return ctx.collectRuntimeBreadcrumbs ? resolveSummary() : null;
-  }
-
-  const graphemeOffset = ctx.inputCursorByInstanceId.get(input.instanceId) ?? input.value.length;
-  let cursorX = 0;
-  let cursorY = rect.y;
-  if (input.multiline) {
-    const contentW = Math.max(1, rect.w - 2);
-    const resolved = resolveInputMultilineCursor(
-      input.value,
-      graphemeOffset,
-      contentW,
-      input.wordWrap,
-    );
-    const maxStartVisual = Math.max(0, resolved.totalVisualLines - rect.h);
-    const startVisual = Math.max(0, Math.min(maxStartVisual, resolved.visualLine - rect.h + 1));
-    const localY = resolved.visualLine - startVisual;
-    if (localY < 0 || localY >= rect.h) {
-      ctx.builder.hideCursor();
-      return ctx.collectRuntimeBreadcrumbs ? resolveSummary() : null;
-    }
-    cursorX = Math.max(0, Math.min(Math.max(0, rect.w - 2), resolved.visualX));
-    cursorY = rect.y + localY;
-  } else {
-    cursorX = Math.max(
-      0,
-      Math.min(Math.max(0, rect.w - 2), measureTextCells(input.value.slice(0, graphemeOffset))),
-    );
+    return ctx.collectRuntimeBreadcrumbs ? summary : null;
   }
 
   ctx.builder.setCursor({
-    x: rect.x + 1 + cursorX,
-    y: cursorY,
-    shape: cursorInfo.shape,
+    x: summary.x,
+    y: summary.y,
+    shape: summary.shape,
     visible: true,
-    blink: cursorInfo.blink,
+    blink: summary.blink,
   });
 
-  return ctx.collectRuntimeBreadcrumbs ? resolveSummary() : null;
+  return ctx.collectRuntimeBreadcrumbs ? summary : null;
 }
 
 export function updateRuntimeBreadcrumbSnapshot(

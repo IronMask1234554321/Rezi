@@ -825,7 +825,7 @@ export class WidgetRenderer<S> {
     opts: Readonly<{
       backend: RuntimeBackend;
       builder?: DrawlistBuilderV1 | DrawlistBuilderV2 | DrawlistBuilderV3;
-      drawlistVersion?: 1 | 2 | 3 | 4 | 5;
+      drawlistVersion?: 2 | 3 | 4 | 5;
       maxDrawlistBytes?: number;
       drawlistValidateParams?: boolean;
       drawlistReuseOutputBuffer?: boolean;
@@ -882,6 +882,18 @@ export class WidgetRenderer<S> {
       return;
     }
     const drawlistVersion = opts.drawlistVersion ?? 2;
+    if (
+      drawlistVersion !== 2 &&
+      drawlistVersion !== 3 &&
+      drawlistVersion !== 4 &&
+      drawlistVersion !== 5
+    ) {
+      throw new Error(
+        `drawlistVersion ${String(
+          drawlistVersion,
+        )} is no longer supported; use drawlistVersion 2, 3, 4, or 5.`,
+      );
+    }
     if (drawlistVersion >= 3) {
       this.builder = createDrawlistBuilderV3({
         ...builderOpts,

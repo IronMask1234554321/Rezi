@@ -92,8 +92,7 @@ export const DEFAULT_TERMINAL_CAPS: TerminalCaps = Object.freeze({
  * @param caps - Terminal capabilities
  * @returns true if SET_CURSOR commands will work
  */
-export function supportsCursorProtocol(caps: TerminalCaps): boolean {
-  // The engine may support cursor visibility even without shape support
+export function supportsCursorProtocol(_caps: TerminalCaps): boolean {
   return true;
 }
 
