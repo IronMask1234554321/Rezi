@@ -4,6 +4,10 @@ import { type LayoutTree, layout } from "../../layout/layout.js";
 import type { VNode } from "../../widgets/types.js";
 import { emitDevLayoutWarnings } from "../widgetRenderer/devWarnings.js";
 
+// Intentional test-only exception: emitDevLayoutWarnings requires a LayoutTree,
+// and TestRenderer/createTestRenderer currently expose rendered output/rects, not
+// the internal tree. We call layout() directly through layoutOrThrow() here until
+// LayoutTree access is added to TestRenderer in a future API change.
 function layoutOrThrow(vnode: VNode): LayoutTree {
   const result = layout(vnode, 0, 0, 80, 24, "column");
   if (!result.ok) {
