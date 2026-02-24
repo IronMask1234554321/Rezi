@@ -6,6 +6,8 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 
 ## [Unreleased]
 
+## [0.1.0-alpha.39] - 2026-02-24
+
 ### Bug Fixes
 
 - **protocol**: Fixed ABI mouse-kind mapping drift between C engine and TypeScript.
