@@ -367,7 +367,10 @@ function bindKeys(): void {
       () => {
         const state = app.getState();
         const overlayInputActive =
-          state.showCommandPalette || state.showHailDialog || state.showHelp || state.showResetDialog;
+          state.showCommandPalette ||
+          state.showHailDialog ||
+          state.showHelp ||
+          state.showResetDialog;
         if (overlayInputActive) {
           if (key === "ctrl+c") {
             void stopApp(0);
