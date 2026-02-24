@@ -24,7 +24,6 @@
 
 import { ZrUiError, type ZrUiErrorCode } from "../abi.js";
 import {
-  BACKEND_DRAWLIST_V2_MARKER,
   BACKEND_DRAWLIST_VERSION_MARKER,
   BACKEND_FPS_CAP_MARKER,
   BACKEND_MAX_EVENT_BYTES_MARKER,
@@ -109,7 +108,6 @@ type ResolvedAppConfig = Readonly<{
   maxDrawlistBytes: number;
   rootPadding: number;
   breakpointThresholds: ResponsiveBreakpointThresholds;
-  useV2Cursor: boolean;
   drawlistValidateParams: boolean;
   drawlistReuseOutputBuffer: boolean;
   drawlistEncodedStringCacheCap: number;
@@ -131,7 +129,6 @@ const DEFAULT_CONFIG: ResolvedAppConfig = Object.freeze({
   maxDrawlistBytes: 2 << 20 /* 2 MiB */,
   rootPadding: 0,
   breakpointThresholds: normalizeBreakpointThresholds(undefined),
-  useV2Cursor: false,
   drawlistValidateParams: true,
   drawlistReuseOutputBuffer: true,
   drawlistEncodedStringCacheCap: 131072,
@@ -192,18 +189,6 @@ function getAcceptedFrameAck(p: Promise<void>): Promise<void> | null {
   if (typeof marker !== "object" || marker === null) return null;
   if (typeof (marker as { then?: unknown }).then !== "function") return null;
   return marker as Promise<void>;
-}
-
-function readBackendBooleanMarker(
-  backend: RuntimeBackend,
-  marker: typeof BACKEND_DRAWLIST_V2_MARKER,
-): boolean | null {
-  const value = (backend as RuntimeBackend & Readonly<Record<string, unknown>>)[marker];
-  if (value === undefined) return null;
-  if (typeof value !== "boolean") {
-    invalidProps(`backend marker ${marker} must be a boolean when present`);
-  }
-  return value;
 }
 
 function readBackendPositiveIntMarker(
@@ -300,7 +285,6 @@ export function resolveAppConfig(config: AppConfig | undefined): ResolvedAppConf
       ? DEFAULT_CONFIG.rootPadding
       : requireNonNegativeInt("rootPadding", config.rootPadding);
   const breakpointThresholds = normalizeBreakpointThresholds(config.breakpoints);
-  const useV2Cursor = config.useV2Cursor === true;
   const drawlistValidateParams =
     config.drawlistValidateParams === undefined
       ? DEFAULT_CONFIG.drawlistValidateParams
@@ -335,7 +319,6 @@ export function resolveAppConfig(config: AppConfig | undefined): ResolvedAppConf
     maxDrawlistBytes,
     rootPadding,
     breakpointThresholds,
-    useV2Cursor,
     drawlistValidateParams,
     drawlistReuseOutputBuffer,
     drawlistEncodedStringCacheCap,
@@ -612,23 +595,21 @@ export function createApp<S>(opts: CreateAppStateOptions<S> | CreateAppRoutesOnl
   const backend = opts.backend;
   const config = resolveAppConfig(opts.config);
 
-  const backendUseDrawlistV2 = readBackendBooleanMarker(backend, BACKEND_DRAWLIST_V2_MARKER);
-  if (config.useV2Cursor && backendUseDrawlistV2 === false) {
-    invalidProps(
-      "config.useV2Cursor=true but backend.useDrawlistV2=false. " +
-        "Fix: enable cursor-v2 support in the backend (drawlistVersion >= 2).",
-    );
-  }
-
   const backendDrawlistVersion = readBackendDrawlistVersionMarker(backend);
-  if (config.useV2Cursor && backendDrawlistVersion !== null && backendDrawlistVersion < 2) {
+  if (backendDrawlistVersion !== null && backendDrawlistVersion < 2) {
     invalidProps(
-      `config.useV2Cursor=true but backend drawlistVersion=${String(
+      `backend drawlistVersion=${String(
         backendDrawlistVersion,
-      )}. Fix: set backend drawlist version >= 2.`,
+      )} is no longer supported. Fix: set backend drawlist version >= 2.`,
     );
   }
-  const drawlistVersion: 1 | 2 | 3 | 4 | 5 = backendDrawlistVersion ?? (config.useV2Cursor ? 2 : 1);
+  const drawlistVersion: 2 | 3 | 4 | 5 =
+    backendDrawlistVersion === 2 ||
+    backendDrawlistVersion === 3 ||
+    backendDrawlistVersion === 4 ||
+    backendDrawlistVersion === 5
+      ? backendDrawlistVersion
+      : 5;
 
   const backendMaxEventBytes = readBackendPositiveIntMarker(
     backend,
@@ -833,7 +814,6 @@ export function createApp<S>(opts: CreateAppStateOptions<S> | CreateAppRoutesOnl
     rootPadding: config.rootPadding,
     breakpointThresholds: config.breakpointThresholds,
     terminalProfile,
-    useV2Cursor: config.useV2Cursor,
     ...(opts.config?.drawlistValidateParams === undefined
       ? {}
       : { drawlistValidateParams: opts.config.drawlistValidateParams }),

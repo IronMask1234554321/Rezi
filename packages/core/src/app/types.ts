@@ -31,7 +31,6 @@ export type AppConfig = Readonly<{
     mdMax?: number;
     lgMax?: number;
   }>;
-  useV2Cursor?: boolean;
   drawlistValidateParams?: boolean;
   drawlistReuseOutputBuffer?: boolean;
   drawlistEncodedStringCacheCap?: number;

@@ -427,7 +427,7 @@ export function renderOverlayWidget(
       const inputW = clampNonNegative(rect.w - 6);
       builder.drawText(rect.x + 4, inputY, truncateWithEllipsis(displayText, inputW), textStyle);
 
-      // v2 cursor: show cursor within query input when focused
+      // Cursor protocol: show cursor within query input when focused
       if (focused && cursorInfo) {
         const qx = clampNonNegative(measureTextCells(query));
         const maxCursorDx = Math.max(0, inputW - 1);
