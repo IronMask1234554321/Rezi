@@ -14,8 +14,7 @@
  *   - Handle input widget editing (text/key/paste events)
  *   - Render committed tree to drawlist
  *
- * v2 Cursor Protocol:
- *   - When useV2Cursor is enabled, uses DrawlistBuilderV2
+ * Cursor Protocol:
  *   - Emits SET_CURSOR for focused Input widgets with proper position
  *
  * @see docs/guide/runtime-and-layout.md
@@ -29,7 +28,6 @@ import {
   type DrawlistBuilderV1,
   type DrawlistBuilderV2,
   type DrawlistBuilderV3,
-  createDrawlistBuilderV1,
   createDrawlistBuilderV2,
   createDrawlistBuilderV3,
 } from "../drawlist/index.js";
@@ -567,7 +565,6 @@ type ErrorBoundaryState = Readonly<{
 export class WidgetRenderer<S> {
   private readonly backend: RuntimeBackend;
   private readonly builder: DrawlistBuilderV1 | DrawlistBuilderV2 | DrawlistBuilderV3;
-  private readonly useV2Cursor: boolean;
   private readonly cursorShape: CursorShape;
   private readonly cursorBlink: boolean;
   private collectRuntimeBreadcrumbs: boolean;
@@ -845,8 +842,6 @@ export class WidgetRenderer<S> {
       onUserCodeError?: (detail: string) => void;
       /** Optional terminal capability profile for capability-gated widgets. */
       terminalProfile?: TerminalProfile;
-      /** Enable v2 cursor protocol for native cursor support */
-      useV2Cursor?: boolean;
       /** Cursor shape for focused inputs (default: bar) */
       cursorShape?: CursorShape;
       /** Whether cursor should blink (default: true) */
@@ -856,7 +851,6 @@ export class WidgetRenderer<S> {
     }>,
   ) {
     this.backend = opts.backend;
-    this.useV2Cursor = opts.useV2Cursor === true;
     this.cursorShape = opts.cursorShape ?? CURSOR_DEFAULTS.input.shape;
     this.cursorBlink = opts.cursorBlink ?? CURSOR_DEFAULTS.input.blink;
     this.collectRuntimeBreadcrumbs = opts.collectRuntimeBreadcrumbs === true;
@@ -887,7 +881,7 @@ export class WidgetRenderer<S> {
       this.builder = opts.builder;
       return;
     }
-    const drawlistVersion = opts.drawlistVersion ?? (this.useV2Cursor ? 2 : 1);
+    const drawlistVersion = opts.drawlistVersion ?? 2;
     if (drawlistVersion >= 3) {
       this.builder = createDrawlistBuilderV3({
         ...builderOpts,
@@ -895,11 +889,7 @@ export class WidgetRenderer<S> {
       });
       return;
     }
-    if (drawlistVersion === 2 || this.useV2Cursor) {
-      this.builder = createDrawlistBuilderV2(builderOpts);
-      return;
-    }
-    this.builder = createDrawlistBuilderV1(builderOpts);
+    this.builder = createDrawlistBuilderV2(builderOpts);
   }
 
   hasAnimatedWidgets(): boolean {
@@ -2195,7 +2185,6 @@ export class WidgetRenderer<S> {
   ): RuntimeBreadcrumbCursorSummary | null {
     return resolveRuntimeCursorSummaryImpl(
       {
-        useV2Cursor: this.useV2Cursor,
         focusedId: this.focusState.focusedId,
         inputById: this.inputById,
         pooledRectByInstanceId: this._pooledRectByInstanceId,
@@ -2214,7 +2203,6 @@ export class WidgetRenderer<S> {
   ): RuntimeBreadcrumbCursorSummary | null {
     return emitIncrementalCursorImpl(
       {
-        useV2Cursor: this.useV2Cursor,
         collectRuntimeBreadcrumbs: this.collectRuntimeBreadcrumbs,
         builder: this.builder,
         focusedId: this.focusState.focusedId,
@@ -3370,14 +3358,12 @@ export class WidgetRenderer<S> {
         );
       }
 
-      // Build cursor info for v2 protocol
-      const cursorInfo: CursorInfo | undefined = this.useV2Cursor
-        ? {
-            cursorByInstanceId: this.inputCursorByInstanceId,
-            shape: this.cursorShape,
-            blink: this.cursorBlink,
-          }
-        : undefined;
+      // Build cursor info for native cursor protocol.
+      const cursorInfo: CursorInfo = {
+        cursorByInstanceId: this.inputCursorByInstanceId,
+        shape: this.cursorShape,
+        blink: this.cursorBlink,
+      };
 
       if (doCommit) {
         kickoffCommandPaletteItemFetches(

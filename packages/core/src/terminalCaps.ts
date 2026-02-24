@@ -87,7 +87,7 @@ export const DEFAULT_TERMINAL_CAPS: TerminalCaps = Object.freeze({
 });
 
 /**
- * Check if the terminal supports Drawlist v2 cursor protocol.
+ * Check if the terminal supports the native cursor protocol.
  *
  * @param caps - Terminal capabilities
  * @returns true if SET_CURSOR commands will work

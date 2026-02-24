@@ -13,7 +13,6 @@
 import type { RuntimeBackend } from "../backend.js";
 import {
   type DrawlistBuilderV1,
-  createDrawlistBuilderV1,
   createDrawlistBuilderV2,
   createDrawlistBuilderV3,
 } from "../drawlist/index.js";
@@ -82,7 +81,7 @@ export class RawRenderer {
       this.builder = opts.builder;
       return;
     }
-    const drawlistVersion = opts.drawlistVersion ?? 1;
+    const drawlistVersion = opts.drawlistVersion ?? 2;
     if (drawlistVersion >= 3) {
       this.builder = createDrawlistBuilderV3({
         ...builderOpts,
@@ -90,11 +89,7 @@ export class RawRenderer {
       });
       return;
     }
-    if (drawlistVersion === 2) {
-      this.builder = createDrawlistBuilderV2(builderOpts);
-      return;
-    }
-    this.builder = createDrawlistBuilderV1(builderOpts);
+    this.builder = createDrawlistBuilderV2(builderOpts);
   }
 
   /**

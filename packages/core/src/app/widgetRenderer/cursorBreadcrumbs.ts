@@ -18,7 +18,6 @@ import type { CodeEditorRenderCache } from "./renderCaches.js";
 export type CursorBreadcrumbViewport = Readonly<{ cols: number; rows: number }>;
 
 type ResolveRuntimeCursorSummaryContext = Readonly<{
-  useV2Cursor: boolean;
   focusedId: string | null;
   inputById: ReadonlyMap<string, InputMeta>;
   pooledRectByInstanceId: ReadonlyMap<InstanceId, Rect>;
@@ -170,7 +169,7 @@ export function resolveRuntimeCursorSummary(
   ctx: ResolveRuntimeCursorSummaryContext,
   cursorInfo: CursorInfo | undefined,
 ): RuntimeBreadcrumbCursorSummary | null {
-  if (!cursorInfo || !ctx.useV2Cursor) return null;
+  if (!cursorInfo) return null;
 
   const hidden: RuntimeBreadcrumbCursorSummary = Object.freeze({
     visible: false,
@@ -266,7 +265,6 @@ export function emitIncrementalCursor(
   const resolveSummary = () =>
     resolveRuntimeCursorSummary(
       {
-        useV2Cursor: ctx.useV2Cursor,
         focusedId: ctx.focusedId,
         inputById: ctx.inputById,
         pooledRectByInstanceId: ctx.pooledRectByInstanceId,
@@ -279,7 +277,7 @@ export function emitIncrementalCursor(
       cursorInfo,
     );
 
-  if (!cursorInfo || !ctx.useV2Cursor || !isCursorBuilder(ctx.builder)) {
+  if (!cursorInfo || !isCursorBuilder(ctx.builder)) {
     return ctx.collectRuntimeBreadcrumbs ? resolveSummary() : null;
   }
 

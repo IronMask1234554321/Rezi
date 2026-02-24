@@ -106,7 +106,7 @@ const app = createNodeApp<State>({ initialState: { count: 0 } });
 
 - `createNodeApp<State>` creates a typed application instance with a compatible Node/Bun backend
 - `initialState` provides the starting application state
-- An optional `config` object controls runtime knobs (`fpsCap`, `maxEventBytes`, `useV2Cursor`)
+- An optional `config` object controls runtime knobs (`fpsCap`, `maxEventBytes`, `maxDrawlistBytes`)
 
 ### Defining the View
 
