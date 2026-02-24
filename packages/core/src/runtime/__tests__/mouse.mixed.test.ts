@@ -718,6 +718,7 @@ describe("overlay/modal hit priority integration", () => {
   });
 
   test("wheel does not scroll background virtualList while modal is open", async () => {
+    // This case needs the full app + backend event pipeline to validate wheel routing behavior.
     const backend = new StubBackend();
     const scrollTops: number[] = [];
     const items = Object.freeze(Array.from({ length: 200 }, (_, i) => `Item ${i}`));

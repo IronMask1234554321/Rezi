@@ -75,12 +75,10 @@ export function routeVirtualListKey<T>(
     }
     // Variable heights: compute viewport-only visible range (overscan=0).
     // state.startIndex/endIndex can include renderer overscan and inflate page jumps.
-    const totalHeight = getTotalHeight(items, itemHeight, measuredHeights);
-    const clampedScrollTop = clampScrollTop(scrollTop, totalHeight, viewportHeight);
     const viewportRange = computeVisibleRange(
       items,
       itemHeight,
-      clampedScrollTop,
+      scrollTop,
       viewportHeight,
       0,
       measuredHeights,

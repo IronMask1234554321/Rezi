@@ -18,6 +18,8 @@ type PercentageCase = Readonly<{
 }>;
 
 function mustLayout(node: VNode, maxW: number, maxH: number, axis: Axis): LayoutTree {
+  // These cases validate raw layout-engine percentage math directly.
+  // Using layout() here avoids renderer-level behavior influencing measurements.
   const res = layout(node, 0, 0, maxW, maxH, axis);
   if (!res.ok) {
     assert.fail(`layout failed: ${res.fatal.code}: ${res.fatal.detail}`);

@@ -220,7 +220,8 @@ export function readDebugBytesWithRetry<TEmpty>(
   emptyValue: TEmpty,
   operation: string,
 ): Uint8Array | TEmpty {
-  let capacity = Math.max(1, Math.floor(initialCapacity));
+  const baseCapacity = Number.isFinite(initialCapacity) ? Math.floor(initialCapacity) : 1;
+  let capacity = Math.min(MAX_DEBUG_BYTES_RETRY_CAP, Math.max(1, baseCapacity));
   while (true) {
     const out = new Uint8Array(capacity);
     const written = read(out);

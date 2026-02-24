@@ -431,6 +431,8 @@ describe("collection scroll metadata wiring", () => {
 
   test("virtualList estimate mode keeps scroll metadata in sync with rendered frame", () => {
     const virtualListStore = createVirtualListStateStore();
+    // Items 0-1 render at height 2 while estimateItemHeight starts at 1.
+    // First frame keeps the incoming scrollTop; second frame applies measured correction.
     virtualListStore.set("vl-est-sync", { scrollTop: 2 });
     const vnode = ui.virtualList({
       id: "vl-est-sync",
@@ -443,10 +445,24 @@ describe("collection scroll metadata wiring", () => {
     });
 
     const first = renderAndGetLayoutTree(vnode, { cols: 12, rows: 3 }, { virtualListStore });
-    assert.equal(requireMeta(first).scrollY, 2);
+    assert.deepEqual(requireMeta(first), {
+      scrollX: 0,
+      scrollY: 2,
+      contentWidth: 12,
+      contentHeight: 8,
+      viewportWidth: 12,
+      viewportHeight: 3,
+    });
 
     const second = renderAndGetLayoutTree(vnode, { cols: 12, rows: 3 }, { virtualListStore });
-    assert.equal(requireMeta(second).scrollY, 4);
+    assert.deepEqual(requireMeta(second), {
+      scrollX: 0,
+      scrollY: 4,
+      contentWidth: 12,
+      contentHeight: 8,
+      viewportWidth: 12,
+      viewportHeight: 3,
+    });
   });
 
   test("table layout baseline metadata matches viewport rect", () => {

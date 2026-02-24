@@ -321,9 +321,9 @@ let droppedSinceLast = 0;
 
 let tickTimer: NodeJS.Timeout | null = null;
 let tickImmediate: NodeJS.Immediate | null = null;
-let tickIntervalMs = 16;
+let tickIntervalMs = 0;
 let idleDelayMs = 0;
-let maxIdleDelayMs = 50;
+let maxIdleDelayMs = 0;
 let sabWakeArmed = false;
 let sabWakeEpoch = 0;
 

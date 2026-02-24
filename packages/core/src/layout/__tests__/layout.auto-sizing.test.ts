@@ -17,6 +17,7 @@ type AutoCase = Readonly<{
 }>;
 
 function mustLayout(node: VNode, maxW: number, maxH: number, axis: Axis): LayoutTree {
+  // Keep this test at the layout() layer so intrinsic sizing assertions are engine-only.
   const res = layout(node, 0, 0, maxW, maxH, axis);
   if (!res.ok) {
     assert.fail(`layout failed: ${res.fatal.code}: ${res.fatal.detail}`);

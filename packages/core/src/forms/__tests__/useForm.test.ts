@@ -30,6 +30,7 @@ type TestFormValues = {
 
 /**
  * Create a mock widget context for testing hooks.
+ * This suite intentionally tests useForm's hook/runtime behavior without renderer plumbing.
  */
 function createTestContext<State = void>(): {
   render: <T extends Record<string, unknown>>(options: UseFormOptions<T>) => UseFormReturn<T>;

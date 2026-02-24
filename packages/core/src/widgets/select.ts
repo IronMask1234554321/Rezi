@@ -40,10 +40,6 @@ export function getSelectDisplayText(
     return emptyOption.label;
   }
 
-  if (!value) {
-    return placeholder ?? DEFAULT_PLACEHOLDER;
-  }
-
   const option = options.find((opt) => opt.value === value);
   return option?.label ?? value;
 }

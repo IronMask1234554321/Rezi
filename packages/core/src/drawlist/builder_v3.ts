@@ -6,10 +6,10 @@ import type {
   DrawlistBuildResult,
   DrawlistBuilderV3,
   DrawlistCanvasBlitter,
-  EncodedStyle,
   DrawlistImageFit,
   DrawlistImageFormat,
   DrawlistImageProtocol,
+  EncodedStyle,
 } from "./types.js";
 import {
   CLEAR_SIZE,

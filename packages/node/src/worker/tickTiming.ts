@@ -3,7 +3,7 @@ const MAX_EVENT_POLL_INTERVAL_MS = 4;
 const MIN_IDLE_BACKOFF_MS = 16;
 const MAX_IDLE_BACKOFF_MS = 50;
 
-type TickTiming = Readonly<{
+export type TickTiming = Readonly<{
   tickIntervalMs: number;
   maxIdleDelayMs: number;
 }>;
@@ -29,8 +29,10 @@ export function computeNextIdleDelay(
   tickIntervalMs: number,
   maxIdleDelayMs: number,
 ): number {
-  const base = Math.max(MIN_EVENT_POLL_INTERVAL_MS, Math.floor(tickIntervalMs));
-  const boundedMax = Math.max(base, Math.floor(maxIdleDelayMs));
+  const safeTickInterval = Number.isFinite(tickIntervalMs) ? Math.floor(tickIntervalMs) : 1;
+  const base = Math.max(MIN_EVENT_POLL_INTERVAL_MS, safeTickInterval);
+  const safeMaxIdle = Number.isFinite(maxIdleDelayMs) ? Math.floor(maxIdleDelayMs) : base;
+  const boundedMax = Math.max(base, safeMaxIdle);
   const current = Number.isFinite(currentIdleDelayMs) ? Math.floor(currentIdleDelayMs) : 0;
   const next = current > 0 ? current * 2 : base;
   return Math.min(boundedMax, Math.max(base, next));
