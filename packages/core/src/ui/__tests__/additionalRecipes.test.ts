@@ -18,9 +18,9 @@ describe("resolveSize override", () => {
   it("uses theme spacing tokens when provided", () => {
     const spacing = { xs: 1, sm: 3, md: 5, lg: 7, xl: 9, "2xl": 11 } as const;
     assert.deepEqual(resolveSize("md"), { px: 2, py: 0 });
-    assert.deepEqual(resolveSize("sm", spacing), { px: 1, py: 0 });
-    assert.deepEqual(resolveSize("md", spacing), { px: 3, py: 0 });
-    assert.deepEqual(resolveSize("lg", spacing), { px: 5, py: 1 });
+    assert.deepEqual(resolveSize("sm", spacing), { px: 3, py: 0 });
+    assert.deepEqual(resolveSize("md", spacing), { px: 5, py: 0 });
+    assert.deepEqual(resolveSize("lg", spacing), { px: 7, py: 1 });
   });
 });
 

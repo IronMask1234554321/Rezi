@@ -1,6 +1,7 @@
 import type { ZrevEvent } from "../../events.js";
 import {
   clampScrollTop,
+  computeVisibleRange,
   ensureVisible,
   getItemHeight,
   getItemOffset,
@@ -72,9 +73,17 @@ export function routeVirtualListKey<T>(
       const safeViewportHeight = Math.max(0, viewportHeight);
       return Math.max(1, Math.floor(safeViewportHeight / safeItemHeight));
     }
-    // Variable heights: estimate based on visible items in current viewport
-    // Use the actual visible range from state if available, otherwise estimate
-    const visibleCount = state.endIndex - state.startIndex;
+    // Variable heights: compute viewport-only visible range (overscan=0).
+    // state.startIndex/endIndex can include renderer overscan and inflate page jumps.
+    const viewportRange = computeVisibleRange(
+      items,
+      itemHeight,
+      scrollTop,
+      viewportHeight,
+      0,
+      measuredHeights,
+    );
+    const visibleCount = viewportRange.endIndex - viewportRange.startIndex;
     if (visibleCount > 0) {
       return Math.max(1, visibleCount);
     }

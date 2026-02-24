@@ -17,6 +17,7 @@ type AutoCase = Readonly<{
 }>;
 
 function mustLayout(node: VNode, maxW: number, maxH: number, axis: Axis): LayoutTree {
+  // Keep this test at the layout() layer so intrinsic sizing assertions are engine-only.
   const res = layout(node, 0, 0, maxW, maxH, axis);
   if (!res.ok) {
     assert.fail(`layout failed: ${res.fatal.code}: ${res.fatal.detail}`);
@@ -228,4 +229,20 @@ describe("layout auto sizing (deterministic)", () => {
       }
     });
   }
+
+  test("auto row intrinsic sizing ignores absolute children", () => {
+    const tree = mustLayout(
+      ui.row({ width: "auto", gap: 0 }, [
+        ui.box({ border: "none", width: 10, height: 1 }, []),
+        ui.box(
+          { border: "none", position: "absolute", top: 0, left: 0, width: 200, height: 1 },
+          [],
+        ),
+      ]),
+      500,
+      20,
+      "row",
+    );
+    assert.equal(tree.rect.w, 10);
+  });
 });

@@ -150,7 +150,7 @@ describe("virtualList contracts - keyboard navigation", () => {
     });
 
     const result = routeVirtualListKey(createKeyEvent(ZR_KEY_PAGE_DOWN), ctx);
-    assert.equal(result.nextSelectedIndex, 7);
+    assert.equal(result.nextSelectedIndex, 8);
   });
 
   test("page-size fallback is used when visible range span is zero", () => {
@@ -166,8 +166,8 @@ describe("virtualList contracts - keyboard navigation", () => {
     });
 
     const down = routeVirtualListKey(createKeyEvent(ZR_KEY_PAGE_DOWN), downCtx);
-    assert.equal(down.nextSelectedIndex, 7);
-    assert.equal(down.nextScrollTop, 7);
+    assert.equal(down.nextSelectedIndex, 8);
+    assert.equal(down.nextScrollTop, 9);
 
     const upCtx = createTestCtx({
       items,
@@ -180,7 +180,8 @@ describe("virtualList contracts - keyboard navigation", () => {
     });
 
     const up = routeVirtualListKey(createKeyEvent(ZR_KEY_PAGE_UP), upCtx);
-    assert.equal(up.nextSelectedIndex, 3);
+    assert.equal(up.nextSelectedIndex, 2);
+    assert.equal(up.nextScrollTop, 4);
   });
 
   test("page-size fallback uses measured heights for numeric estimate mode", () => {

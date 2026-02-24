@@ -92,7 +92,7 @@ describe("paginationRecipe", () => {
     assert.deepEqual(active.control.fg, darkColors.accent.primary);
     assert.equal(active.control.bold, true);
     assert.equal(active.border, "heavy");
-    assert.equal(active.px, 4);
+    assert.equal(active.px, 6);
 
     const disabled = paginationRecipe(darkColors, {
       variant: "outline",

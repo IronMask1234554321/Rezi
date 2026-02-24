@@ -1711,6 +1711,8 @@ export class WidgetRenderer<S> {
     }
 
     const wheelRoute = routeMouseWheel(event, {
+      layerRegistry: this.layerRegistry,
+      layerStack: this.layerStack,
       mouseTargetId,
       mouseTargetAnyId,
       focusedId,

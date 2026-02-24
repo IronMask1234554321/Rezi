@@ -8,7 +8,7 @@
  * @see docs/design-system.md
  */
 
-import type { ColorTokens, ThemeDefinition, ThemeSpacingTokens } from "../theme/tokens.js";
+import { type ColorTokens, DEFAULT_THEME_SPACING, type ThemeDefinition } from "../theme/tokens.js";
 import type { Rgb, TextStyle } from "../widgets/style.js";
 
 // ---------------------------------------------------------------------------
@@ -109,29 +109,56 @@ export type SizeSpacing = Readonly<{
   py: number;
 }>;
 
+type SizeSpacingInput = ThemeDefinition["spacing"] | readonly number[] | undefined;
+
+function resolveSpacingToken(input: unknown, fallback: number): number {
+  if (typeof input !== "number" || !Number.isFinite(input) || input < 0) {
+    return fallback;
+  }
+  return Math.trunc(input);
+}
+
+function isLegacySpacingInput(spacing: SizeSpacingInput): spacing is readonly number[] {
+  return Array.isArray(spacing);
+}
+
 /**
  * Resolve spacing for a widget size.
  * If theme spacing tokens are provided, widget spacing derives from that scale.
  */
-export function resolveSize(size: WidgetSize, spacingTokens?: ThemeSpacingTokens): SizeSpacing {
-  if (spacingTokens) {
-    switch (size) {
-      case "sm":
-        return { px: spacingTokens.xs, py: 0 };
-      case "md":
-        return { px: spacingTokens.sm, py: 0 };
-      case "lg":
-        return { px: spacingTokens.md, py: spacingTokens.xs };
-    }
+export function resolveSize(size: WidgetSize, spacing?: SizeSpacingInput): SizeSpacing {
+  let semanticSpacing: ThemeDefinition["spacing"] | undefined;
+  let legacySpacing: readonly number[] | undefined;
+  if (isLegacySpacingInput(spacing)) {
+    legacySpacing = spacing;
+  } else {
+    semanticSpacing = spacing;
   }
+  const legacyIsSemanticScale = (legacySpacing?.length ?? 0) >= 7;
+  const legacySmIndex = legacyIsSemanticScale ? 2 : 1;
+  const legacyMdIndex = legacyIsSemanticScale ? 3 : 2;
+  const legacyLgIndex = legacyIsSemanticScale ? 4 : 3;
+
+  const smPx = resolveSpacingToken(
+    semanticSpacing?.sm ?? legacySpacing?.[legacySmIndex],
+    DEFAULT_THEME_SPACING.sm,
+  );
+  const mdPx = resolveSpacingToken(
+    semanticSpacing?.md ?? legacySpacing?.[legacyMdIndex],
+    DEFAULT_THEME_SPACING.md,
+  );
+  const lgPx = resolveSpacingToken(
+    semanticSpacing?.lg ?? legacySpacing?.[legacyLgIndex],
+    DEFAULT_THEME_SPACING.lg,
+  );
 
   switch (size) {
     case "sm":
-      return { px: 1, py: 0 };
+      return { px: smPx, py: 0 };
     case "md":
-      return { px: 2, py: 0 };
+      return { px: mdPx, py: 0 };
     case "lg":
-      return { px: 3, py: 1 };
+      return { px: lgPx, py: 1 };
   }
 }
 

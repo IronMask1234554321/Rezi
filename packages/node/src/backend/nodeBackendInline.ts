@@ -168,6 +168,7 @@ const DEFAULT_FPS_CAP = 60 as const;
 const MAX_SAFE_FPS_CAP = 1000 as const;
 const DEFAULT_MAX_EVENT_BYTES = 1 << 20;
 const MAX_SAFE_EVENT_BYTES = 4 << 20;
+const MAX_DEBUG_BYTES_RETRY_CAP = 64 << 20;
 const WIDTH_POLICY_KEY = "widthPolicy" as const;
 const RESOLVED_VOID = Promise.resolve();
 const SYNC_FRAME_ACK_MARKER = "__reziSyncFrameAck";
@@ -209,6 +210,41 @@ function parsePositiveInt(n: unknown): number | null {
   if (!Number.isInteger(n)) return null;
   if (n <= 0) return null;
   return n;
+}
+
+export function readDebugBytesWithRetry<TEmpty>(
+  read: (out: Uint8Array) => number,
+  initialCapacity: number,
+  emptyValue: TEmpty,
+  operation: string,
+): Uint8Array | TEmpty {
+  const baseCapacity = Number.isFinite(initialCapacity) ? Math.floor(initialCapacity) : 1;
+  let capacity = Math.min(MAX_DEBUG_BYTES_RETRY_CAP, Math.max(1, baseCapacity));
+  while (true) {
+    const out = new Uint8Array(capacity);
+    const written = read(out);
+    if (!Number.isInteger(written) || written > out.byteLength) {
+      throw new ZrUiError(
+        "ZRUI_BACKEND_ERROR",
+        `${operation} returned invalid byte count: written=${String(written)} capacity=${String(out.byteLength)}`,
+      );
+    }
+    if (written <= 0) {
+      return emptyValue;
+    }
+    if (written < out.byteLength) {
+      return out.slice(0, written);
+    }
+    if (capacity >= MAX_DEBUG_BYTES_RETRY_CAP) {
+      // Native debug APIs return written byte count but not total required size.
+      // If the output exactly fills our max-cap buffer, it's likely truncated.
+      process.emitWarning(
+        `[rezi][debug] ${operation} filled ${String(capacity)} bytes at max cap; payload may be truncated.`,
+      );
+      return out.slice(0, written);
+    }
+    capacity = Math.min(MAX_DEBUG_BYTES_RETRY_CAP, capacity * 2);
+  }
 }
 
 function parseDrawlistVersion(v: unknown): 2 | 3 | 4 | 5 | null {
@@ -939,14 +975,17 @@ export function createNodeBackendInlineInternal(opts: NodeBackendInternalOpts = 
     },
     debugGetPayload: async (recordId: bigint) => {
       await backend.start();
-      if (native === null || engineId === null) {
+      const activeEngineId = engineId;
+      if (native === null || activeEngineId === null) {
         throw new Error("NodeBackend(inline): engine not started");
       }
       const dbg = ensureDebugApiLoaded(native);
-      const out = new Uint8Array(maxEventBytes);
-      const rc = dbg.engineDebugGetPayload(engineId, recordId, out);
-      if (rc <= 0) return null;
-      return out.slice(0, rc);
+      return readDebugBytesWithRetry(
+        (out) => dbg.engineDebugGetPayload(activeEngineId, recordId, out),
+        maxEventBytes,
+        null,
+        "engineDebugGetPayload",
+      );
     },
     debugGetStats: async () => {
       await backend.start();
@@ -967,14 +1006,17 @@ export function createNodeBackendInlineInternal(opts: NodeBackendInternalOpts = 
     },
     debugExport: async () => {
       await backend.start();
-      if (native === null || engineId === null) {
+      const activeEngineId = engineId;
+      if (native === null || activeEngineId === null) {
         throw new Error("NodeBackend(inline): engine not started");
       }
       const dbg = ensureDebugApiLoaded(native);
-      const out = new Uint8Array(maxEventBytes);
-      const rc = dbg.engineDebugExport(engineId, out);
-      if (rc <= 0) return new Uint8Array(0);
-      return out.slice(0, rc);
+      return readDebugBytesWithRetry(
+        (out) => dbg.engineDebugExport(activeEngineId, out),
+        maxEventBytes,
+        new Uint8Array(0),
+        "engineDebugExport",
+      );
     },
     debugReset: async () => {
       await backend.start();

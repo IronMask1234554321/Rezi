@@ -215,6 +215,8 @@ type RouteFileTreeExplorerContextMenuMouseContext = Readonly<{
 }>;
 
 type RouteMouseWheelContext = Readonly<{
+  layerRegistry: LayerRegistry;
+  layerStack: readonly string[];
   mouseTargetId: string | null;
   mouseTargetAnyId: string | null;
   focusedId: string | null;
@@ -1460,7 +1462,14 @@ export function routeMouseWheel(
 ): MouseRoutingOutcome | null {
   if (event.kind !== "mouse" || event.mouseKind !== 5) return null;
 
-  const targetId = ctx.mouseTargetId ?? ctx.focusedId;
+  const topModalLayer = ctx.layerRegistry.getTopmostModal();
+  if (topModalLayer) {
+    const hit = hitTestLayers(ctx.layerRegistry, event.x, event.y);
+    if (hit.blocked) return ROUTE_NO_RENDER;
+  }
+
+  const allowFocusFallback = topModalLayer === undefined;
+  const targetId = ctx.mouseTargetId ?? (allowFocusFallback ? ctx.focusedId : null);
   if (targetId !== null) {
     const vlist = ctx.virtualListById.get(targetId);
     if (vlist) {
@@ -1500,7 +1509,10 @@ export function routeMouseWheel(
     }
   }
 
-  for (const candidateId of [ctx.mouseTargetId, ctx.focusedId]) {
+  const candidateIds = allowFocusFallback
+    ? [ctx.mouseTargetId, ctx.focusedId]
+    : [ctx.mouseTargetId];
+  for (const candidateId of candidateIds) {
     if (candidateId === null) continue;
 
     const editor = ctx.codeEditorById.get(candidateId);
