@@ -125,7 +125,8 @@ export function resolveStarshipCommand(
   if (routeId) {
     const routeCommand = ROUTE_KEY_OVERRIDES[routeId]?.[normalized];
     if (routeCommand) return routeCommand;
+    return GLOBAL_COMMAND_BY_KEY[normalized];
   }
 
-  return GLOBAL_COMMAND_BY_KEY[normalized] ?? COMMAND_BY_KEY[normalized];
+  return COMMAND_BY_KEY[normalized];
 }

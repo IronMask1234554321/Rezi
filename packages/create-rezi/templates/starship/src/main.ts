@@ -2,7 +2,7 @@ import { exit } from "node:process";
 import { createNodeApp } from "@rezi-ui/node";
 import { resolveStarshipCommand } from "./helpers/keybindings.js";
 import { createInitialState, filteredMessages, reduceStarshipState } from "./helpers/state.js";
-import { createStarshipRoutes, STARSHIP_ROUTES } from "./screens/index.js";
+import { STARSHIP_ROUTES, createStarshipRoutes } from "./screens/index.js";
 import { themeSpec } from "./theme.js";
 import type { RouteDeps, RouteId, StarshipAction, StarshipState } from "./types.js";
 
@@ -17,6 +17,7 @@ if (!hasInteractiveTty && process.env.ZIREAEL_POSIX_PIPE_MODE === undefined) {
   process.env.ZIREAEL_POSIX_PIPE_MODE = "1";
 }
 
+// biome-ignore lint/style/useConst: circular bootstrap wiring requires post-declaration assignment
 let app!: ReturnType<typeof createNodeApp<StarshipState>>;
 let stopping = false;
 let tickTimer: ReturnType<typeof setInterval> | null = null;
@@ -100,7 +101,11 @@ async function stopApp(code = 0): Promise<void> {
     // Ignore stop races.
   }
 
-  app.dispose();
+  try {
+    app.dispose();
+  } catch {
+    // Ignore disposal races during shutdown.
+  }
   exit(code);
 }
 
@@ -312,6 +317,7 @@ function applyCommand(command: ReturnType<typeof resolveStarshipCommand>): void 
         durationMs: 2800,
       },
     });
+    return;
   }
 }
 
@@ -365,13 +371,22 @@ function bindKeys(): void {
   ) as Record<string, () => void>;
 
   bindingMap.escape = () => {
-    app.update((previous) => {
-      if (previous.showHelp) return { ...previous, showHelp: false };
-      if (previous.showCommandPalette) return { ...previous, showCommandPalette: false };
-      if (previous.showHailDialog) return { ...previous, showHailDialog: false };
-      if (previous.showResetDialog) return { ...previous, showResetDialog: false };
-      return previous;
-    });
+    const state = app.getState();
+    if (state.showHelp) {
+      dispatch({ type: "toggle-help" });
+      return;
+    }
+    if (state.showCommandPalette) {
+      dispatch({ type: "toggle-command-palette" });
+      return;
+    }
+    if (state.showHailDialog) {
+      dispatch({ type: "toggle-hail-dialog" });
+      return;
+    }
+    if (state.showResetDialog) {
+      dispatch({ type: "toggle-reset-dialog" });
+    }
   };
 
   app.keys(bindingMap);

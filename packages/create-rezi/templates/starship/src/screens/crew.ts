@@ -4,7 +4,6 @@ import {
   show,
   ui,
   useAsync,
-  when,
   type RouteRenderContext,
   type VNode,
 } from "@rezi-ui/core";
@@ -27,6 +26,7 @@ function validateCriticalDepartments(crew: readonly CrewMember[]): string | null
   };
 
   for (const member of crew) {
+    if (member.status !== "active") continue;
     if (member.department === "bridge") counts.bridge += 1;
     if (member.department === "engineering") counts.engineering += 1;
     if (member.department === "security") counts.security += 1;
@@ -75,10 +75,22 @@ const CrewDeck = defineWidget<CrewDeckProps>((props, ctx): VNode => {
   }, [visible, sortColumn, sortDirection]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / props.state.crewPageSize));
-  const page = Math.min(props.state.crewPage, totalPages);
+  const page = Math.max(1, Math.min(props.state.crewPage, totalPages));
   const start = (page - 1) * props.state.crewPageSize;
   const pageData = sorted.slice(start, start + props.state.crewPageSize);
-  const staffingError = validateCriticalDepartments(props.state.crew);
+  const staffingError = ctx.useMemo(() => {
+    if (!selected) return validateCriticalDepartments(props.state.crew);
+    const projected = props.state.crew.map((member) =>
+      member.id === selected.id
+        ? Object.freeze({
+            ...member,
+            department: props.state.crewDraft.department,
+            status: props.state.crewDraft.status,
+          })
+        : member,
+    );
+    return validateCriticalDepartments(projected);
+  }, [props.state.crew, props.state.crewDraft.department, props.state.crewDraft.status, selected?.id]);
 
   const table = ui.table<CrewMember>({
     id: ctx.id("crew-table"),
@@ -196,6 +208,7 @@ const CrewDeck = defineWidget<CrewDeckProps>((props, ctx): VNode => {
                       type: "assign-crew",
                       crewId: member.id,
                       department: props.state.crewDraft.department,
+                      status: props.state.crewDraft.status,
                     });
                   }
                 },
@@ -248,32 +261,33 @@ const CrewDeck = defineWidget<CrewDeckProps>((props, ctx): VNode => {
         }),
       ]),
     ]),
-    when(
+    show(
       asyncCrew.loading,
-      () =>
-        ui.panel("Loading Crew Manifest", [
-          ui.row({ gap: 1 }, [ui.spinner(), ui.text("Fetching personnel assignments...")]),
-          ui.skeleton(44, { variant: "text" }),
-          ui.skeleton(44, { variant: "text" }),
-          ui.skeleton(44, { variant: "text" }),
-        ]),
-      () => ui.text(""),
-    ) ?? ui.text(""),
-    ui.masterDetail({
-      id: ctx.id("crew-master-detail"),
-      masterWidth: 74,
-      master: ui.column({ gap: 1 }, [
-        ui.panel("Crew Manifest", [table]),
-        ui.pagination({
-          id: ctx.id("crew-pagination"),
-          page,
-          totalPages,
-          showFirstLast: true,
-          onChange: (nextPage) => props.dispatch({ type: "set-crew-page", page: nextPage }),
-        }),
+      ui.panel("Loading Crew Manifest", [
+        ui.row({ gap: 1 }, [ui.spinner(), ui.text("Fetching personnel assignments...")]),
+        ui.skeleton(44, { variant: "text" }),
+        ui.skeleton(44, { variant: "text" }),
+        ui.skeleton(44, { variant: "text" }),
       ]),
-      detail: detailPanel,
-    }),
+    ),
+    show(
+      !asyncCrew.loading,
+      ui.masterDetail({
+        id: ctx.id("crew-master-detail"),
+        masterWidth: 74,
+        master: ui.column({ gap: 1 }, [
+          ui.panel("Crew Manifest", [table]),
+          ui.pagination({
+            id: ctx.id("crew-pagination"),
+            page,
+            totalPages,
+            showFirstLast: true,
+            onChange: (nextPage) => props.dispatch({ type: "set-crew-page", page: nextPage }),
+          }),
+        ]),
+        detail: detailPanel,
+      }),
+    ),
   ]);
 });
 

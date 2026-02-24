@@ -22,6 +22,15 @@ test("route-specific keys resolve on matching routes", () => {
   assert.equal(resolveStarshipCommand("n", "crew"), "crew-new-assignment");
   assert.equal(resolveStarshipCommand("h", "comms"), "comms-hail");
   assert.equal(resolveStarshipCommand("enter", "comms"), "comms-acknowledge");
+  assert.equal(resolveStarshipCommand("h", "settings"), undefined);
+  assert.equal(resolveStarshipCommand("n", "bridge"), undefined);
+});
+
+test("key normalization trims and lowercases input", () => {
+  assert.equal(resolveStarshipCommand(" Q "), "quit");
+  assert.equal(resolveStarshipCommand("CTRL+P"), "toggle-command-palette");
+  assert.equal(resolveStarshipCommand(""), undefined);
+  assert.equal(resolveStarshipCommand("   "), undefined);
 });
 
 test("unknown keys return undefined", () => {

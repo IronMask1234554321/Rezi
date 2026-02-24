@@ -1,7 +1,7 @@
 import { each, eachInline, ui, type RouteRenderContext, type VNode } from "@rezi-ui/core";
 import { cargoSummary } from "../helpers/formatters.js";
 import { sortedCargo } from "../helpers/state.js";
-import { stylesForTheme } from "../theme.js";
+import { stylesForTheme, themeSpec } from "../theme.js";
 import type { CargoItem, RouteDeps, StarshipState } from "../types.js";
 import { renderShell } from "./shell.js";
 
@@ -20,12 +20,21 @@ function categoryLabel(category: CargoItem["category"]): string {
   return "Ordnance";
 }
 
+function toHex(color: Readonly<{ r: number; g: number; b: number }>): string {
+  const channel = (value: number) =>
+    Math.max(0, Math.min(255, Math.round(value)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${channel(color.r)}${channel(color.g)}${channel(color.b)}`;
+}
+
 export function renderCargoScreen(
   context: RouteRenderContext<StarshipState>,
   deps: RouteDeps,
 ): VNode {
   const state = context.state;
   const styles = stylesForTheme(state.themeName);
+  const colors = themeSpec(state.themeName).theme.colors;
   const cargo = sortedCargo(state);
   const summary = cargoSummary(cargo);
 
@@ -42,8 +51,13 @@ export function renderCargoScreen(
 
   const scatterPoints = cargo.slice(0, 160).map((item, index) => ({
     x: item.quantity,
-    y: item.priority * 20 + (index % 7),
-    color: item.category === "ordnance" ? "#ff6b77" : item.category === "medical" ? "#7ff0b2" : "#7cc6ff",
+    y: Math.min(item.priority * 20 + (index % 7), 100),
+    color:
+      item.category === "ordnance"
+        ? toHex(colors.error)
+        : item.category === "medical"
+          ? toHex(colors.success)
+          : toHex(colors.accent.primary),
   }));
 
   const sortItems = [

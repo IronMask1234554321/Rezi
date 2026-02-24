@@ -1,7 +1,7 @@
 import {
   match,
+  show,
   ui,
-  when,
   type LogEntry,
   type RouteRenderContext,
   type VNode,
@@ -50,14 +50,13 @@ export function renderCommsScreen(
       },
       [
         ui.column({ gap: 1 }, [
-          when(
+          show(
             state.activeChannel === "emergency",
-            () =>
-              ui.callout("Emergency channel monitored with elevated priority.", {
-                title: "Emergency Net",
-                variant: "warning",
-              }),
-          ) ?? ui.text(""),
+            ui.callout("Emergency channel monitored with elevated priority.", {
+              title: "Emergency Net",
+              variant: "warning",
+            }),
+          ),
           ui.panel("Channel Controls", [
             ui.tabs({
               id: "comms-channel-tabs",
@@ -176,6 +175,12 @@ export function renderCommsScreen(
               ]),
               actions: [
                 ui.button({
+                  id: "comms-hail-cancel",
+                  label: "Cancel",
+                  intent: "secondary",
+                  onPress: () => deps.dispatch({ type: "toggle-hail-dialog" }),
+                }),
+                ui.button({
                   id: "comms-hail-send",
                   label: "Transmit",
                   intent: "primary",
@@ -185,12 +190,6 @@ export function renderCommsScreen(
                       target: state.hailTarget.trim() || "Unknown",
                       message: state.hailMessage.trim() || "Status check",
                     }),
-                }),
-                ui.button({
-                  id: "comms-hail-cancel",
-                  label: "Cancel",
-                  intent: "secondary",
-                  onPress: () => deps.dispatch({ type: "toggle-hail-dialog" }),
                 }),
               ],
             })

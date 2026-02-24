@@ -1,13 +1,13 @@
-import type { AlertLevel, ThemeName } from "./types.js";
 import {
+  type BadgeVariant,
+  type TextStyle,
+  type ThemeDefinition,
   darkTheme,
   draculaTheme,
   extendTheme,
   nordTheme,
-  type BadgeVariant,
-  type TextStyle,
-  type ThemeDefinition,
 } from "@rezi-ui/core";
+import type { AlertLevel, ThemeName } from "./types.js";
 
 type ThemeSpec = Readonly<{
   label: string;

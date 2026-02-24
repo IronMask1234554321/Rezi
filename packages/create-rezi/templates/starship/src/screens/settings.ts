@@ -78,8 +78,8 @@ export function renderSettingsScreen(
             hint: "Value used by engineering warnings",
             children: ui.slider({
               id: "settings-alert-threshold",
-              min: 0,
-              max: 100,
+              min: 20,
+              max: 95,
               step: 1,
               label: "Threshold",
               value: state.alertThreshold,
@@ -152,7 +152,7 @@ export function renderSettingsScreen(
                 deps.dispatch({
                   type: "add-toast",
                   toast: {
-                    id: `settings-saved-${state.tick}`,
+                    id: `settings-saved-${state.nowMs}-${state.tick}`,
                     message: "Settings saved",
                     level: "success",
                     timestamp: state.nowMs,
@@ -186,19 +186,19 @@ export function renderSettingsScreen(
               id: "theme-day",
               label: "Day Shift",
               intent: state.themeName === "day" ? "primary" : "secondary",
-              onPress: () => deps.dispatch({ type: "cycle-theme" }),
+              onPress: () => deps.dispatch({ type: "set-theme", theme: "day" }),
             }),
             ui.button({
               id: "theme-night",
               label: "Night Shift",
               intent: state.themeName === "night" ? "primary" : "secondary",
-              onPress: () => deps.dispatch({ type: "cycle-theme" }),
+              onPress: () => deps.dispatch({ type: "set-theme", theme: "night" }),
             }),
             ui.button({
               id: "theme-alert",
               label: "Red Alert",
               intent: state.themeName === "alert" ? "primary" : "secondary",
-              onPress: () => deps.dispatch({ type: "cycle-theme" }),
+              onPress: () => deps.dispatch({ type: "set-theme", theme: "alert" }),
             }),
           ),
           ui.row({ gap: 1, wrap: true }, [

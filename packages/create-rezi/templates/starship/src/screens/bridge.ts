@@ -88,7 +88,7 @@ function drawShipSchematic(
 
 const BridgeCommandDeck = defineWidget<BridgeCommandDeckProps>((props, ctx): VNode => {
   const viewport = ctx.useViewport?.() ?? { width: 120, height: 40, breakpoint: "lg" as const };
-  const scanId = ctx.id("scan");
+  const redAlertId = ctx.id("red-alert");
   const [scanSweep, setScanSweep] = ctx.useState(0);
   const [scanBoost, setScanBoost] = ctx.useState(false);
   const [uptime, setUptime] = ctx.useState(0);
@@ -272,7 +272,7 @@ const BridgeCommandDeck = defineWidget<BridgeCommandDeckProps>((props, ctx): VNo
           },
         }),
         ui.button({
-          id: scanId,
+          id: redAlertId,
           label: props.state.alertLevel === "red" ? "Lower Alert" : "Raise Red Alert",
           intent: props.state.alertLevel === "red" ? "warning" : "danger",
           onPress: () => props.dispatch({ type: "toggle-red-alert" }),
@@ -303,7 +303,7 @@ export function renderBridgeScreen(
           title: "Command Deck",
           style: styles.panelStyle,
         },
-        [BridgeCommandDeck({ key: `bridge-command-${state.tick}`, state, dispatch: deps.dispatch })],
+        [BridgeCommandDeck({ key: "bridge-command-deck", state, dispatch: deps.dispatch })],
       ),
     ]),
   });

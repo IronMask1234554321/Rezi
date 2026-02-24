@@ -16,12 +16,12 @@ const TELEMETRY_HISTORY_LIMIT = 60;
 const COMMS_LIMIT = 220;
 const TOAST_LIMIT = 8;
 
-type SubsystemTreeNode = Readonly<{
+export type SubsystemTreeNode = Readonly<{
   node: Subsystem;
   children: readonly SubsystemTreeNode[];
 }>;
 
-type SystemHealth = Readonly<{
+export type SystemHealth = Readonly<{
   average: number;
   minimum: number;
   warningCount: number;
@@ -43,10 +43,6 @@ function fract(value: number): number {
 
 function noise(seed: number): number {
   return fract(Math.sin(seed * 12.9898 + 78.233) * 43758.5453);
-}
-
-function freezeArray<T>(input: readonly T[]): readonly T[] {
-  return Object.freeze([...input]);
 }
 
 function freezeTelemetry(telemetry: TelemetrySnapshot): TelemetrySnapshot {
@@ -129,6 +125,7 @@ export function evolveTelemetry(state: StarshipState, tick: number): TelemetrySn
 
 export function generateCommsMessage(tick: number, nowMs = Date.now()): CommsMessage | null {
   if (tick <= 0 || tick % 4 !== 0) return null;
+  const emissionIndex = Math.floor(tick / 4);
 
   const channels: readonly CommsMessage["channel"][] = ["fleet", "local", "internal", "emergency"];
   const priorities: readonly CommsMessage["priority"][] = [
@@ -154,10 +151,10 @@ export function generateCommsMessage(tick: number, nowMs = Date.now()): CommsMes
     "Engineering calibration update",
   ] as const;
 
-  const channel = channels[(tick / 2) % channels.length] ?? "fleet";
-  const priority = priorities[tick % priorities.length] ?? "routine";
-  const sender = senders[tick % senders.length] ?? "Fleet Command";
-  const content = `${contents[(tick * 3) % contents.length] ?? "Status update"} · t${tick}`;
+  const channel = channels[(emissionIndex + 1) % channels.length] ?? "fleet";
+  const priority = priorities[(emissionIndex * 2 + 1) % priorities.length] ?? "routine";
+  const sender = senders[(emissionIndex * 5 + 2) % senders.length] ?? "Fleet Command";
+  const content = `${contents[(emissionIndex * 3 + 1) % contents.length] ?? "Status update"} · t${tick}`;
 
   return Object.freeze({
     id: `tick-msg-${String(tick).padStart(5, "0")}`,
@@ -300,9 +297,11 @@ function updateMessages(
 function clampSizes(sizes: readonly number[]): readonly number[] {
   const normalized = sizes.map((value) => clampInt(value, 10, 90));
   if (normalized.length < 2) return Object.freeze([45, 55]);
-  const total = normalized[0]! + normalized[1]!;
+  const left = normalized[0] ?? 45;
+  const right = normalized[1] ?? 55;
+  const total = left + right;
   if (total <= 0) return Object.freeze([45, 55]);
-  const first = clampInt((normalized[0]! / total) * 100, 10, 90);
+  const first = clampInt((left / total) * 100, 10, 90);
   const second = clampInt(100 - first, 10, 90);
   return Object.freeze([first, second]);
 }
@@ -384,6 +383,10 @@ export function reduceStarshipState(state: StarshipState, action: StarshipAction
     return freezeState({ ...state, themeName: cycleThemeName(state.themeName) });
   }
 
+  if (action.type === "set-theme") {
+    return freezeState({ ...state, themeName: action.theme });
+  }
+
   if (action.type === "toggle-help") {
     return freezeState({ ...state, showHelp: !state.showHelp });
   }
@@ -449,7 +452,7 @@ export function reduceStarshipState(state: StarshipState, action: StarshipAction
         return Object.freeze({
           ...member,
           department: action.department,
-          status: "active",
+          status: action.status,
         });
       }),
     );
@@ -583,7 +586,7 @@ export function reduceStarshipState(state: StarshipState, action: StarshipAction
   }
 
   if (action.type === "set-alert-threshold") {
-    return freezeState({ ...state, alertThreshold: clampInt(action.threshold, 0, 100) });
+    return freezeState({ ...state, alertThreshold: clampInt(action.threshold, 20, 95) });
   }
 
   if (action.type === "set-default-channel") {

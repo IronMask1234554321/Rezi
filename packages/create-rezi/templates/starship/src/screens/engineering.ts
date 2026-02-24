@@ -11,7 +11,7 @@ import {
   type VNode,
 } from "@rezi-ui/core";
 import { formatPower, formatTemperature } from "../helpers/formatters.js";
-import { stylesForTheme } from "../theme.js";
+import { stylesForTheme, themeSpec } from "../theme.js";
 import type { RouteDeps, StarshipState, Subsystem } from "../types.js";
 import { renderShell } from "./shell.js";
 
@@ -31,15 +31,35 @@ function buildSubsystemChildren(subsystems: readonly Subsystem[]): Map<string | 
   return map;
 }
 
-function drawReactor(ctx: CanvasContext, pulse: number, boost: number): void {
+function toHex(color: Readonly<{ r: number; g: number; b: number }>): string {
+  const channel = (value: number) =>
+    Math.max(0, Math.min(255, Math.round(value)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${channel(color.r)}${channel(color.g)}${channel(color.b)}`;
+}
+
+type ReactorPalette = Readonly<{
+  background: string;
+  border: string;
+  arcPrimary: string;
+  arcSecondary: string;
+  coreFill: string;
+  coreStroke: string;
+  linePrimary: string;
+  lineAlternate: string;
+  text: string;
+}>;
+
+function drawReactor(ctx: CanvasContext, pulse: number, boost: number, palette: ReactorPalette): void {
   const width = ctx.width;
   const height = ctx.height;
   const centerX = Math.floor(width * 0.45);
   const centerY = Math.floor(height * 0.5);
   const radius = 2 + pulse * 2 + boost;
 
-  ctx.clear("#131728");
-  ctx.strokeRect(1, 1, Math.max(4, width - 2), Math.max(4, height - 2), "#476088");
+  ctx.clear(palette.background);
+  ctx.strokeRect(1, 1, Math.max(4, width - 2), Math.max(4, height - 2), palette.border);
 
   for (let i = 0; i < 3; i++) {
     const arcRadius = radius + i * 2;
@@ -49,12 +69,12 @@ function drawReactor(ctx: CanvasContext, pulse: number, boost: number): void {
       arcRadius,
       i * 0.4 + boost,
       i * 0.4 + boost + Math.PI * (0.8 + pulse * 0.2),
-      i === 2 ? "#ffb681" : "#8acaff",
+      i === 2 ? palette.arcSecondary : palette.arcPrimary,
     );
   }
 
-  ctx.fillCircle(centerX, centerY, radius, "#66efd0");
-  ctx.circle(centerX, centerY, radius + 1, "#bffef0");
+  ctx.fillCircle(centerX, centerY, radius, palette.coreFill);
+  ctx.circle(centerX, centerY, radius + 1, palette.coreStroke);
 
   for (let line = 0; line < 4; line++) {
     ctx.line(
@@ -62,11 +82,11 @@ function drawReactor(ctx: CanvasContext, pulse: number, boost: number): void {
       centerY - 2 + line,
       width - 3,
       centerY - 2 + line + Math.sin(line + boost) * 1.4,
-      line % 2 === 0 ? "#79d8ff" : "#8ef5c2",
+      line % 2 === 0 ? palette.linePrimary : palette.lineAlternate,
     );
   }
 
-  ctx.text(2, 1, "REACTOR CORE", "#b7ccff");
+  ctx.text(2, 1, "REACTOR CORE", palette.text);
 }
 
 type EngineeringDeckProps = Readonly<{
@@ -77,6 +97,22 @@ type EngineeringDeckProps = Readonly<{
 
 const EngineeringDeck = defineWidget<EngineeringDeckProps>((props, ctx): VNode => {
   const subsystemNames = props.state.subsystems.map((subsystem) => subsystem.name);
+  const themeColors = themeSpec(props.state.themeName).theme.colors;
+  const reactorPalette = ctx.useMemo(
+    () =>
+      Object.freeze({
+        background: toHex(themeColors.bg.base),
+        border: toHex(themeColors.border.default),
+        arcPrimary: toHex(themeColors.accent.primary),
+        arcSecondary: toHex(themeColors.warning),
+        coreFill: toHex(themeColors.success),
+        coreStroke: toHex(themeColors.accent.tertiary),
+        linePrimary: toHex(themeColors.info),
+        lineAlternate: toHex(themeColors.accent.secondary),
+        text: toHex(themeColors.fg.primary),
+      }),
+    [props.state.themeName],
+  );
   const pulse = useSequence(ctx, [0.2, 1, 0.4, 0.8], {
     duration: 180,
     loop: true,
@@ -87,19 +123,26 @@ const EngineeringDeck = defineWidget<EngineeringDeckProps>((props, ctx): VNode =
   });
   const stagger = useStagger(ctx, subsystemNames, { delay: 70, duration: 260 });
 
-  const childrenByParent = buildSubsystemChildren(props.state.subsystems);
+  const childrenByParent = ctx.useMemo(
+    () => buildSubsystemChildren(props.state.subsystems),
+    [props.state.subsystems],
+  );
   const roots = childrenByParent.get(null) ?? [];
 
-  const heatmapData = Object.freeze(
-    Array.from({ length: 6 }, (_, row) =>
+  const heatmapData = ctx.useMemo(
+    () =>
       Object.freeze(
-        Array.from({ length: 8 }, (_, col) => {
-          const index = (row * 8 + col) % props.state.subsystems.length;
-          const subsystem = props.state.subsystems[index];
-          return subsystem ? subsystem.temperature : 280;
-        }),
+        Array.from({ length: 6 }, (_, row) =>
+          Object.freeze(
+            Array.from({ length: 8 }, (_, col) => {
+              const index = (row * 8 + col) % props.state.subsystems.length;
+              const subsystem = props.state.subsystems[index];
+              return subsystem ? subsystem.temperature : 280;
+            }),
+          ),
+        ),
       ),
-    ),
+    [props.state.subsystems],
   );
 
   const leftPane = ui.column({ gap: 1 }, [
@@ -109,7 +152,7 @@ const EngineeringDeck = defineWidget<EngineeringDeckProps>((props, ctx): VNode =
         width: 44,
         height: 14,
         blitter: "braille",
-        draw: (canvas) => drawReactor(canvas, pulse, boostValue),
+        draw: (canvas) => drawReactor(canvas, pulse, boostValue, reactorPalette),
       }),
       ui.gauge(boostValue, {
         label: `Boost ${formatPower(boostValue * 100)}`,
@@ -125,7 +168,6 @@ const EngineeringDeck = defineWidget<EngineeringDeckProps>((props, ctx): VNode =
         getKey: (node) => node.id,
         getChildren: (node) => childrenByParent.get(node.id),
         expanded: props.state.expandedSubsystemIds,
-        ...(props.state.selectedCrewId === null ? {} : { selected: props.state.selectedCrewId }),
         onToggle: (node) => props.dispatch({ type: "toggle-subsystem", subsystemId: node.id }),
         renderNode: (node, _depth, state: NodeState) =>
           ui.row({ gap: 1 }, [
@@ -137,7 +179,6 @@ const EngineeringDeck = defineWidget<EngineeringDeckProps>((props, ctx): VNode =
               variant: node.health < props.state.alertThreshold ? "warning" : "success",
             }),
           ]),
-        onSelect: () => {},
         dsTone: "default",
       }),
     ]),

@@ -118,7 +118,6 @@ TEMPLATE_ALIASES.set("motion", "animation-lab");
 TEMPLATE_ALIASES.set("mini", "minimal");
 TEMPLATE_ALIASES.set("basic", "minimal");
 TEMPLATE_ALIASES.set("utility", "minimal");
-TEMPLATE_ALIASES.set("starship", "starship");
 TEMPLATE_ALIASES.set("ship", "starship");
 TEMPLATE_ALIASES.set("bridge", "starship");
 TEMPLATE_ALIASES.set("command", "starship");

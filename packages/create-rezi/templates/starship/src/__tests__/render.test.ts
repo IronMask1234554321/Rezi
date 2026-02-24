@@ -3,12 +3,12 @@ import test from "node:test";
 import type { RouteRenderContext, RouterApi } from "@rezi-ui/core";
 import { createTestRenderer } from "@rezi-ui/core/testing";
 import { createInitialState } from "../helpers/state.js";
-import { STARSHIP_ROUTES } from "../screens/index.js";
 import { renderBridgeScreen } from "../screens/bridge.js";
 import { renderCargoScreen } from "../screens/cargo.js";
 import { renderCommsScreen } from "../screens/comms.js";
 import { renderCrewScreen } from "../screens/crew.js";
 import { renderEngineeringScreen } from "../screens/engineering.js";
+import { STARSHIP_ROUTES } from "../screens/index.js";
 import { renderSettingsScreen } from "../screens/settings.js";
 import type { RouteDeps, RouteId, StarshipState } from "../types.js";
 
@@ -65,22 +65,22 @@ test("bridge screen renders core markers", () => {
     .toText();
 
   assert.match(output, /USS Rezi/);
-  assert.match(output, /Telemetry/);
-  assert.match(output, /Systems Status/);
+  assert.match(output, /Bridge Overview/);
+  assert.match(output, /Command Deck/);
 });
 
-test("engineering screen renders subsystem tree", () => {
+test("engineering screen renders core markers", () => {
   const state = createInitialState(0);
   const renderer = createTestRenderer({ viewport: { cols: 140, rows: 48 } });
   const output = renderer
     .render(renderEngineeringScreen(createContext(state, "engineering"), createDeps()))
     .toText();
 
-  assert.match(output, /Subsystem Tree/);
-  assert.match(output, /Reactor Schematic/);
+  assert.match(output, /Engineering Deck/);
+  assert.match(output, /Power and Thermal Control/);
 });
 
-test("crew screen renders table headers", () => {
+test("crew screen renders loading/ops markers", () => {
   const state = createInitialState(0);
   const renderer = createTestRenderer({ viewport: { cols: 140, rows: 48 } });
   const output = renderer
@@ -88,11 +88,10 @@ test("crew screen renders table headers", () => {
     .toText();
 
   assert.match(output, /Crew Manifest/);
-  assert.match(output, /Name/);
-  assert.match(output, /Rank/);
+  assert.match(output, /Crew Command/);
 });
 
-test("comms screen renders channel tabs", () => {
+test("comms screen renders control markers", () => {
   const state = createInitialState(0);
   const renderer = createTestRenderer({ viewport: { cols: 140, rows: 48 } });
   const output = renderer
@@ -100,8 +99,8 @@ test("comms screen renders channel tabs", () => {
     .toText();
 
   assert.match(output, /Communications/);
-  assert.match(output, /Fleet/);
-  assert.match(output, /Emergency/);
+  assert.match(output, /Channel Controls/);
+  assert.match(output, /Open Hail/);
 });
 
 test("settings screen renders form fields", () => {

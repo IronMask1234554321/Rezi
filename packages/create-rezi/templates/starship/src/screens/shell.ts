@@ -19,17 +19,22 @@ type ShellOptions = Readonly<{
 }>;
 
 function routeCommandItems(routes: readonly Readonly<{ id: RouteId; title: string }>[]): readonly CommandItem[] {
+  const shortcutByRouteId: Readonly<Record<RouteId, string>> = Object.freeze({
+    bridge: "1",
+    engineering: "2",
+    crew: "3",
+    comms: "4",
+    cargo: "5",
+    settings: "6",
+  });
+
   return Object.freeze(
     routes.map((route) =>
       Object.freeze({
         id: `route-${route.id}`,
         label: `Go to ${route.title}`,
         description: `Navigate to ${route.title} deck`,
-        ...(route.id === "bridge"
-          ? { shortcut: "1" }
-          : route.id === "engineering"
-            ? { shortcut: "2" }
-            : {}),
+        ...(shortcutByRouteId[route.id] ? { shortcut: shortcutByRouteId[route.id] } : {}),
         icon: "#",
         sourceId: "routes",
         data: route.id,
@@ -250,7 +255,7 @@ export function renderShell(options: ShellOptions): VNode {
             id: "shell-help-modal",
             title: `${PRODUCT_NAME} Keybindings`,
             width: 84,
-            returnFocusTo: "deck-sidebar-bridge",
+            returnFocusTo: `deck-sidebar-${currentRoute}`,
             initialFocus: "close-help-modal",
             onClose: () => options.deps.dispatch({ type: "toggle-help" }),
             content: ui.column({ gap: 1 }, [

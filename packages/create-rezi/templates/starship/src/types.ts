@@ -133,6 +133,7 @@ export type StarshipAction =
   | Readonly<{ type: "set-alert"; level: AlertLevel }>
   | Readonly<{ type: "toggle-red-alert" }>
   | Readonly<{ type: "cycle-theme" }>
+  | Readonly<{ type: "set-theme"; theme: ThemeName }>
   | Readonly<{ type: "toggle-help" }>
   | Readonly<{ type: "toggle-command-palette" }>
   | Readonly<{ type: "set-command-query"; query: string }>
@@ -145,7 +146,12 @@ export type StarshipAction =
   | Readonly<{ type: "set-crew-page"; page: number }>
   | Readonly<{ type: "set-crew-draft-department"; department: CrewMember["department"] }>
   | Readonly<{ type: "set-crew-draft-status"; status: CrewMember["status"] }>
-  | Readonly<{ type: "assign-crew"; crewId: string; department: CrewMember["department"] }>
+  | Readonly<{
+      type: "assign-crew";
+      crewId: string;
+      department: CrewMember["department"];
+      status: CrewMember["status"];
+    }>
   | Readonly<{ type: "toggle-subsystem"; subsystemId: string }>
   | Readonly<{ type: "toggle-diagnostics" }>
   | Readonly<{ type: "toggle-boost" }>

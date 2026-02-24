@@ -78,7 +78,11 @@ test("cargo sorting updates ordering", () => {
   const sortedByName = reduceStarshipState(initial, { type: "set-cargo-sort", sortBy: "name" });
   const sorted = sortedCargo(sortedByName);
   assert.ok(sorted.length > 5);
-  assert.equal(sorted[0]!.name.localeCompare(sorted[1]!.name) <= 0, true);
+  const first = sorted[0];
+  const second = sorted[1];
+  assert.ok(first);
+  assert.ok(second);
+  assert.equal(first.name.localeCompare(second.name) <= 0, true);
 });
 
 test("settings name can be validated by reducer result", () => {
